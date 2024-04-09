@@ -3,9 +3,9 @@ use reqwest::{Client, Result, Url};
 use serde::Deserialize;
 use std::fmt;
 
-const GH_ACCEPT: &str = "application/vnd.github+json";
-const GH_API_VERSION: &str = "2022-11-28";
-const GH_API_URL: &str = "https://api.github.com";
+const API_URL: &str = "https://api.github.com";
+const API_VERSION: &str = "2022-11-28";
+const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct SshSigningKey {
@@ -20,7 +20,7 @@ impl fmt::Display for SshSigningKey {
 
 /// Get the signing keys of a user by their username.
 pub async fn get_user_signing_keys(user: &str, client: Client) -> Result<Vec<SshSigningKey>> {
-    let url = format!("{GH_API_URL}/users/{user}/ssh_signing_keys")
+    let url = format!("{API_URL}/users/{user}/ssh_signing_keys")
         .parse()
         .unwrap();
     get_signing_keys(url, client).await
@@ -34,8 +34,8 @@ async fn get_signing_keys(url: Url, client: Client) -> Result<Vec<SshSigningKey>
     let request = client
         .get(url)
         .header("User-Agent", USER_AGENT)
-        .header("Accept", GH_ACCEPT)
-        .header("X-GitHub-Api-Version", GH_API_VERSION);
+        .header("Accept", API_ACCEPT_HEADER)
+        .header("X-GitHub-Api-Version", API_VERSION);
 
     let response = request.send().await?;
     response.json().await
@@ -55,8 +55,8 @@ mod tests {
         let mock = server.mock(|when, then| {
             when.method(GET)
                 .path(path)
-                .header("accept", GH_ACCEPT)
-                .header("x-github-api-version", GH_API_VERSION)
+                .header("accept", API_ACCEPT_HEADER)
+                .header("x-github-api-version", API_VERSION)
                 .header("user-agent", USER_AGENT);
         });
 
