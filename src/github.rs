@@ -52,7 +52,7 @@ mod tests {
     async fn api_request_is_correct() {
         let path = "/users/octocat/ssh_signing_keys";
         let server = MockServer::start();
-        let mock = server.mock(|when, then| {
+        let mock = server.mock(|when, _| {
             when.method(GET)
                 .path(path)
                 .header("accept", API_ACCEPT_HEADER)
