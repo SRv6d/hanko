@@ -2,6 +2,7 @@ use crate::{SshPublicKey, USER_AGENT};
 use reqwest::{Client, Result, Url};
 use serde::Deserialize;
 
+const API_URL: &str = "https://gitlab.com";
 const API_ACCEPT_HEADER: &str = "application/json";
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -37,6 +38,14 @@ impl From<ApiSshKey> for SshPublicKey {
     fn from(api_key: ApiSshKey) -> Self {
         api_key.key.parse().unwrap()
     }
+}
+
+/// Get the signing keys of a user by their username.
+pub async fn get_user_signing_keys(user: &str, client: Client) -> Result<Vec<SshPublicKey>> {
+    let url = format!("{API_URL}api/v4/users/{user}/keys")
+        .parse()
+        .unwrap();
+    get_signing_keys(url, client).await
 }
 
 /// Make a GET request to the GitLab API at the given URL and return the signing keys contained in the response.
