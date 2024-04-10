@@ -1,7 +1,21 @@
-use crate::USER_AGENT;
+use crate::{SshPublicKey, USER_AGENT};
 use reqwest::{Client, Result, Url};
 
 const API_ACCEPT_HEADER: &str = "application/json";
+
+/// Make a GET request to the GitLab API at the given URL and return the signing keys contained in the response.
+///
+/// # GitLab API documentation
+/// https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user
+async fn get_signing_keys(url: Url, client: Client) -> Result<Vec<SshPublicKey>> {
+    let request = client
+        .get(url)
+        .header("User-Agent", USER_AGENT)
+        .header("Accept", API_ACCEPT_HEADER);
+
+    let response = request.send().await?;
+    response.json().await
+}
 
 #[cfg(test)]
 mod tests {
