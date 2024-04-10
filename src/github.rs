@@ -1,25 +1,12 @@
-use crate::USER_AGENT;
+use crate::{SshPublicKey, USER_AGENT};
 use reqwest::{Client, Result, Url};
-use serde::Deserialize;
-use std::fmt;
 
 const API_URL: &str = "https://api.github.com";
 const API_VERSION: &str = "2022-11-28";
 const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
-pub struct SshSigningKey {
-    key: String,
-}
-
-impl fmt::Display for SshSigningKey {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.key)
-    }
-}
-
 /// Get the signing keys of a user by their username.
-pub async fn get_user_signing_keys(user: &str, client: Client) -> Result<Vec<SshSigningKey>> {
+pub async fn get_user_signing_keys(user: &str, client: Client) -> Result<Vec<SshPublicKey>> {
     let url = format!("{API_URL}/users/{user}/ssh_signing_keys")
         .parse()
         .unwrap();
@@ -30,7 +17,7 @@ pub async fn get_user_signing_keys(user: &str, client: Client) -> Result<Vec<Ssh
 ///
 /// # Github API documentation
 /// https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user
-async fn get_signing_keys(url: Url, client: Client) -> Result<Vec<SshSigningKey>> {
+async fn get_signing_keys(url: Url, client: Client) -> Result<Vec<SshPublicKey>> {
     let request = client
         .get(url)
         .header("User-Agent", USER_AGENT)
@@ -92,21 +79,15 @@ mod tests {
               }
         ]"#,
         vec![
-            SshSigningKey {
-                key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS".to_string(),
-            },
-            SshSigningKey {
-                key: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=".to_string(),
-            },
-            SshSigningKey {
-                key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDTdEeUFjUX76aMptdG63itqcINvu/tnV5l9RXy/1TS25Ui2r+C2pRjG0vr9lzfz8TGncQt1yKmaZDAAe6mYGFiQlrkh9RJ/MPssRw4uS4slvMTDWhNufO1M3QGkek81lGaZq55uazCcaM5xSOhLBdrWIMROeLgKZ9YkHNqJXTt9V+xNE5ZkB/65i2tCkGdXnQsGJbYFbkuUTvYBuMW9lwmryLTeWwFLWGBP1moZI9etk3snh2hCLTV8+gvmhCTE8sAGBMcJq+TGxnfFoCtnA9Bdy7t+ZMLh1kV7oneUA9YT7qNeUFy55D287DAltB02ntT7CtuG6SBAQ4CQMcCoAX3Os4aVfdILOEC8ghrAj3uTEQuE3nYta0SmqqXcVAxmXUQCawf8n5CJ7QN5aIhCH73MKr6k5puk9dnkAcAFLRM6stvQhnpIqrI3YEbjqs1FGHfbc4+nfEWorxRrd7ur1ckEhuvmAXRKrLzYp9gYWU6TxfRqSxsXh3he0G6i+kC6k=".to_string(),
-            },
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS".parse().unwrap(),
+            "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=".parse().unwrap(),
+            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDTdEeUFjUX76aMptdG63itqcINvu/tnV5l9RXy/1TS25Ui2r+C2pRjG0vr9lzfz8TGncQt1yKmaZDAAe6mYGFiQlrkh9RJ/MPssRw4uS4slvMTDWhNufO1M3QGkek81lGaZq55uazCcaM5xSOhLBdrWIMROeLgKZ9YkHNqJXTt9V+xNE5ZkB/65i2tCkGdXnQsGJbYFbkuUTvYBuMW9lwmryLTeWwFLWGBP1moZI9etk3snh2hCLTV8+gvmhCTE8sAGBMcJq+TGxnfFoCtnA9Bdy7t+ZMLh1kV7oneUA9YT7qNeUFy55D287DAltB02ntT7CtuG6SBAQ4CQMcCoAX3Os4aVfdILOEC8ghrAj3uTEQuE3nYta0SmqqXcVAxmXUQCawf8n5CJ7QN5aIhCH73MKr6k5puk9dnkAcAFLRM6stvQhnpIqrI3YEbjqs1FGHfbc4+nfEWorxRrd7ur1ckEhuvmAXRKrLzYp9gYWU6TxfRqSxsXh3he0G6i+kC6k=".parse().unwrap(),
         ]
     )]
     #[tokio::test]
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
-        #[case] expected: Vec<SshSigningKey>,
+        #[case] expected: Vec<SshPublicKey>,
     ) {
         let path = "/users/octocat/ssh_signing_keys";
         let server = MockServer::start();
