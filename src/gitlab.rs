@@ -1,7 +1,43 @@
 use crate::{SshPublicKey, USER_AGENT};
 use reqwest::{Client, Result, Url};
+use serde::Deserialize;
 
 const API_ACCEPT_HEADER: &str = "application/json";
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub enum ApiSshKeyUsage {
+    #[serde(rename = "auth")]
+    Auth,
+    #[serde(rename = "signing")]
+    Signing,
+    #[serde(rename = "auth_and_signing")]
+    AuthAndSigning,
+}
+
+impl ApiSshKeyUsage {
+    /// Returns true if the key is used for signing.
+    pub fn is_signing(&self) -> bool {
+        matches!(
+            self,
+            ApiSshKeyUsage::Signing | ApiSshKeyUsage::AuthAndSigning
+        )
+    }
+}
+
+/// The GitLab API representation of an SSH key.
+#[derive(Debug, Deserialize)]
+pub struct ApiSshKey {
+    pub id: usize,
+    pub title: String,
+    pub key: String,
+    pub usage_type: ApiSshKeyUsage,
+}
+
+impl From<ApiSshKey> for SshPublicKey {
+    fn from(api_key: ApiSshKey) -> Self {
+        api_key.key.parse().unwrap()
+    }
+}
 
 /// Make a GET request to the GitLab API at the given URL and return the signing keys contained in the response.
 ///
@@ -14,7 +50,18 @@ async fn get_signing_keys(url: Url, client: Client) -> Result<Vec<SshPublicKey>>
         .header("Accept", API_ACCEPT_HEADER);
 
     let response = request.send().await?;
-    response.json().await
+    let keys: Vec<ApiSshKey> = response.json().await?;
+
+    Ok(keys
+        .into_iter()
+        .filter_map(|key| {
+            if key.usage_type.is_signing() {
+                Some(key.into())
+            } else {
+                None
+            }
+        })
+        .collect())
 }
 
 #[cfg(test)]
