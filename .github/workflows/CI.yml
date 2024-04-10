@@ -1,0 +1,53 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number
+    || github.sha }}
+  cancel-in-progress: true
+
+env:
+  COLUMNS: 120
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features
+      - name: Format
+        run: cargo fmt --all --check
+  cargo-test:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        rust_version: ["stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust_version }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Test
+        run: cargo test
+  spellcheck:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip3 install codespell
+      - uses: codespell-project/codespell-problem-matcher@v1
+      - name: check for typos
+        run: codespell --ignore-words=.codespellignore src/ tests/ docs/ README.md
