@@ -4,7 +4,11 @@
 //! https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
 use crate::SshPublicKey;
 use chrono::{DateTime, Local};
-use std::fmt;
+use std::{
+    fmt, fs,
+    io::{self, Write},
+    path::PathBuf,
+};
 
 /// The format string for time fields.
 const TIME_FMT: &str = "%Y%m%d%H%M%S";
@@ -30,6 +34,25 @@ impl fmt::Display for AllowedSigner {
         };
 
         write!(f, " {}", self.key)
+    }
+}
+
+/// The allowed signers file.
+#[derive(Debug)]
+struct AllowedSignersFile {
+    path: PathBuf,
+    signers: Vec<AllowedSigner>,
+}
+
+impl AllowedSignersFile {
+    /// Write the allowed signers file.
+    fn write(&self) -> io::Result<()> {
+        let file = fs::File::create(&self.path)?;
+        let mut buf = io::BufWriter::new(file);
+        for signer in &self.signers {
+            writeln!(buf, "{}", signer)?;
+        }
+        Ok(())
     }
 }
 
