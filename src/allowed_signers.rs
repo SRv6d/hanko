@@ -99,4 +99,6 @@ mod tests {
     fn display_allowed_signer(#[case] signer: AllowedSigner, #[case] expected_display: &str) {
         assert_eq!(signer.to_string(), expected_display);
     }
+
+    // TODO: Write tests for writing the allowed signers file.
 }
