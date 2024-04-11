@@ -1,9 +1,54 @@
-use crate::{SshPublicKey, USER_AGENT};
+use crate::{GetPublicKeys, SshPublicKey, USER_AGENT};
+use async_trait::async_trait;
 use reqwest::{Client, Result, Url};
 use serde::Deserialize;
 
-const API_URL: &str = "https://gitlab.com";
-const API_ACCEPT_HEADER: &str = "application/json";
+#[derive(Debug)]
+pub struct Api<'a> {
+    /// The base URL of the API.
+    base_url: Url,
+    /// The client used to make requests to the API.
+    client: &'a Client,
+}
+
+impl Api<'_> {
+    const VERSION: &'static str = "v4";
+    const ACCEPT_HEADER: &'static str = "application/json";
+}
+
+#[async_trait]
+impl GetPublicKeys for Api<'_> {
+    type Err = reqwest::Error;
+
+    /// Get the signing keys of a user by their username.
+    ///
+    /// # API documentation
+    /// https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user
+    async fn by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
+        let url = self
+            .base_url
+            .join(&format!(
+                "/api/{version}/users/{username}/keys",
+                version = Self::VERSION,
+            ))
+            .unwrap();
+        let request = self
+            .client
+            .get(url)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", Self::ACCEPT_HEADER);
+
+        let response = request.send().await?;
+        // The API has no way to filter keys by usage type, so this contains all the user's keys.
+        let all_keys: Vec<ApiSshKey> = response.json().await?;
+        // Filter out the keys that are not used for signing.
+        let signing_keys = all_keys
+            .into_iter()
+            .filter(|key| key.usage_type.is_signing());
+
+        Ok(signing_keys.map(SshPublicKey::from).collect())
+    }
+}
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 pub enum ApiSshKeyUsage {
@@ -40,60 +85,32 @@ impl From<ApiSshKey> for SshPublicKey {
     }
 }
 
-/// Get the signing keys of a user by their username.
-pub async fn get_user_signing_keys(user: &str, client: Client) -> Result<Vec<SshPublicKey>> {
-    let url = format!("{API_URL}api/v4/users/{user}/keys")
-        .parse()
-        .unwrap();
-    get_signing_keys(url, client).await
-}
-
-/// Make a GET request to the GitLab API at the given URL and return the signing keys contained in the response.
-///
-/// # GitLab API documentation
-/// https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user
-async fn get_signing_keys(url: Url, client: Client) -> Result<Vec<SshPublicKey>> {
-    let request = client
-        .get(url)
-        .header("User-Agent", USER_AGENT)
-        .header("Accept", API_ACCEPT_HEADER);
-
-    let response = request.send().await?;
-    let keys: Vec<ApiSshKey> = response.json().await?;
-
-    Ok(keys
-        .into_iter()
-        .filter_map(|key| {
-            if key.usage_type.is_signing() {
-                Some(key.into())
-            } else {
-                None
-            }
-        })
-        .collect())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use httpmock::prelude::*;
     use rstest::rstest;
 
+    const API_ACCEPT_HEADER: &str = "application/json";
+
     /// The API request made to get a users signing keys is correct.
     #[tokio::test]
     async fn api_request_is_correct() {
-        let path = "/api/v4/users/tanuki/keys";
+        let username = "tanuki";
         let server = MockServer::start();
         let mock = server.mock(|when, _| {
             when.method(GET)
-                .path(path)
+                .path(format!("/api/v4/users/{username}/keys"))
                 .header("accept", API_ACCEPT_HEADER)
                 .header("user-agent", USER_AGENT);
         });
 
-        let url: Url = server.url(path).parse().unwrap();
         let client = Client::new();
-        let _ = get_signing_keys(url, client).await;
+        let api = Api {
+            base_url: server.base_url().parse().unwrap(),
+            client: &client,
+        };
+        let _ = api.by_username(username).await;
 
         mock.assert();
     }
@@ -138,19 +155,22 @@ mod tests {
         #[case] body: &str,
         #[case] expected: Vec<SshPublicKey>,
     ) {
-        let path = "/api/v4/users/tanuki/keys";
+        let username = "tanuki";
         let server = MockServer::start();
         server.mock(|when, then| {
-            when.method(GET).path(path);
+            when.method(GET)
+                .path(format!("/api/v4/users/{username}/keys"));
             then.status(200)
                 .header("Content-Type", "application/json")
                 .body(body);
         });
 
         let client = Client::new();
-        let keys = get_signing_keys(server.url(path).parse().unwrap(), client)
-            .await
-            .unwrap();
+        let api = Api {
+            base_url: server.base_url().parse().unwrap(),
+            client: &client,
+        };
+        let keys = api.by_username(username).await.unwrap();
 
         assert_eq!(keys, expected);
     }
