@@ -57,6 +57,7 @@ impl AllowedSignersFile {
         for signer in &self.signers {
             writeln!(file_buf, "{}", signer)?;
         }
+        writeln!(file_buf)?;
         Ok(())
     }
 }
