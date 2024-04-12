@@ -16,10 +16,10 @@ const TIME_FMT: &str = "%Y%m%d%H%M%S";
 /// A single entry in the allowed signers file.
 #[derive(Debug)]
 pub struct AllowedSigner {
-    principal: String,
-    valid_after: Option<DateTime<Local>>,
-    valid_before: Option<DateTime<Local>>,
-    key: SshPublicKey,
+    pub principal: String,
+    pub valid_after: Option<DateTime<Local>>,
+    pub valid_before: Option<DateTime<Local>>,
+    pub key: SshPublicKey,
 }
 
 impl fmt::Display for AllowedSigner {
@@ -40,8 +40,8 @@ impl fmt::Display for AllowedSigner {
 /// The allowed signers file.
 #[derive(Debug)]
 pub struct AllowedSignersFile {
-    path: PathBuf,
-    signers: Vec<AllowedSigner>,
+    pub path: PathBuf,
+    pub signers: Vec<AllowedSigner>,
 }
 
 impl AllowedSignersFile {
