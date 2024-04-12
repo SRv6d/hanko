@@ -105,6 +105,11 @@ mod tests {
         }
     }
 
+    #[fixture]
+    fn example_signers() -> Vec<AllowedSigner> {
+        vec![signer_jsnow(), signer_imalcom(), signer_cwoods()]
+    }
+
     #[rstest]
     #[case(
         signer_jsnow(),
@@ -122,22 +127,37 @@ mod tests {
         assert_eq!(signer.to_string(), expected_display);
     }
 
-    #[test]
-    fn write_allowed_signers_file() {
+    #[rstest]
+    fn write_allowed_signers_file(example_signers: Vec<AllowedSigner>) {
         let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
-        let signers = vec![signer_jsnow(), signer_imalcom(), signer_cwoods()];
         let mut expected_content = String::new();
-        for signer in &signers {
+        for signer in &example_signers {
             expected_content.push_str(&format!("{}\n", signer));
         }
         expected_content.push('\n');
 
         {
-            let mut file = AllowedSignersFile::new(&path, signers).unwrap();
+            let mut file = AllowedSignersFile::new(&path, example_signers).unwrap();
             file.write().unwrap();
         }
 
         let content = fs::read_to_string(path).unwrap();
         assert_eq!(content, expected_content);
+    }
+
+    #[rstest]
+    fn writing_overrides_existing_content(example_signers: Vec<AllowedSigner>) {
+        let existing_content = "gathered dust";
+        let mut existing_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(existing_file, "{}", existing_content).unwrap();
+        let path = existing_file.into_temp_path();
+
+        {
+            let mut file = AllowedSignersFile::new(&path, example_signers).unwrap();
+            file.write().unwrap();
+        }
+
+        let content = fs::read_to_string(path).unwrap();
+        assert!(!content.contains(existing_content));
     }
 }
