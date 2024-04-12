@@ -15,7 +15,7 @@ const TIME_FMT: &str = "%Y%m%d%H%M%S";
 
 /// A single entry in the allowed signers file.
 #[derive(Debug)]
-struct AllowedSigner {
+pub struct AllowedSigner {
     principal: String,
     valid_after: Option<DateTime<Local>>,
     valid_before: Option<DateTime<Local>>,
@@ -39,7 +39,7 @@ impl fmt::Display for AllowedSigner {
 
 /// The allowed signers file.
 #[derive(Debug)]
-struct AllowedSignersFile {
+pub struct AllowedSignersFile {
     path: PathBuf,
     signers: Vec<AllowedSigner>,
 }
