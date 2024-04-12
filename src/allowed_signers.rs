@@ -5,9 +5,10 @@
 use crate::SshPublicKey;
 use chrono::{DateTime, Local};
 use std::{
-    fmt, fs,
+    fmt,
+    fs::File,
     io::{self, Write},
-    path::PathBuf,
+    path::Path,
 };
 
 /// The format string for time fields.
@@ -40,17 +41,21 @@ impl fmt::Display for AllowedSigner {
 /// The allowed signers file.
 #[derive(Debug)]
 pub struct AllowedSignersFile {
-    pub path: PathBuf,
+    pub file: File,
     pub signers: Vec<AllowedSigner>,
 }
 
 impl AllowedSignersFile {
+    pub fn new(path: &Path, signers: Vec<AllowedSigner>) -> io::Result<Self> {
+        let file = File::create(path)?;
+        Ok(Self { file, signers })
+    }
+
     /// Write the allowed signers file.
-    pub fn write(&self) -> io::Result<()> {
-        let file = fs::File::create(&self.path)?;
-        let mut buf = io::BufWriter::new(file);
+    pub fn write(&mut self) -> io::Result<()> {
+        let mut file_buf = io::BufWriter::new(&mut self.file);
         for signer in &self.signers {
-            writeln!(buf, "{}", signer)?;
+            writeln!(file_buf, "{}", signer)?;
         }
         Ok(())
     }
