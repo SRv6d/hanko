@@ -15,3 +15,4 @@ tokio = { version = "1.37.0", features = ["full"] }
 [dev-dependencies]
 httpmock = "0.7.0"
 rstest = "0.19.0"
+tempfile = "3.10.1"

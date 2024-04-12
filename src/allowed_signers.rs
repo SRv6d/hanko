@@ -63,6 +63,8 @@ impl AllowedSignersFile {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
     use chrono::TimeZone as _;
     use rstest::rstest;
@@ -105,5 +107,47 @@ mod tests {
         assert_eq!(signer.to_string(), expected_display);
     }
 
-    // TODO: Write tests for writing the allowed signers file.
+    #[test]
+    fn write_allowed_signers_file() {
+        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+        let signers = vec![
+            AllowedSigner {
+                principal: "j.snow@wall.com".to_string(),
+                valid_after: None,
+                valid_before: None,
+                key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS"
+                    .parse()
+                    .unwrap(),
+            },
+            AllowedSigner {
+                principal: "ian.malcom@acme.corp".to_string(),
+                valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap()),
+                valid_before: None,
+                key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
+                    .parse()
+                    .unwrap(),
+            },
+            AllowedSigner {
+                principal: "cwoods@universal.exports".to_string(),
+                valid_after: None,
+                valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
+                key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
+                    .parse()
+                    .unwrap(),
+            },
+        ];
+        let mut expected_content = String::new();
+        for signer in &signers {
+            expected_content.push_str(&format!("{}\n", signer));
+        }
+        expected_content.push('\n');
+
+        {
+            let mut file = AllowedSignersFile::new(&path, signers).unwrap();
+            file.write().unwrap();
+        }
+
+        let content = fs::read_to_string(path).unwrap();
+        assert_eq!(content, expected_content);
+    }
 }
