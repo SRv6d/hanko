@@ -46,7 +46,7 @@ pub struct AllowedSignersFile {
 
 impl AllowedSignersFile {
     /// Write the allowed signers file.
-    fn write(&self) -> io::Result<()> {
+    pub fn write(&self) -> io::Result<()> {
         let file = fs::File::create(&self.path)?;
         let mut buf = io::BufWriter::new(file);
         for signer in &self.signers {
