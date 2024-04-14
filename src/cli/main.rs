@@ -1,3 +1,4 @@
+use super::manage_signers::ManageSigners;
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -32,11 +33,9 @@ enum Commands {
     /// Update the allowed signers file.
     Update,
 
-    /// Add allowed signers.
-    Add,
-
-    /// Remove allowed signers.
-    Remove,
+    /// Manage signers.
+    #[command(subcommand)]
+    Signer(ManageSigners),
 }
 
 #[cfg(test)]
