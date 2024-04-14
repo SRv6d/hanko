@@ -1,3 +1,6 @@
+use clap::Parser;
+use hanko::cli::Cli;
+
 fn main() {
-    println!("Hello, world!");
+    let _cli = Cli::parse();
 }
