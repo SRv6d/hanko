@@ -4,7 +4,7 @@ use std::{fmt, str::FromStr};
 
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SshPublicKey {
     key: String,
 }
