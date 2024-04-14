@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
@@ -29,4 +29,11 @@ pub trait GetPublicKeys {
 
     /// Get the public keys of a user by their username.
     async fn by_username(&self, username: &str) -> Result<Vec<SshPublicKey>, Self::Err>;
+}
+
+/// A Git provider.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub enum GitProvider {
+    Github,
+    Gitlab,
 }
