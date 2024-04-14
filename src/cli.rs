@@ -19,11 +19,11 @@ pub struct Cli {
 #[group(multiple = false)]
 struct Logging {
     /// Enable verbose logging.
-    #[arg(short, long, group = "logging")]
+    #[arg(short, long)]
     verbose: bool,
 
     /// Disable all output.
-    #[arg(long, group = "logging")]
+    #[arg(long)]
     silent: bool,
 }
 
