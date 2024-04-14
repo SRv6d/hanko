@@ -1,4 +1,4 @@
-use super::manage_signers::ManageSigners;
+use super::{manage_signers::ManageSigners, manage_sources::ManageSources};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -36,6 +36,10 @@ enum Commands {
     /// Manage signers.
     #[command(subcommand)]
     Signer(ManageSigners),
+
+    /// Manage sources.
+    #[command(subcommand)]
+    Source(ManageSources),
 }
 
 #[cfg(test)]
