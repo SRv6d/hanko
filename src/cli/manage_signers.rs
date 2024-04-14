@@ -1,9 +1,29 @@
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 
 #[derive(Subcommand)]
 pub enum ManageSigners {
-    /// Add an allowed signer.
-    Add,
-    /// Remove an allowed signer.
-    Remove,
+    /// Add allowed signers.
+    Add {
+        #[command(flatten)]
+        signers: Signers,
+        /// The source(s) of the signer(s) to add.
+        #[arg(short, long)]
+        source: Vec<String>,
+    },
+    /// Remove allowed signers.
+    Remove {
+        #[command(flatten)]
+        signers: Signers,
+    },
+}
+
+#[derive(Args)]
+#[group(multiple = true)]
+pub struct Signers {
+    /// By username.
+    #[arg(short, long)]
+    user: Vec<String>,
+    /// By organization.
+    #[arg(short, long, value_name = "ORGANIZATION")]
+    org: Vec<String>,
 }
