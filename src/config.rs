@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// The main configuration.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct Config {
     users: Vec<User>,
     organizations: Vec<Organization>,
@@ -17,26 +17,107 @@ struct Config {
 
 impl Config {
     /// Load the configuration from a TOML file at the given path.
-    fn load(path: PathBuf) -> figment::Result<Self> {
+    pub fn load(path: PathBuf) -> figment::Result<Self> {
         Figment::from(Toml::file(path)).extract()
+    }
+
+    /// Create the configuration from a TOML string.
+    fn from_toml(toml: &str) -> figment::Result<Self> {
+        Figment::from(Toml::string(toml)).extract()
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct User {
     name: String,
     sources: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct Organization {
     name: String,
     sources: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct Source {
     name: String,
     provider: GitProvider,
     url: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use indoc::indoc;
+
+    #[test]
+    fn example_config() {
+        let toml = indoc! {r#"
+        users = [
+            { name = "torvalds", sources = ["github"] },
+            { name = "gvanrossum", sources = ["github", "gitlab"] },
+            { name = "graydon", sources = ["github"] },
+            { name = "cwoods", sources = ["acme-corp"] },
+            { name = "rdavis", sources = ["acme-corp"] },
+            { name = "pbrock", sources = ["acme-corp"] }
+        ]
+        organizations = [
+            { name = "rust-lang", sources = ["github"] }
+        ]
+        local = [
+            "jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
+        ]
+        
+        [[sources]]
+        name = "acme-corp"
+        provider = "gitlab"
+        url = "https://git.acme.corp"
+        "#};
+        let expected = Config {
+            users: vec![
+                User {
+                    name: "torvalds".to_string(),
+                    sources: vec!["github".to_string()],
+                },
+                User {
+                    name: "gvanrossum".to_string(),
+                    sources: vec!["github".to_string(), "gitlab".to_string()],
+                },
+                User {
+                    name: "graydon".to_string(),
+                    sources: vec!["github".to_string()],
+                },
+                User {
+                    name: "cwoods".to_string(),
+                    sources: vec!["acme-corp".to_string()],
+                },
+                User {
+                    name: "rdavis".to_string(),
+                    sources: vec!["acme-corp".to_string()],
+                },
+                User {
+                    name: "pbrock".to_string(),
+                    sources: vec!["acme-corp".to_string()],
+                },
+            ],
+            organizations: vec![
+                Organization {
+                    name: "rust-lang".to_string(),
+                    sources: vec!["github".to_string()],
+                }
+            ],
+            local: vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()],
+            sources: vec![
+                Source {
+                    name: "acme-corp".to_string(),
+                    provider: GitProvider::Gitlab,
+                    url: "https://git.acme.corp".to_string(),
+                }
+            ]
+        };
+
+        let config = Config::from_toml(toml).unwrap();
+        assert_eq!(config, expected);
+    }
 }

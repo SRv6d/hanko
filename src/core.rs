@@ -32,7 +32,7 @@ pub trait GetPublicKeys {
 }
 
 /// A Git provider.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, clap::ValueEnum)]
 pub enum GitProvider {
     Github,
     Gitlab,
