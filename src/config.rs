@@ -25,6 +25,11 @@ impl Config {
     fn from_toml(toml: &str) -> figment::Result<Self> {
         Figment::from(Toml::string(toml)).extract()
     }
+
+    /// Save the configuration.
+    fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        todo!("Save the configuration while preserving formatting.");
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
