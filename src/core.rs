@@ -33,6 +33,7 @@ pub trait GetPublicKeys {
 
 /// A Git provider.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
 pub enum GitProvider {
     Github,
     Gitlab,

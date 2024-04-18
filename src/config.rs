@@ -1,4 +1,4 @@
-use crate::{GitProvider, SshPublicKey};
+use crate::GitProvider;
 use figment::{
     providers::{Format, Toml},
     Figment,
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 struct Config {
     users: Vec<User>,
     organizations: Vec<Organization>,
-    local: Vec<SshPublicKey>,
+    local: Vec<String>,
     sources: Vec<Source>,
 }
 
