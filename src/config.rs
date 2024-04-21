@@ -4,11 +4,11 @@ use figment::{
     Figment,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::Path;
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Config {
+pub struct Config {
     users: Vec<User>,
     organizations: Vec<Organization>,
     local: Vec<String>,
@@ -17,7 +17,7 @@ struct Config {
 
 impl Config {
     /// Load the configuration from a TOML file at the given path.
-    pub fn load(path: PathBuf) -> figment::Result<Self> {
+    pub fn load(path: &Path) -> figment::Result<Self> {
         Figment::from(Toml::file(path)).extract()
     }
 

@@ -25,3 +25,7 @@ tempfile = "3.10.1"
 [[bench]]
 name = "write_allowed_signers"
 harness = false
+
+[[bench]]
+name = "load_configuration"
+harness = false

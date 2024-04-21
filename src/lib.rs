@@ -1,4 +1,5 @@
 pub use allowed_signers::{AllowedSigner, AllowedSignersFile};
+pub use config::Config;
 pub use core::*;
 
 mod allowed_signers;
