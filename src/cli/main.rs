@@ -1,13 +1,22 @@
 use super::{manage_signers::ManageSigners, manage_sources::ManageSources};
-use clap::{Args, Parser, Subcommand};
-use std::path::PathBuf;
+use clap::{
+    builder::{OsStr, Resettable},
+    Args, Parser, Subcommand,
+};
+use std::{env, path::PathBuf};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
     /// The path to the configuration file.
-    #[arg(short, long, value_name = "FILE")]
-    config: Option<PathBuf>,
+    #[arg(
+        short,
+        long,
+        value_name = "FILE",
+        env = "HANKO_CONFIG",
+        default_value = default_config_path()
+    )]
+    pub config: PathBuf,
 
     #[command(flatten)]
     logging: Logging,
@@ -40,6 +49,21 @@ enum Commands {
     /// Manage sources.
     #[command(subcommand)]
     Source(ManageSources),
+}
+
+/// The default configuration file path according to the XDG Base Directory Specification.
+/// If neither `$XDG_CONFIG_HOME` nor `$HOME` are set, `Resettable::Reset` is returned, forcing the user to specify the path.
+fn default_config_path() -> Resettable<OsStr> {
+    let dirname = env!("CARGO_PKG_NAME");
+    let filename = "config.toml";
+
+    if let Ok(xdg_config_home) = env::var("XDG_CONFIG_HOME") {
+        Resettable::Value(format!("{}/{}/{}", xdg_config_home, dirname, filename).into())
+    } else if let Ok(home) = env::var("HOME") {
+        Resettable::Value(format!("{}/.config/{}/{}", home, dirname, filename).into())
+    } else {
+        Resettable::Reset
+    }
 }
 
 #[cfg(test)]
