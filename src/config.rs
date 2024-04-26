@@ -1,6 +1,6 @@
 use crate::GitProvider;
 use figment::{
-    providers::{Format, Toml},
+    providers::{Format, Serialized, Toml},
     Figment,
 };
 use serde::{Deserialize, Serialize};
@@ -15,15 +15,42 @@ pub struct Config {
     sources: Option<Vec<Source>>,
 }
 
+impl Default for Config {
+    /// The default configuration containing common sources.
+    fn default() -> Self {
+        Config {
+            users: None,
+            organizations: None,
+            local: None,
+            sources: Some(vec![
+                Source {
+                    name: "github".to_string(),
+                    provider: GitProvider::Github,
+                    url: "https://api.github.com".to_string(),
+                },
+                Source {
+                    name: "gitlab".to_string(),
+                    provider: GitProvider::Gitlab,
+                    url: "https://gitlab.com".to_string(),
+                },
+            ]),
+        }
+    }
+}
+
 impl Config {
     /// Load the configuration from a TOML file at the given path.
     pub fn load(path: &Path) -> figment::Result<Self> {
-        Figment::from(Toml::file(path)).extract()
+        Figment::from(Serialized::defaults(Config::default()))
+            .admerge(Toml::file(path))
+            .extract()
     }
 
     /// Create the configuration from a TOML string.
     fn from_toml(toml: &str) -> figment::Result<Self> {
-        Figment::from(Toml::string(toml)).extract()
+        Figment::from(Serialized::defaults(Config::default()))
+            .admerge(Toml::string(toml))
+            .extract()
     }
 
     /// Save the configuration.
@@ -115,10 +142,20 @@ mod tests {
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
             sources: Some(vec![
                 Source {
+                    name: "github".to_string(),
+                    provider: GitProvider::Github,
+                    url: "https://api.github.com".to_string(),
+                },
+                Source {
+                    name: "gitlab".to_string(),
+                    provider: GitProvider::Gitlab,
+                    url: "https://gitlab.com".to_string(),
+                },
+                Source {
                     name: "acme-corp".to_string(),
                     provider: GitProvider::Gitlab,
                     url: "https://git.acme.corp".to_string(),
-                }
+                },
             ])
         };
 
