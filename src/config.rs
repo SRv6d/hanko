@@ -9,10 +9,10 @@ use std::path::Path;
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Config {
-    users: Vec<User>,
-    organizations: Vec<Organization>,
-    local: Vec<String>,
-    sources: Vec<Source>,
+    users: Option<Vec<User>>,
+    organizations: Option<Vec<Organization>>,
+    local: Option<Vec<String>>,
+    sources: Option<Vec<Source>>,
 }
 
 impl Config {
@@ -80,7 +80,7 @@ mod tests {
         url = "https://git.acme.corp"
         "#};
         let expected = Config {
-            users: vec![
+            users: Some(vec![
                 User {
                     name: "torvalds".to_string(),
                     sources: vec!["github".to_string()],
@@ -105,21 +105,21 @@ mod tests {
                     name: "pbrock".to_string(),
                     sources: vec!["acme-corp".to_string()],
                 },
-            ],
-            organizations: vec![
+            ]),
+            organizations: Some(vec![
                 Organization {
                     name: "rust-lang".to_string(),
                     sources: vec!["github".to_string()],
                 }
-            ],
-            local: vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()],
-            sources: vec![
+            ]),
+            local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
+            sources: Some(vec![
                 Source {
                     name: "acme-corp".to_string(),
                     provider: GitProvider::Gitlab,
                     url: "https://git.acme.corp".to_string(),
                 }
-            ]
+            ])
         };
 
         let config = Config::from_toml(toml).unwrap();
