@@ -5,7 +5,7 @@ use clap::{
 };
 use std::{env, path::PathBuf};
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
     /// The configuration file.
@@ -34,7 +34,7 @@ pub struct Cli {
     command: Commands,
 }
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 #[group(multiple = false)]
 struct Logging {
     /// Enable verbose logging.
@@ -46,7 +46,7 @@ struct Logging {
     silent: bool,
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 enum Commands {
     /// Update the allowed signers file.
     Update,

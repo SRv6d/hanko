@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum ManageSigners {
     /// Add allowed signers.
     Add {
@@ -17,7 +17,7 @@ pub enum ManageSigners {
     },
 }
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 #[group(multiple = true)]
 pub struct Signers {
     /// By username.
