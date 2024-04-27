@@ -23,7 +23,7 @@ pub struct Cli {
         long,
         value_name = "FILE",
         env = "HANKO_ALLLOWED_SIGNERS",
-        // TODO: Get default value from Git config.
+        default_value = git_allowed_signers_path()
     )]
     pub allowed_signers: PathBuf,
 
@@ -73,6 +73,12 @@ fn default_config_path() -> Resettable<OsStr> {
     } else {
         Resettable::Reset
     }
+}
+
+/// The path to the allowed signers file as configured within Git.
+fn git_allowed_signers_path() -> Resettable<OsStr> {
+    // TODO: Get value from Git config.
+    Resettable::Value("~/.config/git/allowed_signers".into())
 }
 
 #[cfg(test)]
