@@ -4,7 +4,10 @@ use figment::{
     Figment,
 };
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -17,10 +20,11 @@ pub struct Config {
 }
 
 impl Default for Config {
-    /// The default configuration containing common sources.
+    /// The default configuration containing common sources as well as the location of the allowed
+    /// signers file if it is configured within Git.
     fn default() -> Self {
         Config {
-            allowed_signers: None,
+            allowed_signers: git_allowed_signers(),
             users: None,
             organizations: None,
             local: None,
@@ -59,6 +63,24 @@ impl Config {
     fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
         todo!("Save the configuration while preserving formatting.");
     }
+}
+
+/// The path to the allowed signers file as configured within Git. If an error occurs while
+/// retrieving the path, `None` is returned.
+fn git_allowed_signers() -> Option<PathBuf> {
+    let file = gix_config::File::from_globals().ok()?;
+    let path = file
+        .path("gpg", Some("ssh".into()), "allowedsignersfile")?
+        .interpolate(gix_config::path::interpolate::Context {
+            home_dir: env::var("HOME")
+                .ok()
+                .map(std::convert::Into::<PathBuf>::into)
+                .as_deref(),
+            ..Default::default()
+        })
+        .ok()?;
+
+    Some(path.into())
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]

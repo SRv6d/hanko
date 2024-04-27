@@ -10,6 +10,7 @@ async-trait = "0.1.79"
 chrono = "0.4.37"
 clap = { version = "4.5.4", features = ["derive", "env", "string"] }
 figment = { version = "0.10.16", features = ["toml"] }
+gix-config = "0.36.1"
 reqwest = { version = "0.12.2", features = ["json"] }
 serde = { version = "1.0.197", features = ["derive"] }
 tokio = { version = "1.37.0", features = ["full"] }
