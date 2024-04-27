@@ -8,15 +8,24 @@ use std::{env, path::PathBuf};
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    /// The path to the configuration file.
+    /// The configuration file.
     #[arg(
         short,
         long,
-        value_name = "FILE",
+        value_name = "PATH",
         env = "HANKO_CONFIG",
         default_value = default_config_path()
     )]
     pub config: PathBuf,
+
+    /// The allowed signers file used by Git.
+    #[arg(
+        long,
+        value_name = "PATH",
+        env = "HANKO_ALLOWED_SIGNERS",
+        default_value = git_allowed_signers_path()
+    )]
+    pub allowed_signers: PathBuf,
 
     #[command(flatten)]
     logging: Logging,
@@ -64,6 +73,12 @@ fn default_config_path() -> Resettable<OsStr> {
     } else {
         Resettable::Reset
     }
+}
+
+/// The path to the allowed signers file as configured within Git.
+fn git_allowed_signers_path() -> Resettable<OsStr> {
+    // TODO: Get value from Git config.
+    Resettable::Value("~/.config/git/allowed_signers".into())
 }
 
 #[cfg(test)]
