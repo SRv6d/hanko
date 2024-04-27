@@ -8,20 +8,20 @@ use std::{env, path::PathBuf};
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    /// The path to the hanko configuration file.
+    /// The configuration file.
     #[arg(
         short,
         long,
-        value_name = "FILE",
+        value_name = "PATH",
         env = "HANKO_CONFIG",
         default_value = default_config_path()
     )]
     pub config: PathBuf,
 
-    /// The path to the allowed signers file used by Git.
+    /// The allowed signers file used by Git.
     #[arg(
         long,
-        value_name = "FILE",
+        value_name = "PATH",
         env = "HANKO_ALLLOWED_SIGNERS",
         default_value = git_allowed_signers_path()
     )]
