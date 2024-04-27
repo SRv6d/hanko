@@ -4,11 +4,12 @@ use figment::{
     Figment,
 };
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Config {
+    allowed_signers: Option<PathBuf>,
     users: Option<Vec<User>>,
     organizations: Option<Vec<Organization>>,
     local: Option<Vec<String>>,
@@ -19,6 +20,7 @@ impl Default for Config {
     /// The default configuration containing common sources.
     fn default() -> Self {
         Config {
+            allowed_signers: None,
             users: None,
             organizations: None,
             local: None,
@@ -107,6 +109,7 @@ mod tests {
         url = "https://git.acme.corp"
         "#};
         let expected = Config {
+            allowed_signers: None,
             users: Some(vec![
                 User {
                     name: "torvalds".to_string(),
