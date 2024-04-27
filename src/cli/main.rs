@@ -18,14 +18,9 @@ pub struct Cli {
     )]
     pub config: PathBuf,
 
-    /// The allowed signers file used by Git.
-    #[arg(
-        long,
-        value_name = "PATH",
-        env = "HANKO_ALLOWED_SIGNERS",
-        default_value = git_allowed_signers_path()
-    )]
-    pub allowed_signers: PathBuf,
+    /// Override where allowed signers are written to.
+    #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
+    pub output: Option<PathBuf>,
 
     #[command(flatten)]
     logging: Logging,
