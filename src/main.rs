@@ -1,6 +1,14 @@
 use clap::Parser;
-use hanko::cli::Cli;
+use figment::{
+    providers::{Format, Serialized, Toml},
+    Figment,
+};
+use hanko::{cli::Cli, Config};
 
 fn main() {
-    let _cli = Cli::parse();
+    let cli = Cli::parse();
+    let _config: Config = Figment::from(Serialized::defaults(Config::default()))
+        .admerge(Toml::file(cli.config))
+        .extract()
+        .unwrap();
 }
