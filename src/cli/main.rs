@@ -22,7 +22,7 @@ pub struct Cli {
     #[arg(
         long,
         value_name = "PATH",
-        env = "HANKO_ALLLOWED_SIGNERS",
+        env = "HANKO_ALLOWED_SIGNERS",
         default_value = git_allowed_signers_path()
     )]
     pub allowed_signers: PathBuf,
