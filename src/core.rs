@@ -4,7 +4,7 @@ use std::{fmt, str::FromStr};
 
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SshPublicKey {
     key: String,
 }
@@ -32,7 +32,8 @@ pub trait GetPublicKeys {
 }
 
 /// A Git provider.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
 pub enum GitProvider {
     Github,
     Gitlab,
