@@ -44,18 +44,17 @@ impl Default for Config {
 }
 
 impl Config {
-    /// Load the configuration from a TOML file at the given path.
+    /// Load the configuration from a TOML file, using defaults for values that were not provided.
     pub fn load(path: &Path) -> figment::Result<Self> {
         Figment::from(Serialized::defaults(Config::default()))
             .admerge(Toml::file(path))
             .extract()
     }
 
-    /// Create the configuration from a TOML string.
-    fn from_toml(toml: &str) -> figment::Result<Self> {
-        Figment::from(Serialized::defaults(Config::default()))
-            .admerge(Toml::string(toml))
-            .extract()
+    /// Load the configuration from a figment provider without using any defaults.
+    #[cfg(test)]
+    fn _load_from_provider(provider: impl figment::Provider) -> figment::Result<Self> {
+        Figment::from(provider).extract()
     }
 
     /// Save the configuration.
@@ -116,6 +115,7 @@ mod tests {
     use super::*;
     use indoc::indoc;
 
+    /// The example configuration is rendered correctly.
     #[test]
     fn example_config() {
         let toml = indoc! {r#"
@@ -176,24 +176,30 @@ mod tests {
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
             sources: Some(vec![
                 Source {
-                    name: "github".to_string(),
-                    provider: GitProviderType::Github,
-                    url: "https://api.github.com".to_string(),
-                },
-                Source {
-                    name: "gitlab".to_string(),
-                    provider: GitProviderType::Gitlab,
-                    url: "https://gitlab.com".to_string(),
-                },
-                Source {
                     name: "acme-corp".to_string(),
                     provider: GitProviderType::Gitlab,
                     url: "https://git.acme.corp".to_string(),
-                },
+                }
             ])
         };
 
-        let config = Config::from_toml(toml).unwrap();
+        let config = Config::_load_from_provider(Toml::string(toml)).unwrap();
         assert_eq!(config, expected);
+    }
+
+    /// The default configuration contains the default GitHub and GitLab sources.
+    #[test]
+    fn default_configuration_contains_default_sources() {
+        let default_sources = Config::default().sources.unwrap();
+        assert!(default_sources.contains(&Source {
+            name: "github".to_string(),
+            provider: GitProviderType::Github,
+            url: "https://api.github.com".to_string(),
+        }));
+        assert!(default_sources.contains(&Source {
+            name: "gitlab".to_string(),
+            provider: GitProviderType::Gitlab,
+            url: "https://gitlab.com".to_string(),
+        }));
     }
 }
