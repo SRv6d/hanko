@@ -1,4 +1,4 @@
-//! Interact with the OpenSSH `allowed_signers` file.
+//! Types and functions to interact with the OpenSSH `allowed_signers` file.
 //!
 //! # File format
 //! https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
@@ -11,9 +11,6 @@ use std::{
     path::Path,
 };
 
-/// The format string for time fields.
-const TIME_FMT: &str = "%Y%m%d%H%M%S";
-
 /// A single entry in the allowed signers file.
 #[derive(Debug)]
 pub struct AllowedSigner {
@@ -23,15 +20,44 @@ pub struct AllowedSigner {
     pub key: SshPublicKey,
 }
 
+impl AllowedSigner {
+    /// The format string for timestamps.
+    const TIMESTAMP_FMT: &'static str = "%Y%m%d%H%M%S";
+}
+
 impl fmt::Display for AllowedSigner {
+    /// Display the allowed signer in the format expected by the `allowed_signers` file.
+    ///
+    /// # Examples
+    /// ```
+    /// # use hanko::AllowedSigner;
+    /// # use chrono::{TimeZone, Local};
+    /// let signer = AllowedSigner {
+    ///     principal: "cwoods@universal.exports".to_string(),
+    ///     valid_after: None,
+    ///     valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
+    ///     key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
+    ///         .parse()
+    ///         .unwrap(),
+    /// };
+    /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.principal)?;
 
         if let Some(valid_after) = self.valid_after {
-            write!(f, " valid-after={}", valid_after.format(TIME_FMT))?;
+            write!(
+                f,
+                " valid-after={}",
+                valid_after.format(Self::TIMESTAMP_FMT)
+            )?;
         };
         if let Some(valid_before) = self.valid_before {
-            write!(f, " valid-before={}", valid_before.format(TIME_FMT))?;
+            write!(
+                f,
+                " valid-before={}",
+                valid_before.format(Self::TIMESTAMP_FMT)
+            )?;
         };
 
         write!(f, " {}", self.key)
