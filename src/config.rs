@@ -1,3 +1,4 @@
+use crate::GitProvider;
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -108,6 +109,15 @@ struct Source {
     name: String,
     provider: GitProviderType,
     url: String,
+}
+
+impl From<Source> for GitProvider {
+    fn from(source: Source) -> Self {
+        match source.provider {
+            GitProviderType::Github => GitProvider::github(source.url.parse().unwrap()),
+            GitProviderType::Gitlab => GitProvider::gitlab(source.url.parse().unwrap()),
+        }
+    }
 }
 
 #[cfg(test)]
