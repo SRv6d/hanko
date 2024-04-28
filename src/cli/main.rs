@@ -5,7 +5,7 @@ use clap::{
 };
 use std::{env, path::PathBuf};
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
     /// The configuration file.
@@ -18,14 +18,9 @@ pub struct Cli {
     )]
     pub config: PathBuf,
 
-    /// The allowed signers file used by Git.
-    #[arg(
-        long,
-        value_name = "PATH",
-        env = "HANKO_ALLOWED_SIGNERS",
-        default_value = git_allowed_signers_path()
-    )]
-    pub allowed_signers: PathBuf,
+    /// Override where allowed signers are written to.
+    #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
+    pub output: Option<PathBuf>,
 
     #[command(flatten)]
     logging: Logging,
@@ -34,7 +29,7 @@ pub struct Cli {
     command: Commands,
 }
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 #[group(multiple = false)]
 struct Logging {
     /// Enable verbose logging.
@@ -46,7 +41,7 @@ struct Logging {
     silent: bool,
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 enum Commands {
     /// Update the allowed signers file.
     Update,

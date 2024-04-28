@@ -1,7 +1,7 @@
 use crate::GitProvider;
 use clap::Subcommand;
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum ManageSources {
     /// Add sources.
     Add {
