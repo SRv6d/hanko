@@ -1,4 +1,4 @@
-use crate::{GetPublicKeys, SshPublicKey, USER_AGENT};
+use crate::{GitProvider, SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Result, Url};
 
@@ -16,14 +16,14 @@ impl Api<'_> {
 }
 
 #[async_trait]
-impl GetPublicKeys for Api<'_> {
+impl GitProvider for Api<'_> {
     type Err = reqwest::Error;
 
     /// Get the signing keys of a user by their username.
     ///
     /// # API documentation
     /// https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user
-    async fn by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
+    async fn get_keys_by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
         let url = self
             .base_url
             .join(&format!("/users/{username}/ssh_signing_keys"))
@@ -67,7 +67,7 @@ mod tests {
             base_url: server.base_url().parse().unwrap(),
             client: &client,
         };
-        let _ = api.by_username(username).await;
+        let _ = api.get_keys_by_username(username).await;
 
         mock.assert();
     }
@@ -122,7 +122,7 @@ mod tests {
             base_url: server.base_url().parse().unwrap(),
             client: &client,
         };
-        let keys = api.by_username(username).await.unwrap();
+        let keys = api.get_keys_by_username(username).await.unwrap();
 
         assert_eq!(keys, expected);
     }
