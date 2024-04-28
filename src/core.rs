@@ -30,11 +30,3 @@ pub trait GetPublicKeys {
     /// Get the public keys of a user by their username.
     async fn by_username(&self, username: &str) -> Result<Vec<SshPublicKey>, Self::Err>;
 }
-
-/// A Git provider.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, clap::ValueEnum)]
-#[serde(rename_all = "lowercase")]
-pub enum GitProvider {
-    Github,
-    Gitlab,
-}

@@ -1,4 +1,4 @@
-use crate::GitProvider;
+use crate::config;
 use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
@@ -9,7 +9,7 @@ pub enum ManageSources {
         name: String,
         /// The Git provider used by the source.
         #[arg(short, long)]
-        provider: GitProvider,
+        provider: config::GitProviderType,
         /// The URL of the source.
         #[arg(short, long)]
         url: Option<reqwest::Url>,
