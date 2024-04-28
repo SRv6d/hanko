@@ -3,14 +3,12 @@ use reqwest::{Client, Result, Url};
 use serde::Deserialize;
 
 #[derive(Debug)]
-pub struct Gitlab<'a> {
+pub struct Gitlab {
     /// The base URL of the API.
     base_url: Url,
-    /// The client used to make requests to the API.
-    client: &'a Client,
 }
 
-impl Gitlab<'_> {
+impl Gitlab {
     const VERSION: &'static str = "v4";
     const ACCEPT_HEADER: &'static str = "application/json";
 
@@ -18,7 +16,11 @@ impl Gitlab<'_> {
     ///
     /// # API documentation
     /// https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user
-    pub async fn get_keys_by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
+    pub async fn get_keys_by_username(
+        &self,
+        username: &str,
+        client: &Client,
+    ) -> Result<Vec<SshPublicKey>> {
         let url = self
             .base_url
             .join(&format!(
@@ -26,8 +28,7 @@ impl Gitlab<'_> {
                 version = Self::VERSION,
             ))
             .unwrap();
-        let request = self
-            .client
+        let request = client
             .get(url)
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER);
@@ -102,9 +103,8 @@ mod tests {
         let client = Client::new();
         let api = Gitlab {
             base_url: server.base_url().parse().unwrap(),
-            client: &client,
         };
-        let _ = api.get_keys_by_username(username).await;
+        let _ = api.get_keys_by_username(username, &client).await;
 
         mock.assert();
     }
@@ -162,9 +162,8 @@ mod tests {
         let client = Client::new();
         let api = Gitlab {
             base_url: server.base_url().parse().unwrap(),
-            client: &client,
         };
-        let keys = api.get_keys_by_username(username).await.unwrap();
+        let keys = api.get_keys_by_username(username, &client).await.unwrap();
 
         assert_eq!(keys, expected);
     }
