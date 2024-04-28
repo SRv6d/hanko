@@ -2,12 +2,12 @@
 
 ```toml
 users = [
-    { name = "torvalds", sources = ["github"] },
-    { name = "gvanrossum", sources = ["github", "gitlab"] },
-    { name = "graydon", sources = ["github"] },
-    { name = "cwoods", sources = ["acme-corp"] },
-    { name = "rdavis", sources = ["acme-corp"] },
-    { name = "pbrock", sources = ["acme-corp"] }
+    { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+    { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
+    { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },
+    { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+    { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
+    { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
 ]
 organizations = [
     { name = "rust-lang", sources = ["github"] }
