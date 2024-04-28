@@ -1,30 +1,24 @@
-use crate::{GitProvider, SshPublicKey, USER_AGENT};
-use async_trait::async_trait;
+use crate::{SshPublicKey, USER_AGENT};
 use reqwest::{Client, Result, Url};
 use serde::Deserialize;
 
 #[derive(Debug)]
-pub struct Api<'a> {
+pub struct Gitlab<'a> {
     /// The base URL of the API.
     base_url: Url,
     /// The client used to make requests to the API.
     client: &'a Client,
 }
 
-impl Api<'_> {
+impl Gitlab<'_> {
     const VERSION: &'static str = "v4";
     const ACCEPT_HEADER: &'static str = "application/json";
-}
-
-#[async_trait]
-impl GitProvider for Api<'_> {
-    type Err = reqwest::Error;
 
     /// Get the signing keys of a user by their username.
     ///
     /// # API documentation
     /// https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user
-    async fn get_keys_by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
+    pub async fn get_keys_by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
         let url = self
             .base_url
             .join(&format!(
@@ -106,7 +100,7 @@ mod tests {
         });
 
         let client = Client::new();
-        let api = Api {
+        let api = Gitlab {
             base_url: server.base_url().parse().unwrap(),
             client: &client,
         };
@@ -166,7 +160,7 @@ mod tests {
         });
 
         let client = Client::new();
-        let api = Api {
+        let api = Gitlab {
             base_url: server.base_url().parse().unwrap(),
             client: &client,
         };

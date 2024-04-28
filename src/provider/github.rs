@@ -1,29 +1,23 @@
-use crate::{GitProvider, SshPublicKey, USER_AGENT};
-use async_trait::async_trait;
+use crate::{SshPublicKey, USER_AGENT};
 use reqwest::{Client, Result, Url};
 
 #[derive(Debug)]
-pub struct Api<'a> {
+pub struct Github<'a> {
     /// The base URL of the API.
     base_url: Url,
     /// The client used to make requests to the API.
     client: &'a Client,
 }
 
-impl Api<'_> {
+impl Github<'_> {
     const VERSION: &'static str = "2022-11-28";
     const ACCEPT_HEADER: &'static str = "application/vnd.github+json";
-}
-
-#[async_trait]
-impl GitProvider for Api<'_> {
-    type Err = reqwest::Error;
 
     /// Get the signing keys of a user by their username.
     ///
     /// # API documentation
     /// https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user
-    async fn get_keys_by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
+    pub async fn get_keys_by_username(&self, username: &str) -> Result<Vec<SshPublicKey>> {
         let url = self
             .base_url
             .join(&format!("/users/{username}/ssh_signing_keys"))
@@ -63,7 +57,7 @@ mod tests {
         });
 
         let client = Client::new();
-        let api = Api {
+        let api = Github {
             base_url: server.base_url().parse().unwrap(),
             client: &client,
         };
@@ -118,7 +112,7 @@ mod tests {
         });
 
         let client = Client::new();
-        let api = Api {
+        let api = Github {
             base_url: server.base_url().parse().unwrap(),
             client: &client,
         };
