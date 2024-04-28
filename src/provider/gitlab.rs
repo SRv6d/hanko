@@ -12,6 +12,10 @@ impl Gitlab {
     const VERSION: &'static str = "v4";
     const ACCEPT_HEADER: &'static str = "application/json";
 
+    pub fn new(base_url: Url) -> Self {
+        Self { base_url }
+    }
+
     /// Get the signing keys of a user by their username.
     ///
     /// # API documentation

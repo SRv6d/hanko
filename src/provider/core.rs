@@ -1,6 +1,6 @@
 use super::{github::Github, gitlab::Gitlab};
 use crate::SshPublicKey;
-use reqwest::Client;
+use reqwest::{Client, Url};
 
 /// A Git provider.
 #[derive(Debug)]
@@ -10,6 +10,14 @@ pub enum GitProvider {
 }
 
 impl GitProvider {
+    pub fn github(url: Url) -> Self {
+        Self::Github(Github::new(url))
+    }
+
+    pub fn gitlab(url: Url) -> Self {
+        Self::Gitlab(Gitlab::new(url))
+    }
+
     /// Get the public keys of a user by their username.
     async fn get_keys_by_username(
         &self,
