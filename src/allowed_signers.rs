@@ -1,4 +1,4 @@
-//! Interact with the OpenSSH `allowed_signers` file.
+//! Types and functions to interact with the OpenSSH `allowed_signers` file.
 //!
 //! # File format
 //! https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
