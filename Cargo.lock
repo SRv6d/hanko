@@ -1298,7 +1298,6 @@ dependencies = [
 name = "hanko"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "chrono",
  "clap",
  "codspeed-criterion-compat",
