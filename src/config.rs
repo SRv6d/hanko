@@ -15,7 +15,7 @@ pub struct Config {
     allowed_signers: Option<PathBuf>,
     users: Option<Vec<User>>,
     local: Option<Vec<String>>,
-    sources: Option<Vec<Source>>,
+    sources: Vec<Source>,
 }
 
 impl Default for Config {
@@ -26,7 +26,7 @@ impl Default for Config {
             allowed_signers: git_allowed_signers(),
             users: None,
             local: None,
-            sources: Some(vec![
+            sources: vec![
                 Source {
                     name: "github".to_string(),
                     provider: GitProviderType::Github,
@@ -37,7 +37,7 @@ impl Default for Config {
                     provider: GitProviderType::Gitlab,
                     url: "https://gitlab.com".to_string(),
                 },
-            ]),
+            ],
         }
     }
 }
@@ -174,13 +174,13 @@ mod tests {
                 },
             ]),
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
-            sources: Some(vec![
+            sources: vec![
                 Source {
                     name: "acme-corp".to_string(),
                     provider: GitProviderType::Gitlab,
                     url: "https://git.acme.corp".to_string(),
                 }
-            ])
+            ]
         };
 
         let config = Config::_load_from_provider(Toml::string(toml)).unwrap();
@@ -190,7 +190,7 @@ mod tests {
     /// The default configuration contains the default GitHub and GitLab sources.
     #[test]
     fn default_configuration_contains_default_sources() {
-        let default_sources = Config::default().sources.unwrap();
+        let default_sources = Config::default().sources;
         assert!(default_sources.contains(&Source {
             name: "github".to_string(),
             provider: GitProviderType::Github,
