@@ -11,9 +11,6 @@ use std::{
     path::Path,
 };
 
-/// The format string for time fields.
-const TIME_FMT: &str = "%Y%m%d%H%M%S";
-
 /// A single entry in the allowed signers file.
 #[derive(Debug)]
 pub struct AllowedSigner {
@@ -23,15 +20,28 @@ pub struct AllowedSigner {
     pub key: SshPublicKey,
 }
 
+impl AllowedSigner {
+    /// The format string for timestamps.
+    const TIMESTAMP_FMT: &'static str = "%Y%m%d%H%M%S";
+}
+
 impl fmt::Display for AllowedSigner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.principal)?;
 
         if let Some(valid_after) = self.valid_after {
-            write!(f, " valid-after={}", valid_after.format(TIME_FMT))?;
+            write!(
+                f,
+                " valid-after={}",
+                valid_after.format(Self::TIMESTAMP_FMT)
+            )?;
         };
         if let Some(valid_before) = self.valid_before {
-            write!(f, " valid-before={}", valid_before.format(TIME_FMT))?;
+            write!(
+                f,
+                " valid-before={}",
+                valid_before.format(Self::TIMESTAMP_FMT)
+            )?;
         };
 
         write!(f, " {}", self.key)
