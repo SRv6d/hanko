@@ -18,8 +18,7 @@ impl Gitlab {
 
     /// Get the signing keys of a user by their username.
     ///
-    /// # API documentation
-    /// https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user
+    /// [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
     pub async fn get_keys_by_username(
         &self,
         username: &str,

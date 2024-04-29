@@ -62,9 +62,9 @@ fn default_config_path() -> Resettable<OsStr> {
     let filename = "config.toml";
 
     if let Ok(xdg_config_home) = env::var("XDG_CONFIG_HOME") {
-        Resettable::Value(format!("{}/{}/{}", xdg_config_home, dirname, filename).into())
+        Resettable::Value(format!("{xdg_config_home}/{dirname}/{filename}").into())
     } else if let Ok(home) = env::var("HOME") {
-        Resettable::Value(format!("{}/.config/{}/{}", home, dirname, filename).into())
+        Resettable::Value(format!("{home}/.config/{dirname}/{filename}").into())
     } else {
         Resettable::Reset
     }
@@ -83,6 +83,6 @@ mod tests {
     #[test]
     fn verify_cli() {
         use clap::CommandFactory;
-        Cli::command().debug_assert()
+        Cli::command().debug_assert();
     }
 }

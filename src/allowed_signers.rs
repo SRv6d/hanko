@@ -1,7 +1,6 @@
 //! Types and functions to interact with the OpenSSH `allowed_signers` file.
 //!
-//! # File format
-//! https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
+//! [File Format Documentation](https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS)
 use crate::SshPublicKey;
 use chrono::{DateTime, Local};
 use std::{
@@ -81,7 +80,7 @@ impl AllowedSignersFile {
     pub fn write(&mut self) -> io::Result<()> {
         let mut file_buf = io::BufWriter::new(&mut self.file);
         for signer in &self.signers {
-            writeln!(file_buf, "{}", signer)?;
+            writeln!(file_buf, "{signer}")?;
         }
         writeln!(file_buf)?;
         Ok(())
@@ -158,7 +157,7 @@ mod tests {
         let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
         let mut expected_content = String::new();
         for signer in &example_signers {
-            expected_content.push_str(&format!("{}\n", signer));
+            expected_content.push_str(&format!("{signer}\n"));
         }
         expected_content.push('\n');
 
@@ -175,7 +174,7 @@ mod tests {
     fn writing_overrides_existing_content(example_signers: Vec<AllowedSigner>) {
         let existing_content = "gathered dust";
         let mut existing_file = tempfile::NamedTempFile::new().unwrap();
-        writeln!(existing_file, "{}", existing_content).unwrap();
+        writeln!(existing_file, "{existing_content}").unwrap();
         let path = existing_file.into_temp_path();
 
         {
