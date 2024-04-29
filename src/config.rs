@@ -14,7 +14,6 @@ use std::{
 pub struct Config {
     allowed_signers: Option<PathBuf>,
     users: Option<Vec<User>>,
-    organizations: Option<Vec<Organization>>,
     local: Option<Vec<String>>,
     sources: Option<Vec<Source>>,
 }
@@ -26,7 +25,6 @@ impl Default for Config {
         Config {
             allowed_signers: git_allowed_signers(),
             users: None,
-            organizations: None,
             local: None,
             sources: Some(vec![
                 Source {
@@ -95,12 +93,7 @@ pub enum GitProviderType {
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct User {
     name: String,
-    sources: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Organization {
-    name: String,
+    principals: Vec<String>,
     sources: Vec<String>,
 }
 
@@ -130,15 +123,12 @@ mod tests {
     fn example_config() {
         let toml = indoc! {r#"
         users = [
-            { name = "torvalds", sources = ["github"] },
-            { name = "gvanrossum", sources = ["github", "gitlab"] },
-            { name = "graydon", sources = ["github"] },
-            { name = "cwoods", sources = ["acme-corp"] },
-            { name = "rdavis", sources = ["acme-corp"] },
-            { name = "pbrock", sources = ["acme-corp"] }
-        ]
-        organizations = [
-            { name = "rust-lang", sources = ["github"] }
+            { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+            { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
+            { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },
+            { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+            { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
+            { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
         ]
         local = [
             "jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
@@ -154,34 +144,34 @@ mod tests {
             users: Some(vec![
                 User {
                     name: "torvalds".to_string(),
+                    principals: vec!["torvalds@linux-foundation.org".to_string()],
                     sources: vec!["github".to_string()],
                 },
                 User {
                     name: "gvanrossum".to_string(),
+                    principals: vec!["guido@python.org".to_string()],
                     sources: vec!["github".to_string(), "gitlab".to_string()],
                 },
                 User {
                     name: "graydon".to_string(),
+                    principals: vec!["graydon@pobox.com".to_string()],
                     sources: vec!["github".to_string()],
                 },
                 User {
                     name: "cwoods".to_string(),
+                    principals: vec!["cwoods@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
                 },
                 User {
                     name: "rdavis".to_string(),
+                    principals: vec!["rdavis@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
                 },
                 User {
                     name: "pbrock".to_string(),
+                    principals: vec!["pbrock@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
                 },
-            ]),
-            organizations: Some(vec![
-                Organization {
-                    name: "rust-lang".to_string(),
-                    sources: vec!["github".to_string()],
-                }
             ]),
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
             sources: Some(vec![
