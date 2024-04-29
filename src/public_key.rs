@@ -19,3 +19,8 @@ impl fmt::Display for SshPublicKey {
         write!(f, "{}", self.key)
     }
 }
+
+/// Get the public keys of a user.
+pub fn get_public_keys(user: ()) -> Vec<SshPublicKey> {
+    todo!();
+}
