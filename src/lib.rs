@@ -12,5 +12,6 @@ pub mod cli;
 mod config;
 mod provider;
 mod public_key;
+mod user;
 
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));

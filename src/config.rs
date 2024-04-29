@@ -1,3 +1,4 @@
+use crate::user::User;
 use crate::GitProvider;
 use figment::{
     providers::{Format, Serialized, Toml},
@@ -88,13 +89,6 @@ pub enum GitProviderType {
     Github,
     /// A Git provider that implements the GitLab API.
     Gitlab,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct User {
-    name: String,
-    principals: Vec<String>,
-    sources: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
