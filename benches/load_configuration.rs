@@ -13,9 +13,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             { name = "rdavis", sources = ["acme-corp"] },
             { name = "pbrock", sources = ["acme-corp"] }
         ]
-        organizations = [
-            { name = "rust-lang", sources = ["github"] }
-        ]
         local = [
             "jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
         ]

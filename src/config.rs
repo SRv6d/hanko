@@ -14,7 +14,6 @@ use std::{
 pub struct Config {
     allowed_signers: Option<PathBuf>,
     users: Option<Vec<User>>,
-    organizations: Option<Vec<Organization>>,
     local: Option<Vec<String>>,
     sources: Option<Vec<Source>>,
 }
@@ -26,7 +25,6 @@ impl Default for Config {
         Config {
             allowed_signers: git_allowed_signers(),
             users: None,
-            organizations: None,
             local: None,
             sources: Some(vec![
                 Source {
@@ -99,12 +97,6 @@ struct User {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Organization {
-    name: String,
-    sources: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct Source {
     name: String,
     provider: GitProviderType,
@@ -136,9 +128,6 @@ mod tests {
             { name = "cwoods", sources = ["acme-corp"] },
             { name = "rdavis", sources = ["acme-corp"] },
             { name = "pbrock", sources = ["acme-corp"] }
-        ]
-        organizations = [
-            { name = "rust-lang", sources = ["github"] }
         ]
         local = [
             "jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
@@ -176,12 +165,6 @@ mod tests {
                     name: "pbrock".to_string(),
                     sources: vec!["acme-corp".to_string()],
                 },
-            ]),
-            organizations: Some(vec![
-                Organization {
-                    name: "rust-lang".to_string(),
-                    sources: vec!["github".to_string()],
-                }
             ]),
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
             sources: Some(vec![
