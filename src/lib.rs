@@ -6,6 +6,7 @@ pub use allowed_signers::{AllowedSigner, AllowedSignersFile};
 pub use config::Config;
 pub use provider::GitProvider;
 pub use public_key::SshPublicKey;
+pub use user::User;
 
 mod allowed_signers;
 pub mod cli;

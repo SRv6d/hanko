@@ -1,3 +1,4 @@
+use crate::User;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
@@ -21,6 +22,6 @@ impl fmt::Display for SshPublicKey {
 }
 
 /// Get the public keys of a user.
-pub fn get_public_keys(user: ()) -> Vec<SshPublicKey> {
+pub fn get_public_keys(user: &User) -> Vec<SshPublicKey> {
     todo!();
 }
