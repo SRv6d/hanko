@@ -1,6 +1,6 @@
-use crate::User;
+use crate::{Source, User};
 use serde::{Deserialize, Serialize};
-use std::{fmt, str::FromStr};
+use std::{collections::HashMap, fmt, str::FromStr};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SshPublicKey {
@@ -22,6 +22,6 @@ impl fmt::Display for SshPublicKey {
 }
 
 /// Get the public keys of a user.
-pub fn get_public_keys(user: &User) -> Vec<SshPublicKey> {
+pub fn get_public_keys(user: &User, sources: &HashMap<String, Source>) -> Vec<SshPublicKey> {
     todo!();
 }
