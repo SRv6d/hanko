@@ -1,3 +1,4 @@
+use super::main::Provider;
 use crate::{SshPublicKey, USER_AGENT};
 use reqwest::{Client, Result, Url};
 use serde::Deserialize;
@@ -15,11 +16,13 @@ impl Gitlab {
     pub fn new(base_url: Url) -> Self {
         Self { base_url }
     }
+}
 
+impl Provider for Gitlab {
     /// Get the signing keys of a user by their username.
     ///
     /// [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
-    pub async fn get_keys_by_username(
+    async fn get_keys_by_username(
         &self,
         username: &str,
         client: &Client,

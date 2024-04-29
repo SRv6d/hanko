@@ -21,6 +21,10 @@ pub enum SourceType {
     Gitlab,
 }
 
-trait Provider {
-    async fn get_keys_by_username(&self, username: &str) -> Vec<SshPublicKey>;
+pub(super) trait Provider {
+    async fn get_keys_by_username(
+        &self,
+        username: &str,
+        client: &reqwest::Client,
+    ) -> reqwest::Result<Vec<SshPublicKey>>;
 }
