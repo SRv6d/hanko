@@ -6,12 +6,12 @@ use std::{io::Write, path::Path};
 pub fn criterion_benchmark(c: &mut Criterion) {
     let toml = indoc! {r#"
         users = [
-            { name = "torvalds", sources = ["github"] },
-            { name = "gvanrossum", sources = ["github", "gitlab"] },
-            { name = "graydon", sources = ["github"] },
-            { name = "cwoods", sources = ["acme-corp"] },
-            { name = "rdavis", sources = ["acme-corp"] },
-            { name = "pbrock", sources = ["acme-corp"] }
+            { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+            { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
+            { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },
+            { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+            { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
+            { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
         ]
         local = [
             "jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
