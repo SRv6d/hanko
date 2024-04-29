@@ -23,5 +23,13 @@ impl fmt::Display for SshPublicKey {
 
 /// Get the public keys of a user.
 pub fn get_public_keys(user: &User, sources: &HashMap<String, Source>) -> Vec<SshPublicKey> {
-    todo!();
+    let user_sources = user
+        .sources
+        .iter()
+        .map(|source| sources.get(source).unwrap());
+    let mut user_keys: Vec<SshPublicKey> = Vec::new();
+    for source in user_sources {
+        user_keys.extend(source.get_keys_by_username(&user.name));
+    }
+    user_keys
 }

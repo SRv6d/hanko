@@ -8,7 +8,7 @@ pub struct Source {
 }
 
 impl Source {
-    fn get_keys_by_username(username: &str) -> Vec<SshPublicKey> {
+    pub fn get_keys_by_username(&self, username: &str) -> Vec<SshPublicKey> {
         todo!();
     }
 }
