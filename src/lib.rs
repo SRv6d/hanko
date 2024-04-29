@@ -4,11 +4,13 @@
 
 pub use allowed_signers::{AllowedSigner, AllowedSignersFile};
 pub use config::Config;
-pub use core::*;
 pub use provider::GitProvider;
+pub use public_key::SshPublicKey;
 
 mod allowed_signers;
 pub mod cli;
 mod config;
-mod core;
 mod provider;
+mod public_key;
+
+pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
