@@ -17,8 +17,7 @@ impl Github {
 
     /// Get the signing keys of a user by their username.
     ///
-    /// # API documentation
-    /// https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user
+    /// [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
     pub async fn get_keys_by_username(
         &self,
         username: &str,

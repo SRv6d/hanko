@@ -1,7 +1,6 @@
 //! Types and functions to interact with the OpenSSH `allowed_signers` file.
 //!
-//! # File format
-//! https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS
+//! [File Format Documentation](https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS)
 use crate::SshPublicKey;
 use chrono::{DateTime, Local};
 use std::{
