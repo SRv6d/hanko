@@ -13,7 +13,7 @@ use std::{
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Config {
     allowed_signers: Option<PathBuf>,
-    users: Option<Vec<User>>,
+    pub users: Option<Vec<User>>,
     local: Option<Vec<String>>,
     sources: Vec<SourceConfiguration>,
 }
@@ -91,10 +91,10 @@ pub enum GitProviderType {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct User {
-    name: String,
-    principals: Vec<String>,
-    sources: Vec<String>,
+pub struct User {
+    pub name: String,
+    pub principals: Vec<String>,
+    pub sources: Vec<String>,
 }
 
 /// The representation of a [`Source`] in configuration.
