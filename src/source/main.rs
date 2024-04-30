@@ -8,15 +8,15 @@ pub struct Source<P: Provider> {
 }
 
 impl<P: Provider> Source<P> {
-    pub fn new(url: String, source_type: SourceType) -> Self {
+    pub fn new(url: String, source_type: ProviderType) -> Self {
         todo!()
     }
 }
 
-/// The source type.
+/// The type of Git provider.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-pub enum SourceType {
+pub enum ProviderType {
     Github,
     Gitlab,
 }
