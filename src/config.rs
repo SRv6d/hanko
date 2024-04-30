@@ -15,7 +15,7 @@ pub struct Config {
     allowed_signers: Option<PathBuf>,
     users: Option<Vec<User>>,
     local: Option<Vec<String>>,
-    sources: Option<Vec<Source>>,
+    sources: Option<Vec<SourceConfiguration>>,
 }
 
 impl Default for Config {
@@ -27,12 +27,12 @@ impl Default for Config {
             users: None,
             local: None,
             sources: Some(vec![
-                Source {
+                SourceConfiguration {
                     name: "github".to_string(),
                     provider: ProviderType::Github,
                     url: "https://api.github.com".to_string(),
                 },
-                Source {
+                SourceConfiguration {
                     name: "gitlab".to_string(),
                     provider: ProviderType::Gitlab,
                     url: "https://gitlab.com".to_string(),
@@ -80,8 +80,9 @@ fn git_allowed_signers() -> Option<PathBuf> {
     Some(path.into())
 }
 
+/// The representation of a [`Source`] in configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Source {
+struct SourceConfiguration {
     name: String,
     provider: ProviderType,
     url: String,
@@ -149,7 +150,7 @@ mod tests {
             ]),
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
             sources: Some(vec![
-                Source {
+                SourceConfiguration {
                     name: "acme-corp".to_string(),
                     provider: ProviderType::Gitlab,
                     url: "https://git.acme.corp".to_string(),
@@ -165,12 +166,12 @@ mod tests {
     #[test]
     fn default_configuration_contains_default_sources() {
         let default_sources = Config::default().sources.unwrap();
-        assert!(default_sources.contains(&Source {
+        assert!(default_sources.contains(&SourceConfiguration {
             name: "github".to_string(),
             provider: ProviderType::Github,
             url: "https://api.github.com".to_string(),
         }));
-        assert!(default_sources.contains(&Source {
+        assert!(default_sources.contains(&SourceConfiguration {
             name: "gitlab".to_string(),
             provider: ProviderType::Gitlab,
             url: "https://gitlab.com".to_string(),
