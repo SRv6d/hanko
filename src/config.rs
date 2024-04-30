@@ -15,7 +15,7 @@ pub struct Config {
     allowed_signers: Option<PathBuf>,
     users: Option<Vec<User>>,
     local: Option<Vec<String>>,
-    sources: Vec<Source>,
+    sources: Vec<SourceConfiguration>,
 }
 
 impl Default for Config {
@@ -27,12 +27,12 @@ impl Default for Config {
             users: None,
             local: None,
             sources: vec![
-                Source {
+                SourceConfiguration {
                     name: "github".to_string(),
                     provider: GitProviderType::Github,
                     url: "https://api.github.com".to_string(),
                 },
-                Source {
+                SourceConfiguration {
                     name: "gitlab".to_string(),
                     provider: GitProviderType::Gitlab,
                     url: "https://gitlab.com".to_string(),
@@ -97,15 +97,16 @@ struct User {
     sources: Vec<String>,
 }
 
+/// The representation of a [`Source`] in configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Source {
+struct SourceConfiguration {
     name: String,
     provider: GitProviderType,
     url: String,
 }
 
-impl From<Source> for GitProvider {
-    fn from(source: Source) -> Self {
+impl From<SourceConfiguration> for GitProvider {
+    fn from(source: SourceConfiguration) -> Self {
         match source.provider {
             GitProviderType::Github => GitProvider::github(source.url.parse().unwrap()),
             GitProviderType::Gitlab => GitProvider::gitlab(source.url.parse().unwrap()),
@@ -175,7 +176,7 @@ mod tests {
             ]),
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
             sources: vec![
-                Source {
+                SourceConfiguration {
                     name: "acme-corp".to_string(),
                     provider: GitProviderType::Gitlab,
                     url: "https://git.acme.corp".to_string(),
@@ -191,12 +192,12 @@ mod tests {
     #[test]
     fn default_configuration_contains_default_sources() {
         let default_sources = Config::default().sources;
-        assert!(default_sources.contains(&Source {
+        assert!(default_sources.contains(&SourceConfiguration {
             name: "github".to_string(),
             provider: GitProviderType::Github,
             url: "https://api.github.com".to_string(),
         }));
-        assert!(default_sources.contains(&Source {
+        assert!(default_sources.contains(&SourceConfiguration {
             name: "gitlab".to_string(),
             provider: GitProviderType::Gitlab,
             url: "https://gitlab.com".to_string(),
