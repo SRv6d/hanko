@@ -5,6 +5,7 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     env,
     path::{Path, PathBuf},
 };
@@ -43,6 +44,12 @@ impl Default for Config {
 }
 
 impl Config {
+    /// Get the configured sources.
+    #[must_use]
+    pub fn get_sources(&self) -> HashMap<String, ()> {
+        todo!()
+    }
+
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
     pub fn load(path: &Path) -> figment::Result<Self> {
         Figment::from(Serialized::defaults(Config::default()))
