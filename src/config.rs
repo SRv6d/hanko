@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::{source::ProviderType, user::User};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -29,12 +29,12 @@ impl Default for Config {
             sources: Some(vec![
                 Source {
                     name: "github".to_string(),
-                    provider: GitProviderType::Github,
+                    provider: ProviderType::Github,
                     url: "https://api.github.com".to_string(),
                 },
                 Source {
                     name: "gitlab".to_string(),
-                    provider: GitProviderType::Gitlab,
+                    provider: ProviderType::Gitlab,
                     url: "https://gitlab.com".to_string(),
                 },
             ]),
@@ -80,20 +80,10 @@ fn git_allowed_signers() -> Option<PathBuf> {
     Some(path.into())
 }
 
-/// The type of Git provider.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, clap::ValueEnum)]
-#[serde(rename_all = "lowercase")]
-pub enum GitProviderType {
-    /// A Git provider that implements the GitHub API.
-    Github,
-    /// A Git provider that implements the GitLab API.
-    Gitlab,
-}
-
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct Source {
     name: String,
-    provider: GitProviderType,
+    provider: ProviderType,
     url: String,
 }
 
@@ -161,7 +151,7 @@ mod tests {
             sources: Some(vec![
                 Source {
                     name: "acme-corp".to_string(),
-                    provider: GitProviderType::Gitlab,
+                    provider: ProviderType::Gitlab,
                     url: "https://git.acme.corp".to_string(),
                 }
             ])
@@ -177,12 +167,12 @@ mod tests {
         let default_sources = Config::default().sources.unwrap();
         assert!(default_sources.contains(&Source {
             name: "github".to_string(),
-            provider: GitProviderType::Github,
+            provider: ProviderType::Github,
             url: "https://api.github.com".to_string(),
         }));
         assert!(default_sources.contains(&Source {
             name: "gitlab".to_string(),
-            provider: GitProviderType::Gitlab,
+            provider: ProviderType::Gitlab,
             url: "https://gitlab.com".to_string(),
         }));
     }

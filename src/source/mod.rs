@@ -1,4 +1,4 @@
-pub use main::Source;
+pub use main::{ProviderType, Source};
 
 mod github;
 mod gitlab;

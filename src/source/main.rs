@@ -14,7 +14,7 @@ impl<P: Provider> Source<P> {
 }
 
 /// The type of Git provider.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderType {
     Github,
