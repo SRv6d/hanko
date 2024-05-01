@@ -14,7 +14,7 @@ use std::{
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Config {
     allowed_signers: Option<PathBuf>,
-    pub users: Option<Vec<User>>,
+    pub users: Option<Vec<UserConfiguration>>,
     local: Option<Vec<String>>,
     sources: Vec<SourceConfiguration>,
 }
@@ -106,7 +106,7 @@ pub enum SourceType {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct User {
+pub struct UserConfiguration {
     pub name: String,
     pub principals: Vec<String>,
     pub sources: Vec<String>,
@@ -149,32 +149,32 @@ mod tests {
         let expected = Config {
             allowed_signers: None,
             users: Some(vec![
-                User {
+                UserConfiguration {
                     name: "torvalds".to_string(),
                     principals: vec!["torvalds@linux-foundation.org".to_string()],
                     sources: vec!["github".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "gvanrossum".to_string(),
                     principals: vec!["guido@python.org".to_string()],
                     sources: vec!["github".to_string(), "gitlab".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "graydon".to_string(),
                     principals: vec!["graydon@pobox.com".to_string()],
                     sources: vec!["github".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "cwoods".to_string(),
                     principals: vec!["cwoods@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "rdavis".to_string(),
                     principals: vec!["rdavis@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "pbrock".to_string(),
                     principals: vec!["pbrock@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
