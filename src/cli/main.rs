@@ -1,5 +1,5 @@
-use super::{manage_signers::ManageSigners, manage_sources::ManageSources};
-use crate::{AllowedSigner, Config, SshPublicKey};
+use super::{manage_signers::ManageSigners, manage_sources::ManageSources, update::update};
+use crate::Config;
 use clap::{
     builder::{OsStr, Resettable},
     Args, Parser, Subcommand,
@@ -8,11 +8,7 @@ use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
 };
-use std::{
-    collections::{HashMap, HashSet},
-    env,
-    path::PathBuf,
-};
+use std::{env, path::PathBuf};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -86,21 +82,17 @@ pub fn entrypoint() {
         .extract()
         .unwrap();
 
-    let sources = config.get_sources();
-
-    let mut allowed_signers: HashSet<AllowedSigner> = HashSet::new();
-    if let Some(users) = config.users {
-        for user in users {
-            let public_keys = get_public_keys((), sources.clone());
-            for public_key in public_keys {
-                todo!("Insert allowed signer into set.");
-            }
+    match &cli.command {
+        Commands::Update => {
+            update(config);
+        }
+        Commands::Signer(_) => {
+            panic!("Not yet implemented");
+        }
+        Commands::Source(_) => {
+            panic!("Not yet implemented");
         }
     }
-}
-
-fn get_public_keys(user: (), sources: HashMap<String, ()>) -> Vec<SshPublicKey> {
-    todo!("Retrieve public keys for a user from all sources.");
 }
 
 #[cfg(test)]
