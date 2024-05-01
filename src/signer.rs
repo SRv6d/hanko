@@ -12,26 +12,26 @@ use std::{
 
 /// A single entry in the allowed signers file.
 #[derive(Debug)]
-pub struct AllowedSigner {
+pub struct AllowedSignersEntry {
     pub principal: String,
     pub valid_after: Option<DateTime<Local>>,
     pub valid_before: Option<DateTime<Local>>,
     pub key: SshPublicKey,
 }
 
-impl AllowedSigner {
+impl AllowedSignersEntry {
     /// The format string for timestamps.
     const TIMESTAMP_FMT: &'static str = "%Y%m%d%H%M%S";
 }
 
-impl fmt::Display for AllowedSigner {
+impl fmt::Display for AllowedSignersEntry {
     /// Display the allowed signer in the format expected by the `allowed_signers` file.
     ///
     /// # Examples
     /// ```
-    /// # use hanko::AllowedSigner;
+    /// # use hanko::AllowedSignersEntry;
     /// # use chrono::{TimeZone, Local};
-    /// let signer = AllowedSigner {
+    /// let signer = AllowedSignersEntry {
     ///     principal: "cwoods@universal.exports".to_string(),
     ///     valid_after: None,
     ///     valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
@@ -67,11 +67,11 @@ impl fmt::Display for AllowedSigner {
 #[derive(Debug)]
 pub struct AllowedSignersFile {
     pub file: File,
-    pub signers: Vec<AllowedSigner>,
+    pub signers: Vec<AllowedSignersEntry>,
 }
 
 impl AllowedSignersFile {
-    pub fn new(path: &Path, signers: Vec<AllowedSigner>) -> io::Result<Self> {
+    pub fn new(path: &Path, signers: Vec<AllowedSignersEntry>) -> io::Result<Self> {
         let file = File::create(path)?;
         Ok(Self { file, signers })
     }
@@ -95,8 +95,8 @@ mod tests {
     use std::fs;
 
     #[fixture]
-    fn signer_jsnow() -> AllowedSigner {
-        AllowedSigner {
+    fn signer_jsnow() -> AllowedSignersEntry {
+        AllowedSignersEntry {
             principal: "j.snow@wall.com".to_string(),
             valid_after: None,
             valid_before: None,
@@ -107,8 +107,8 @@ mod tests {
     }
 
     #[fixture]
-    fn signer_imalcom() -> AllowedSigner {
-        AllowedSigner {
+    fn signer_imalcom() -> AllowedSignersEntry {
+        AllowedSignersEntry {
             principal: "ian.malcom@acme.corp".to_string(),
             valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap()),
             valid_before: None,
@@ -119,8 +119,8 @@ mod tests {
     }
 
     #[fixture]
-    fn signer_cwoods() -> AllowedSigner {
-        AllowedSigner {
+    fn signer_cwoods() -> AllowedSignersEntry {
+        AllowedSignersEntry {
             principal: "cwoods@universal.exports".to_string(),
             valid_after: None,
             valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
@@ -131,7 +131,7 @@ mod tests {
     }
 
     #[fixture]
-    fn example_signers() -> Vec<AllowedSigner> {
+    fn example_signers() -> Vec<AllowedSignersEntry> {
         vec![signer_jsnow(), signer_imalcom(), signer_cwoods()]
     }
 
@@ -148,12 +148,12 @@ mod tests {
         signer_cwoods(),
         "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
     )]
-    fn display_allowed_signer(#[case] signer: AllowedSigner, #[case] expected_display: &str) {
+    fn display_allowed_signer(#[case] signer: AllowedSignersEntry, #[case] expected_display: &str) {
         assert_eq!(signer.to_string(), expected_display);
     }
 
     #[rstest]
-    fn write_allowed_signers_file(example_signers: Vec<AllowedSigner>) {
+    fn write_allowed_signers_file(example_signers: Vec<AllowedSignersEntry>) {
         let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
         let mut expected_content = String::new();
         for signer in &example_signers {
@@ -171,7 +171,7 @@ mod tests {
     }
 
     #[rstest]
-    fn writing_overrides_existing_content(example_signers: Vec<AllowedSigner>) {
+    fn writing_overrides_existing_content(example_signers: Vec<AllowedSignersEntry>) {
         let existing_content = "gathered dust";
         let mut existing_file = tempfile::NamedTempFile::new().unwrap();
         writeln!(existing_file, "{existing_content}").unwrap();
