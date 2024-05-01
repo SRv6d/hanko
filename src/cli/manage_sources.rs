@@ -9,7 +9,7 @@ pub enum ManageSources {
         name: String,
         /// The Git provider used by the source.
         #[arg(short, long)]
-        provider: config::GitProviderType,
+        provider: config::SourceType, // TODO: Rename parameter to source type
         /// The URL of the source.
         #[arg(short, long)]
         url: Option<reqwest::Url>,

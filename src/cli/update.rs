@@ -1,7 +1,6 @@
 //! The update subcommand used to get the latest allowed signers and write them to the output file.
+use crate::{AllowedSigner, Config, Source, SshPublicKey};
 use std::collections::{HashMap, HashSet};
-
-use crate::{AllowedSigner, Config, SshPublicKey};
 
 pub(super) fn update(config: Config) {
     let sources = config.get_sources();
@@ -9,7 +8,7 @@ pub(super) fn update(config: Config) {
     let mut allowed_signers: HashSet<AllowedSigner> = HashSet::new();
     if let Some(users) = config.users {
         for user in users {
-            let public_keys = get_public_keys((), sources.clone());
+            let public_keys = get_public_keys((), &sources);
             for public_key in public_keys {
                 todo!("Insert allowed signer into set.");
             }
@@ -17,6 +16,6 @@ pub(super) fn update(config: Config) {
     }
 }
 
-fn get_public_keys(user: (), sources: HashMap<String, ()>) -> Vec<SshPublicKey> {
+fn get_public_keys(user: (), sources: &HashMap<String, Box<dyn Source>>) -> Vec<SshPublicKey> {
     todo!("Retrieve public keys for a user from all sources.");
 }

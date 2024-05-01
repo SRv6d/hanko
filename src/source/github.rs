@@ -1,4 +1,6 @@
+use super::Source;
 use crate::{SshPublicKey, USER_AGENT};
+use async_trait::async_trait;
 use reqwest::{Client, Result, Url};
 
 #[derive(Debug)]
@@ -14,11 +16,12 @@ impl Github {
     pub fn new(base_url: Url) -> Self {
         Self { base_url }
     }
+}
 
-    /// Get the signing keys of a user by their username.
-    ///
-    /// [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
-    pub async fn get_keys_by_username(
+#[async_trait]
+impl Source for Github {
+    // [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
+    async fn get_keys_by_username(
         &self,
         username: &str,
         client: &Client,
