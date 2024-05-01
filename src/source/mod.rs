@@ -1,4 +1,6 @@
-pub use main::Source;
+pub use github::Github;
+pub use gitlab::Gitlab;
+pub use main::{Source, SourceMap};
 
 mod github;
 mod gitlab;

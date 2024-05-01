@@ -1,4 +1,4 @@
-use crate::Source;
+use crate::{Github, Gitlab, Source, SourceMap};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -46,8 +46,18 @@ impl Default for Config {
 impl Config {
     /// Get the configured sources.
     #[must_use]
-    pub fn get_sources(&self) -> HashMap<String, Box<dyn Source>> {
-        todo!()
+    pub fn get_sources(&self) -> SourceMap {
+        self.sources
+            .iter()
+            .map(|source_config| {
+                let name = source_config.name.clone();
+                let source: Box<dyn Source> = match source_config.provider {
+                    SourceType::Github => Box::new(Github::new(source_config.url.parse().unwrap())),
+                    SourceType::Gitlab => Box::new(Gitlab::new(source_config.url.parse().unwrap())),
+                };
+                (name, source)
+            })
+            .collect()
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.

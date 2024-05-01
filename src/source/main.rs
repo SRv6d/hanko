@@ -1,5 +1,6 @@
 use crate::SshPublicKey;
 use async_trait::async_trait;
+use std::collections::HashMap;
 
 /// A source implements a way to get public keys from a Git provider.
 #[async_trait]
@@ -11,3 +12,6 @@ pub trait Source {
         client: &reqwest::Client,
     ) -> Result<Vec<SshPublicKey>, reqwest::Error>;
 }
+
+/// A `HashMap` containing named sources.
+pub type SourceMap = HashMap<String, Box<dyn Source>>;
