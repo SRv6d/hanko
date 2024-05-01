@@ -1,7 +1,12 @@
-use super::{manage_signers::ManageSigners, manage_sources::ManageSources};
+use super::{manage_signers::ManageSigners, manage_sources::ManageSources, update::update};
+use crate::Config;
 use clap::{
     builder::{OsStr, Resettable},
     Args, Parser, Subcommand,
+};
+use figment::{
+    providers::{Format, Serialized, Toml},
+    Figment,
 };
 use std::{env, path::PathBuf};
 
@@ -69,11 +74,25 @@ fn default_config_path() -> Resettable<OsStr> {
         Resettable::Reset
     }
 }
+/// The main CLI entrypoint.
+pub fn entrypoint() {
+    let cli = Cli::parse();
+    let config: Config = Figment::from(Serialized::defaults(Config::default()))
+        .admerge(Toml::file(cli.config))
+        .extract()
+        .unwrap();
 
-/// The path to the allowed signers file as configured within Git.
-fn git_allowed_signers_path() -> Resettable<OsStr> {
-    // TODO: Get value from Git config.
-    Resettable::Value("~/.config/git/allowed_signers".into())
+    match &cli.command {
+        Commands::Update => {
+            update(config);
+        }
+        Commands::Signer(_) => {
+            panic!("Not yet implemented");
+        }
+        Commands::Source(_) => {
+            panic!("Not yet implemented");
+        }
+    }
 }
 
 #[cfg(test)]

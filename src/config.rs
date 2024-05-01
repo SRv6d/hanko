@@ -5,6 +5,7 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     env,
     path::{Path, PathBuf},
 };
@@ -13,9 +14,9 @@ use std::{
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Config {
     allowed_signers: Option<PathBuf>,
-    users: Option<Vec<User>>,
+    pub users: Option<Vec<User>>,
     local: Option<Vec<String>>,
-    sources: Option<Vec<Source>>,
+    sources: Vec<SourceConfiguration>,
 }
 
 impl Default for Config {
@@ -26,23 +27,29 @@ impl Default for Config {
             allowed_signers: git_allowed_signers(),
             users: None,
             local: None,
-            sources: Some(vec![
-                Source {
+            sources: vec![
+                SourceConfiguration {
                     name: "github".to_string(),
                     provider: GitProviderType::Github,
                     url: "https://api.github.com".to_string(),
                 },
-                Source {
+                SourceConfiguration {
                     name: "gitlab".to_string(),
                     provider: GitProviderType::Gitlab,
                     url: "https://gitlab.com".to_string(),
                 },
-            ]),
+            ],
         }
     }
 }
 
 impl Config {
+    /// Get the configured sources.
+    #[must_use]
+    pub fn get_sources(&self) -> HashMap<String, ()> {
+        todo!()
+    }
+
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
     pub fn load(path: &Path) -> figment::Result<Self> {
         Figment::from(Serialized::defaults(Config::default()))
@@ -91,21 +98,22 @@ pub enum GitProviderType {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct User {
-    name: String,
-    principals: Vec<String>,
-    sources: Vec<String>,
+pub struct User {
+    pub name: String,
+    pub principals: Vec<String>,
+    pub sources: Vec<String>,
 }
 
+/// The representation of a [`Source`] in configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Source {
+struct SourceConfiguration {
     name: String,
     provider: GitProviderType,
     url: String,
 }
 
-impl From<Source> for GitProvider {
-    fn from(source: Source) -> Self {
+impl From<SourceConfiguration> for GitProvider {
+    fn from(source: SourceConfiguration) -> Self {
         match source.provider {
             GitProviderType::Github => GitProvider::github(source.url.parse().unwrap()),
             GitProviderType::Gitlab => GitProvider::gitlab(source.url.parse().unwrap()),
@@ -174,13 +182,13 @@ mod tests {
                 },
             ]),
             local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
-            sources: Some(vec![
-                Source {
+            sources: vec![
+                SourceConfiguration {
                     name: "acme-corp".to_string(),
                     provider: GitProviderType::Gitlab,
                     url: "https://git.acme.corp".to_string(),
                 }
-            ])
+            ]
         };
 
         let config = Config::_load_from_provider(Toml::string(toml)).unwrap();
@@ -190,13 +198,13 @@ mod tests {
     /// The default configuration contains the default GitHub and GitLab sources.
     #[test]
     fn default_configuration_contains_default_sources() {
-        let default_sources = Config::default().sources.unwrap();
-        assert!(default_sources.contains(&Source {
+        let default_sources = Config::default().sources;
+        assert!(default_sources.contains(&SourceConfiguration {
             name: "github".to_string(),
             provider: GitProviderType::Github,
             url: "https://api.github.com".to_string(),
         }));
-        assert!(default_sources.contains(&Source {
+        assert!(default_sources.contains(&SourceConfiguration {
             name: "gitlab".to_string(),
             provider: GitProviderType::Gitlab,
             url: "https://gitlab.com".to_string(),
