@@ -1,4 +1,4 @@
-use crate::{Github, Gitlab, Source};
+use crate::{Github, Gitlab, Source, SourceMap};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -46,7 +46,7 @@ impl Default for Config {
 impl Config {
     /// Get the configured sources.
     #[must_use]
-    pub fn get_sources(&self) -> HashMap<String, Box<dyn Source>> {
+    pub fn get_sources(&self) -> SourceMap {
         self.sources
             .iter()
             .map(|source_config| {

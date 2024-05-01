@@ -5,7 +5,7 @@
 pub use config::Config;
 pub use core::*;
 pub use signer::{AllowedSignersEntry, AllowedSignersFile};
-pub use source::{Github, Gitlab, Source};
+pub use source::{Github, Gitlab, Source, SourceMap};
 
 pub mod cli;
 mod config;
