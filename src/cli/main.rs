@@ -1,5 +1,5 @@
 use super::{manage_signers::ManageSigners, manage_sources::ManageSources, update::update};
-use crate::Config;
+use crate::Configuration;
 use clap::{
     builder::{OsStr, Resettable},
     Args, Parser, Subcommand,
@@ -77,7 +77,7 @@ fn default_config_path() -> Resettable<OsStr> {
 /// The main CLI entrypoint.
 pub fn entrypoint() {
     let cli = Cli::parse();
-    let config: Config = Figment::from(Serialized::defaults(Config::default()))
+    let config: Configuration = Figment::from(Serialized::defaults(Configuration::default()))
         .admerge(Toml::file(cli.config))
         .extract()
         .unwrap();

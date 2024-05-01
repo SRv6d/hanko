@@ -1,8 +1,8 @@
 //! The update subcommand used to get the latest allowed signers and write them to the output file.
-use crate::{AllowedSignersEntry, Config, SourceMap, SshPublicKey};
+use crate::{AllowedSignersEntry, Configuration, SourceMap, SshPublicKey};
 use std::collections::HashSet;
 
-pub(super) fn update(config: Config) {
+pub(super) fn update(config: Configuration) {
     let sources = config.get_sources();
 
     let mut allowed_signers: HashSet<AllowedSignersEntry> = HashSet::new();
