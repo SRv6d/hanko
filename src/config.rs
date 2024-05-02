@@ -12,18 +12,18 @@ use std::{
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct Config {
+pub struct Configuration {
     allowed_signers: Option<PathBuf>,
-    pub users: Option<Vec<User>>,
+    pub users: Option<Vec<UserConfiguration>>,
     local: Option<Vec<String>>,
     sources: Vec<SourceConfiguration>,
 }
 
-impl Default for Config {
+impl Default for Configuration {
     /// The default configuration containing common sources as well as the location of the allowed
     /// signers file if it is configured within Git.
     fn default() -> Self {
-        Config {
+        Configuration {
             allowed_signers: git_allowed_signers(),
             users: None,
             local: None,
@@ -43,7 +43,7 @@ impl Default for Config {
     }
 }
 
-impl Config {
+impl Configuration {
     /// Get the configured sources.
     #[must_use]
     pub fn get_sources(&self) -> SourceMap {
@@ -62,7 +62,7 @@ impl Config {
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
     pub fn load(path: &Path) -> figment::Result<Self> {
-        Figment::from(Serialized::defaults(Config::default()))
+        Figment::from(Serialized::defaults(Configuration::default()))
             .admerge(Toml::file(path))
             .extract()
     }
@@ -106,7 +106,7 @@ pub enum SourceType {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct User {
+pub struct UserConfiguration {
     pub name: String,
     pub principals: Vec<String>,
     pub sources: Vec<String>,
@@ -146,35 +146,35 @@ mod tests {
         provider = "gitlab"
         url = "https://git.acme.corp"
         "#};
-        let expected = Config {
+        let expected = Configuration {
             allowed_signers: None,
             users: Some(vec![
-                User {
+                UserConfiguration {
                     name: "torvalds".to_string(),
                     principals: vec!["torvalds@linux-foundation.org".to_string()],
                     sources: vec!["github".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "gvanrossum".to_string(),
                     principals: vec!["guido@python.org".to_string()],
                     sources: vec!["github".to_string(), "gitlab".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "graydon".to_string(),
                     principals: vec!["graydon@pobox.com".to_string()],
                     sources: vec!["github".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "cwoods".to_string(),
                     principals: vec!["cwoods@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "rdavis".to_string(),
                     principals: vec!["rdavis@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
                 },
-                User {
+                UserConfiguration {
                     name: "pbrock".to_string(),
                     principals: vec!["pbrock@acme.corp".to_string()],
                     sources: vec!["acme-corp".to_string()],
@@ -190,14 +190,14 @@ mod tests {
             ]
         };
 
-        let config = Config::_load_from_provider(Toml::string(toml)).unwrap();
+        let config = Configuration::_load_from_provider(Toml::string(toml)).unwrap();
         assert_eq!(config, expected);
     }
 
     /// The default configuration contains the default GitHub and GitLab sources.
     #[test]
     fn default_configuration_contains_default_sources() {
-        let default_sources = Config::default().sources;
+        let default_sources = Configuration::default().sources;
         assert!(default_sources.contains(&SourceConfiguration {
             name: "github".to_string(),
             provider: SourceType::Github,
