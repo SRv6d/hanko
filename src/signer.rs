@@ -4,6 +4,7 @@
 use crate::SshPublicKey;
 use chrono::{DateTime, Local};
 use std::{
+    collections::HashSet,
     fmt,
     fs::File,
     io::{self, Write},
@@ -67,13 +68,34 @@ impl fmt::Display for AllowedSignersEntry {
 #[derive(Debug)]
 pub struct AllowedSignersFile {
     pub file: File,
-    pub signers: Vec<AllowedSignersEntry>,
+    pub signers: HashSet<AllowedSignersEntry>,
 }
 
 impl AllowedSignersFile {
-    pub fn new(path: &Path, signers: Vec<AllowedSignersEntry>) -> io::Result<Self> {
+    /// Create a new allowed signers file.
+    pub fn new(path: &Path) -> io::Result<Self> {
         let file = File::create(path)?;
-        Ok(Self { file, signers })
+        Ok(Self {
+            file,
+            signers: HashSet::new(),
+        })
+    }
+
+    /// Create a new allowed signers file with a set of signers.
+    pub fn with_signers(
+        path: &Path,
+        signers: impl IntoIterator<Item = AllowedSignersEntry>,
+    ) -> io::Result<Self> {
+        let file = File::create(path)?;
+        Ok(Self {
+            file,
+            signers: HashSet::from_iter(signers),
+        })
+    }
+
+    /// Add an entry to the file.
+    pub fn add(&mut self, signer: AllowedSignersEntry) {
+        self.signers.insert(signer);
     }
 
     /// Write the allowed signers file.
@@ -181,7 +203,7 @@ mod tests {
         expected_content.push('\n');
 
         {
-            let mut file = AllowedSignersFile::new(&path, example_signers).unwrap();
+            let mut file = AllowedSignersFile::with_signers(&path, example_signers).unwrap();
             file.write().unwrap();
         }
 
@@ -197,7 +219,7 @@ mod tests {
         let path = existing_file.into_temp_path();
 
         {
-            let mut file = AllowedSignersFile::new(&path, example_signers).unwrap();
+            let mut file = AllowedSignersFile::with_signers(&path, example_signers).unwrap();
             file.write().unwrap();
         }
 

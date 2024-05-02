@@ -5,7 +5,6 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     env,
     path::{Path, PathBuf},
 };
@@ -13,7 +12,7 @@ use std::{
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
-    allowed_signers: Option<PathBuf>,
+    pub allowed_signers: Option<PathBuf>,
     pub users: Option<Vec<UserConfiguration>>,
     local: Option<Vec<String>>,
     sources: Vec<SourceConfiguration>,
