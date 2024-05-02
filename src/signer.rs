@@ -13,7 +13,7 @@ use std::{
 /// A single entry in the allowed signers file.
 #[derive(Debug)]
 pub struct AllowedSignersEntry {
-    pub principal: String,
+    pub principals: Vec<String>,
     pub valid_after: Option<DateTime<Local>>,
     pub valid_before: Option<DateTime<Local>>,
     pub key: SshPublicKey,
@@ -32,7 +32,7 @@ impl fmt::Display for AllowedSignersEntry {
     /// # use hanko::AllowedSignersEntry;
     /// # use chrono::{TimeZone, Local};
     /// let signer = AllowedSignersEntry {
-    ///     principal: "cwoods@universal.exports".to_string(),
+    ///     principals: vec!["cwoods@universal.exports".to_string()],
     ///     valid_after: None,
     ///     valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
     ///     key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
@@ -42,7 +42,7 @@ impl fmt::Display for AllowedSignersEntry {
     /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.principal)?;
+        write!(f, "{}", self.principals.join(","))?;
 
         if let Some(valid_after) = self.valid_after {
             write!(
@@ -97,7 +97,7 @@ mod tests {
     #[fixture]
     fn signer_jsnow() -> AllowedSignersEntry {
         AllowedSignersEntry {
-            principal: "j.snow@wall.com".to_string(),
+            principals: vec!["j.snow@wall.com".to_string()],
             valid_after: None,
             valid_before: None,
             key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS"
@@ -109,7 +109,7 @@ mod tests {
     #[fixture]
     fn signer_imalcom() -> AllowedSignersEntry {
         AllowedSignersEntry {
-            principal: "ian.malcom@acme.corp".to_string(),
+            principals: vec!["ian.malcom@acme.corp".to_string()],
             valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap()),
             valid_before: None,
             key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
@@ -121,10 +121,25 @@ mod tests {
     #[fixture]
     fn signer_cwoods() -> AllowedSignersEntry {
         AllowedSignersEntry {
-            principal: "cwoods@universal.exports".to_string(),
+            principals: vec!["cwoods@universal.exports".to_string()],
             valid_after: None,
             valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
             key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
+                .parse()
+                .unwrap(),
+        }
+    }
+
+    #[fixture]
+    fn signer_ebert() -> AllowedSignersEntry {
+        AllowedSignersEntry {
+            principals: vec![
+                "ernie@muppets.com".to_string(),
+                "bert@muppets.com".to_string(),
+            ],
+            valid_after: None,
+            valid_before: None,
+            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6h5pPnCWurUHIiHuVp4Hd4mQbEf0bE3EFpETQ2OJt4"
                 .parse()
                 .unwrap(),
         }
@@ -147,6 +162,10 @@ mod tests {
     #[case(
         signer_cwoods(),
         "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
+    )]
+    #[case(
+        signer_ebert(),
+        "ernie@muppets.com,bert@muppets.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6h5pPnCWurUHIiHuVp4Hd4mQbEf0bE3EFpETQ2OJt4"
     )]
     fn display_allowed_signer(#[case] signer: AllowedSignersEntry, #[case] expected_display: &str) {
         assert_eq!(signer.to_string(), expected_display);
