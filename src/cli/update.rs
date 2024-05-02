@@ -14,7 +14,12 @@ pub(super) fn update(config: Configuration) {
         for user in users {
             let public_keys = rt.block_on(get_public_keys(&user, &sources));
             for public_key in public_keys {
-                todo!("Insert allowed signer into set.");
+                allowed_signers.insert(AllowedSignersEntry {
+                    principals: user.principals.clone(),
+                    valid_after: None,
+                    valid_before: None,
+                    key: public_key,
+                });
             }
         }
     }
