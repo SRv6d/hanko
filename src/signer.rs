@@ -11,7 +11,7 @@ use std::{
 };
 
 /// A single entry in the allowed signers file.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct AllowedSignersEntry {
     pub principals: Vec<String>,
     pub valid_after: Option<DateTime<Local>>,
