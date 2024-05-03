@@ -3,6 +3,12 @@ name = "hanko"
 description = "Manage Git allowed signers."
 version = "0.1.0"
 keywords = ["git", "ssh", "security", "encryption"]
+categories = [
+    "authentication",
+    "command-line-utilities",
+    "cryptography",
+    "development-tools",
+]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
