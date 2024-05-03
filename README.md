@@ -1,3 +1,24 @@
+<h1 align="center"><code>hanko</code></h1>
+
+<div align="center">
+  <a href="https://github.com/srv6d/hanko/actions">
+    <img src="https://github.com/srv6d/hanko/workflows/CI/badge.svg" alt="CI status">
+  </a>
+  <a href="https://codspeed.io/SRv6d/hanko">
+    <img src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json" alt="CodSpeed Badge">
+  </a>
+  <a href="https://crates.io/crates/hanko">
+    <img src="https://img.shields.io/crates/v/hanko.svg?logo=rust" alt="Cargo version">
+  </a>
+</div>
+<br>
+
+`hanko` manages your local Git allowed signers file for you using signing keys
+configured on platforms like GitHub and GitLab.
+
+> [!WARNING]  
+> This project is a work in progress and not (yet) ready for production usage.
+
 # Example Configuration
 
 ```toml
