@@ -4,6 +4,7 @@
 use crate::SshPublicKey;
 use chrono::{DateTime, Local};
 use std::{
+    collections::HashSet,
     fmt,
     fs::File,
     io::{self, Write},
@@ -11,9 +12,9 @@ use std::{
 };
 
 /// A single entry in the allowed signers file.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AllowedSignersEntry {
-    pub principal: String,
+    pub principals: Vec<String>,
     pub valid_after: Option<DateTime<Local>>,
     pub valid_before: Option<DateTime<Local>>,
     pub key: SshPublicKey,
@@ -32,7 +33,7 @@ impl fmt::Display for AllowedSignersEntry {
     /// # use hanko::AllowedSignersEntry;
     /// # use chrono::{TimeZone, Local};
     /// let signer = AllowedSignersEntry {
-    ///     principal: "cwoods@universal.exports".to_string(),
+    ///     principals: vec!["cwoods@universal.exports".to_string()],
     ///     valid_after: None,
     ///     valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
     ///     key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
@@ -42,7 +43,7 @@ impl fmt::Display for AllowedSignersEntry {
     /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.principal)?;
+        write!(f, "{}", self.principals.join(","))?;
 
         if let Some(valid_after) = self.valid_after {
             write!(
@@ -67,19 +68,45 @@ impl fmt::Display for AllowedSignersEntry {
 #[derive(Debug)]
 pub struct AllowedSignersFile {
     pub file: File,
-    pub signers: Vec<AllowedSignersEntry>,
+    pub signers: HashSet<AllowedSignersEntry>,
 }
 
 impl AllowedSignersFile {
-    pub fn new(path: &Path, signers: Vec<AllowedSignersEntry>) -> io::Result<Self> {
+    /// Create a new allowed signers file.
+    pub fn new(path: &Path) -> io::Result<Self> {
         let file = File::create(path)?;
-        Ok(Self { file, signers })
+        Ok(Self {
+            file,
+            signers: HashSet::new(),
+        })
+    }
+
+    /// Create a new allowed signers file with a set of signers.
+    pub fn with_signers(
+        path: &Path,
+        signers: impl IntoIterator<Item = AllowedSignersEntry>,
+    ) -> io::Result<Self> {
+        let file = File::create(path)?;
+        Ok(Self {
+            file,
+            signers: HashSet::from_iter(signers),
+        })
+    }
+
+    /// Add an entry to the file.
+    pub fn add(&mut self, signer: AllowedSignersEntry) {
+        self.signers.insert(signer);
     }
 
     /// Write the allowed signers file.
     pub fn write(&mut self) -> io::Result<()> {
         let mut file_buf = io::BufWriter::new(&mut self.file);
-        for signer in &self.signers {
+        let sorted_signers = {
+            let mut signers = self.signers.iter().collect::<Vec<_>>();
+            signers.sort();
+            signers
+        };
+        for signer in sorted_signers {
             writeln!(file_buf, "{signer}")?;
         }
         writeln!(file_buf)?;
@@ -97,7 +124,7 @@ mod tests {
     #[fixture]
     fn signer_jsnow() -> AllowedSignersEntry {
         AllowedSignersEntry {
-            principal: "j.snow@wall.com".to_string(),
+            principals: vec!["j.snow@wall.com".to_string()],
             valid_after: None,
             valid_before: None,
             key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS"
@@ -109,7 +136,7 @@ mod tests {
     #[fixture]
     fn signer_imalcom() -> AllowedSignersEntry {
         AllowedSignersEntry {
-            principal: "ian.malcom@acme.corp".to_string(),
+            principals: vec!["ian.malcom@acme.corp".to_string()],
             valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap()),
             valid_before: None,
             key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
@@ -121,7 +148,7 @@ mod tests {
     #[fixture]
     fn signer_cwoods() -> AllowedSignersEntry {
         AllowedSignersEntry {
-            principal: "cwoods@universal.exports".to_string(),
+            principals: vec!["cwoods@universal.exports".to_string()],
             valid_after: None,
             valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
             key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
@@ -131,8 +158,38 @@ mod tests {
     }
 
     #[fixture]
-    fn example_signers() -> Vec<AllowedSignersEntry> {
-        vec![signer_jsnow(), signer_imalcom(), signer_cwoods()]
+    fn signer_ebert() -> AllowedSignersEntry {
+        AllowedSignersEntry {
+            principals: vec![
+                "ernie@muppets.com".to_string(),
+                "bert@muppets.com".to_string(),
+            ],
+            valid_after: None,
+            valid_before: None,
+            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDw32w3ciofX3/gFoyCtPWxSsWYmylwdKZ9Q/BmoBR/g"
+                .parse()
+                .unwrap(),
+        }
+    }
+
+    /// Returns an example allowed signers file containing a temporary `File` that will be
+    /// cleaned up, along with the path to that temporary file.
+    #[fixture]
+    fn example_allowed_signers() -> (AllowedSignersFile, tempfile::TempPath) {
+        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+        (
+            AllowedSignersFile::with_signers(
+                &path,
+                vec![
+                    signer_jsnow(),
+                    signer_imalcom(),
+                    signer_cwoods(),
+                    signer_ebert(),
+                ],
+            )
+            .unwrap(),
+            path,
+        )
     }
 
     #[rstest]
@@ -148,39 +205,51 @@ mod tests {
         signer_cwoods(),
         "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
     )]
+    #[case(
+        signer_ebert(),
+        "ernie@muppets.com,bert@muppets.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDw32w3ciofX3/gFoyCtPWxSsWYmylwdKZ9Q/BmoBR/g"
+    )]
     fn display_allowed_signer(#[case] signer: AllowedSignersEntry, #[case] expected_display: &str) {
         assert_eq!(signer.to_string(), expected_display);
     }
 
+    /// Writing the allowed signers file creates a file that contains all entries.
     #[rstest]
-    fn write_allowed_signers_file(example_signers: Vec<AllowedSignersEntry>) {
-        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
-        let mut expected_content = String::new();
-        for signer in &example_signers {
-            expected_content.push_str(&format!("{signer}\n"));
-        }
-        expected_content.push('\n');
+    fn written_signers_file_contains_all_entries(
+        example_allowed_signers: (AllowedSignersFile, tempfile::TempPath),
+    ) {
+        let (mut file, path) = example_allowed_signers;
 
-        {
-            let mut file = AllowedSignersFile::new(&path, example_signers).unwrap();
-            file.write().unwrap();
-        }
+        file.write().unwrap();
 
         let content = fs::read_to_string(path).unwrap();
-        assert_eq!(content, expected_content);
+        for entry in &file.signers {
+            assert!(content.contains(&entry.to_string()));
+        }
+    }
+
+    /// Writing the allowed signers file creates a file that is newline terminated.
+    #[rstest]
+    fn written_signers_file_is_newline_terminated(
+        example_allowed_signers: (AllowedSignersFile, tempfile::TempPath),
+    ) {
+        let (mut file, path) = example_allowed_signers;
+
+        file.write().unwrap();
+
+        let content = fs::read_to_string(path).unwrap();
+        assert!(content.ends_with("\n\n")); // Two newlines since the last entry already ends with one.
     }
 
     #[rstest]
-    fn writing_overrides_existing_content(example_signers: Vec<AllowedSignersEntry>) {
+    fn writing_overrides_existing_content(
+        example_allowed_signers: (AllowedSignersFile, tempfile::TempPath),
+    ) {
+        let (mut file, path) = example_allowed_signers;
         let existing_content = "gathered dust";
-        let mut existing_file = tempfile::NamedTempFile::new().unwrap();
-        writeln!(existing_file, "{existing_content}").unwrap();
-        let path = existing_file.into_temp_path();
+        fs::write(&path, existing_content).unwrap();
 
-        {
-            let mut file = AllowedSignersFile::new(&path, example_signers).unwrap();
-            file.write().unwrap();
-        }
+        file.write().unwrap();
 
         let content = fs::read_to_string(path).unwrap();
         assert!(!content.contains(existing_content));
