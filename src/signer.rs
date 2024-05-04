@@ -12,7 +12,7 @@ use std::{
 };
 
 /// A single entry in the allowed signers file.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct AllowedSignersEntry {
     pub principals: Vec<String>,
     pub valid_after: Option<DateTime<Local>>,
@@ -101,7 +101,12 @@ impl AllowedSignersFile {
     /// Write the allowed signers file.
     pub fn write(&mut self) -> io::Result<()> {
         let mut file_buf = io::BufWriter::new(&mut self.file);
-        for signer in &self.signers {
+        let sorted_signers = {
+            let mut signers = self.signers.iter().collect::<Vec<_>>();
+            signers.sort();
+            signers
+        };
+        for signer in sorted_signers {
             writeln!(file_buf, "{signer}")?;
         }
         writeln!(file_buf)?;
