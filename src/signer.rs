@@ -230,7 +230,7 @@ mod tests {
 
     /// Writing the allowed signers file creates a file that is newline terminated.
     #[rstest]
-    fn written_signers_file_is_newline_termianted(
+    fn written_signers_file_is_newline_terminated(
         example_allowed_signers: (AllowedSignersFile, tempfile::TempPath),
     ) {
         let (mut file, path) = example_allowed_signers;
