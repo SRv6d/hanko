@@ -166,7 +166,7 @@ mod tests {
             ],
             valid_after: None,
             valid_before: None,
-            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6h5pPnCWurUHIiHuVp4Hd4mQbEf0bE3EFpETQ2OJt4"
+            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDw32w3ciofX3/gFoyCtPWxSsWYmylwdKZ9Q/BmoBR/g"
                 .parse()
                 .unwrap(),
         }
@@ -192,7 +192,7 @@ mod tests {
     )]
     #[case(
         signer_ebert(),
-        "ernie@muppets.com,bert@muppets.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE6h5pPnCWurUHIiHuVp4Hd4mQbEf0bE3EFpETQ2OJt4"
+        "ernie@muppets.com,bert@muppets.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDw32w3ciofX3/gFoyCtPWxSsWYmylwdKZ9Q/BmoBR/g"
     )]
     fn display_allowed_signer(#[case] signer: AllowedSignersEntry, #[case] expected_display: &str) {
         assert_eq!(signer.to_string(), expected_display);
