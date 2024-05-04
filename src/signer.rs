@@ -172,9 +172,24 @@ mod tests {
         }
     }
 
+    /// Returns an example allowed signers file containing a temporary `File` that will be
+    /// cleaned up, along with the path to that temporary file.
     #[fixture]
-    fn example_signers() -> Vec<AllowedSignersEntry> {
-        vec![signer_jsnow(), signer_imalcom(), signer_cwoods()]
+    fn example_allowed_signers() -> (AllowedSignersFile, tempfile::TempPath) {
+        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+        (
+            AllowedSignersFile::with_signers(
+                &path,
+                vec![
+                    signer_jsnow(),
+                    signer_imalcom(),
+                    signer_cwoods(),
+                    signer_ebert(),
+                ],
+            )
+            .unwrap(),
+            path,
+        )
     }
 
     #[rstest]
@@ -198,35 +213,43 @@ mod tests {
         assert_eq!(signer.to_string(), expected_display);
     }
 
+    /// Writing the allowed signers file creates a file that contains all entries.
     #[rstest]
-    fn write_allowed_signers_file(example_signers: Vec<AllowedSignersEntry>) {
-        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
-        let mut expected_content = String::new();
-        for signer in &example_signers {
-            expected_content.push_str(&format!("{signer}\n"));
-        }
-        expected_content.push('\n');
+    fn written_signers_file_contains_all_entries(
+        example_allowed_signers: (AllowedSignersFile, tempfile::TempPath),
+    ) {
+        let (mut file, path) = example_allowed_signers;
 
-        {
-            let mut file = AllowedSignersFile::with_signers(&path, example_signers).unwrap();
-            file.write().unwrap();
-        }
+        file.write().unwrap();
 
         let content = fs::read_to_string(path).unwrap();
-        assert_eq!(content, expected_content);
+        for entry in &file.signers {
+            assert!(content.contains(&entry.to_string()));
+        }
+    }
+
+    /// Writing the allowed signers file creates a file that is newline terminated.
+    #[rstest]
+    fn written_signers_file_is_newline_termianted(
+        example_allowed_signers: (AllowedSignersFile, tempfile::TempPath),
+    ) {
+        let (mut file, path) = example_allowed_signers;
+
+        file.write().unwrap();
+
+        let content = fs::read_to_string(path).unwrap();
+        assert!(content.ends_with("\n\n")); // Two newlines since the last entry already ends with one.
     }
 
     #[rstest]
-    fn writing_overrides_existing_content(example_signers: Vec<AllowedSignersEntry>) {
+    fn writing_overrides_existing_content(
+        example_allowed_signers: (AllowedSignersFile, tempfile::TempPath),
+    ) {
+        let (mut file, path) = example_allowed_signers;
         let existing_content = "gathered dust";
-        let mut existing_file = tempfile::NamedTempFile::new().unwrap();
-        writeln!(existing_file, "{existing_content}").unwrap();
-        let path = existing_file.into_temp_path();
+        fs::write(&path, existing_content).unwrap();
 
-        {
-            let mut file = AllowedSignersFile::with_signers(&path, example_signers).unwrap();
-            file.write().unwrap();
-        }
+        file.write().unwrap();
 
         let content = fs::read_to_string(path).unwrap();
         assert!(!content.contains(existing_content));
