@@ -1,7 +1,7 @@
-use super::Source;
+use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
-use reqwest::{Client, Result, Url};
+use reqwest::{Client, StatusCode, Url};
 
 #[derive(Debug)]
 pub struct Github {
