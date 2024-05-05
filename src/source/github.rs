@@ -46,6 +46,7 @@ mod tests {
     use super::*;
     use httpmock::prelude::*;
     use rstest::rstest;
+    use serde_json::json;
 
     const API_VERSION: &str = "2022-11-28";
     const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
@@ -124,5 +125,37 @@ mod tests {
         let keys = api.get_keys_by_username(username, &client).await.unwrap();
 
         assert_eq!(keys, expected);
+    }
+
+    #[rstest]
+    #[case(StatusCode::NOT_FOUND, None, SourceError::NotFound)]
+    #[case(StatusCode::UNAUTHORIZED, Some(json!({"message": "Bad credentials"})), SourceError::BadCredentials)]
+    //#[case(StatusCode::UNAUTHORIZED, None, SourceError::Other(_))]
+    #[case(StatusCode::FORBIDDEN, Some(json!({"message": "API rate limit exceeded"})), SourceError::RatelimitExceeded)]
+    //#[case(StatusCode::FORBIDDEN, None, SourceError::Other(()))]
+    #[tokio::test]
+    async fn get_keys_by_username_unsuccessful_status_code_returns_expected_error(
+        #[case] status: StatusCode,
+        #[case] json_body: Option<serde_json::Value>,
+        #[case] expected_error: SourceError,
+    ) {
+        let username = "octocat";
+        let server = MockServer::start();
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{username}/ssh_signing_keys"));
+            then.status(status.into()).json_body(json_body);
+        });
+
+        let client = Client::new();
+        let api = Github {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        let error_result = api
+            .get_keys_by_username(username, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, expected_error));
     }
 }
