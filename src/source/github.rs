@@ -45,7 +45,7 @@ impl Source for Github {
 // Dummy implementation to make the code compile.
 impl From<reqwest::Error> for SourceError {
     fn from(error: reqwest::Error) -> Self {
-        SourceError::Other(error)
+        SourceError::Other(Box::new(error))
     }
 }
 

@@ -29,7 +29,7 @@ pub enum SourceError {
     #[error("A connection error occurred.")]
     ConnectionError,
     #[error("An unknown request error occurred.")]
-    Other(reqwest::Error),
+    Other(Box<dyn std::error::Error>),
 }
 
 /// A `Result` alias where the `Err` case is a `SourceError`.
