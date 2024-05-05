@@ -1,7 +1,7 @@
 use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
-use reqwest::{Client, StatusCode, Url};
+use reqwest::{Client, Url};
 
 #[derive(Debug)]
 pub struct Github {
@@ -37,7 +37,15 @@ impl Source for Github {
             .header("X-GitHub-Api-Version", Self::VERSION);
 
         let response = request.send().await?;
-        response.json().await
+        let signing_keys: Vec<SshPublicKey> = response.json().await?;
+        Ok(signing_keys)
+    }
+}
+
+// Dummy implementation to make the code compile.
+impl From<reqwest::Error> for SourceError {
+    fn from(error: reqwest::Error) -> Self {
+        SourceError::Other(error)
     }
 }
 
@@ -45,6 +53,7 @@ impl Source for Github {
 mod tests {
     use super::*;
     use httpmock::prelude::*;
+    use reqwest::StatusCode;
     use rstest::rstest;
     use serde_json::json;
 
