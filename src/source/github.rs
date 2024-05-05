@@ -54,17 +54,22 @@ mod tests {
     use super::*;
     use httpmock::prelude::*;
     use reqwest::StatusCode;
-    use rstest::rstest;
+    use rstest::*;
     use serde_json::json;
 
     const API_VERSION: &str = "2022-11-28";
     const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
 
+    #[fixture]
+    fn server() -> MockServer {
+        MockServer::start()
+    }
+
     /// The API request made to get a users signing keys is correct.
+    #[rstest]
     #[tokio::test]
-    async fn api_request_is_correct() {
+    async fn api_request_is_correct(server: MockServer) {
         let username = "octocat";
-        let server = MockServer::start();
         let mock = server.mock(|when, _| {
             when.method(GET)
                 .path(format!("/users/{username}/ssh_signing_keys"))
@@ -116,9 +121,9 @@ mod tests {
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
         #[case] expected: Vec<SshPublicKey>,
+        server: MockServer,
     ) {
         let username = "octocat";
-        let server = MockServer::start();
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{username}/ssh_signing_keys"));
@@ -147,9 +152,9 @@ mod tests {
         #[case] status: StatusCode,
         #[case] json_body: Option<serde_json::Value>,
         #[case] expected_error: SourceError,
+        server: MockServer,
     ) {
         let username = "octocat";
-        let server = MockServer::start();
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{username}/ssh_signing_keys"));
