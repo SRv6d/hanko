@@ -141,24 +141,15 @@ mod tests {
         assert_eq!(keys, expected);
     }
 
+    /// A HTTP not found status code returns a `SourceError::NotFound`.
     #[rstest]
-    #[case(StatusCode::NOT_FOUND, None, SourceError::NotFound)]
-    #[case(StatusCode::UNAUTHORIZED, Some(json!({"message": "Bad credentials"})), SourceError::BadCredentials)]
-    //#[case(StatusCode::UNAUTHORIZED, None, SourceError::Other(_))]
-    #[case(StatusCode::FORBIDDEN, Some(json!({"message": "API rate limit exceeded"})), SourceError::RatelimitExceeded)]
-    //#[case(StatusCode::FORBIDDEN, None, SourceError::Other(()))]
     #[tokio::test]
-    async fn get_keys_by_username_unsuccessful_status_code_returns_expected_error(
-        #[case] status: StatusCode,
-        #[case] json_body: Option<serde_json::Value>,
-        #[case] expected_error: SourceError,
-        server: MockServer,
-    ) {
+    async fn get_keys_by_username_http_not_found_returns_not_found_error(server: MockServer) {
         let username = "octocat";
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{username}/ssh_signing_keys"));
-            then.status(status.into()).json_body(json_body);
+            then.status(StatusCode::NOT_FOUND.into());
         });
 
         let client = Client::new();
@@ -170,6 +161,106 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, expected_error));
+        assert!(matches!(error_result, SourceError::NotFound));
+    }
+
+    /// A HTTP unauthorized status code along with a body containing a bad credentials message
+    /// returns a `SourceError::BadCredentials`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_unauthorized_bad_credentials_returns_bad_credentials(
+        server: MockServer,
+    ) {
+        let username = "octocat";
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{username}/ssh_signing_keys"));
+            then.status(StatusCode::UNAUTHORIZED.into())
+                .json_body(json!({"message": "Bad credentials"}));
+        });
+
+        let client = Client::new();
+        let api = Github {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        let error_result = api
+            .get_keys_by_username(username, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::BadCredentials));
+    }
+
+    /// A HTTP unauthorized status code without a known error message in the body returns a `SourceError::Other`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_unauthorized_other_returns_other(server: MockServer) {
+        let username = "octocat";
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{username}/ssh_signing_keys"));
+            then.status(StatusCode::UNAUTHORIZED.into());
+        });
+
+        let client = Client::new();
+        let api = Github {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        let error_result = api
+            .get_keys_by_username(username, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::Other(..)));
+    }
+
+    /// A HTTP forbidden status code along with a body containing a rate limit exceeded message
+    /// returns a `SourceError::RatelimitExceeded`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_forbidden_rate_limit_exceeded_returns_rate_limit_exceeded(
+        server: MockServer,
+    ) {
+        let username = "octocat";
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{username}/ssh_signing_keys"));
+            then.status(StatusCode::FORBIDDEN.into())
+                .json_body(json!({"message": "rate limit exceeded"}));
+        });
+
+        let client = Client::new();
+        let api = Github {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        let error_result = api
+            .get_keys_by_username(username, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::RatelimitExceeded));
+    }
+
+    /// A HTTP forbidden status code without a known error message in the body returns a `SourceError::Other`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_forbidden_other_returns_other(server: MockServer) {
+        let username = "octocat";
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{username}/ssh_signing_keys"));
+            then.status(StatusCode::FORBIDDEN.into());
+        });
+
+        let client = Client::new();
+        let api = Github {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        let error_result = api
+            .get_keys_by_username(username, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::Other(..)));
     }
 }
