@@ -90,27 +90,40 @@ impl From<ApiSshKey> for SshPublicKey {
 mod tests {
     use super::*;
     use httpmock::prelude::*;
-    use rstest::rstest;
+    use rstest::*;
 
     const API_ACCEPT_HEADER: &str = "application/json";
 
-    /// The API request made to get a users signing keys is correct.
-    #[tokio::test]
-    async fn api_request_is_correct() {
-        let username = "tanuki";
+    const EXAMPLE_USERNAME: &str = "tanuki";
+
+    /// An API instance and a mock server with the APIs base url configured to that of the mock server.
+    #[fixture]
+    fn api_w_mock_server() -> (Gitlab, MockServer) {
         let server = MockServer::start();
+        let api = Gitlab {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        (api, server)
+    }
+
+    #[fixture]
+    fn client() -> Client {
+        Client::new()
+    }
+
+    /// The API request made to get a users signing keys is correct.
+    #[rstest]
+    #[tokio::test]
+    async fn api_request_is_correct(api_w_mock_server: (Gitlab, MockServer), client: Client) {
+        let (api, server) = api_w_mock_server;
         let mock = server.mock(|when, _| {
             when.method(GET)
-                .path(format!("/api/v4/users/{username}/keys"))
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"))
                 .header("accept", API_ACCEPT_HEADER)
                 .header("user-agent", USER_AGENT);
         });
 
-        let client = Client::new();
-        let api = Gitlab {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let _ = api.get_keys_by_username(username, &client).await;
+        let _ = api.get_keys_by_username(EXAMPLE_USERNAME, &client).await;
 
         mock.assert();
     }
@@ -154,22 +167,22 @@ mod tests {
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
         #[case] expected: Vec<SshPublicKey>,
+        api_w_mock_server: (Gitlab, MockServer),
+        client: Client,
     ) {
-        let username = "tanuki";
-        let server = MockServer::start();
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/api/v4/users/{username}/keys"));
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
             then.status(200)
                 .header("Content-Type", "application/json")
                 .body(body);
         });
 
-        let client = Client::new();
-        let api = Gitlab {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let keys = api.get_keys_by_username(username, &client).await.unwrap();
+        let keys = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap();
 
         assert_eq!(keys, expected);
     }

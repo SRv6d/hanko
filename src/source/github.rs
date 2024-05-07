@@ -60,29 +60,37 @@ mod tests {
     const API_VERSION: &str = "2022-11-28";
     const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
 
+    const EXAMPLE_USERNAME: &str = "octocat";
+
+    /// An API instance and a mock server with the APIs base url configured to that of the mock server.
     #[fixture]
-    fn server() -> MockServer {
-        MockServer::start()
+    fn api_w_mock_server() -> (Github, MockServer) {
+        let server = MockServer::start();
+        let api = Github {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        (api, server)
+    }
+
+    #[fixture]
+    fn client() -> Client {
+        Client::new()
     }
 
     /// The API request made to get a users signing keys is correct.
     #[rstest]
     #[tokio::test]
-    async fn api_request_is_correct(server: MockServer) {
-        let username = "octocat";
+    async fn api_request_is_correct(api_w_mock_server: (Github, MockServer), client: Client) {
+        let (api, server) = api_w_mock_server;
         let mock = server.mock(|when, _| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"))
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"))
                 .header("accept", API_ACCEPT_HEADER)
                 .header("x-github-api-version", API_VERSION)
                 .header("user-agent", USER_AGENT);
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let _ = api.get_keys_by_username(username, &client).await;
+        let _ = api.get_keys_by_username(EXAMPLE_USERNAME, &client).await;
 
         mock.assert();
     }
@@ -121,22 +129,22 @@ mod tests {
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
         #[case] expected: Vec<SshPublicKey>,
-        server: MockServer,
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
     ) {
-        let username = "octocat";
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"));
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(200)
                 .header("Content-Type", "application/json; charset=utf-8")
                 .body(body);
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let keys = api.get_keys_by_username(username, &client).await.unwrap();
+        let keys = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap();
 
         assert_eq!(keys, expected);
     }
@@ -144,20 +152,19 @@ mod tests {
     /// A HTTP not found status code returns a `SourceError::NotFound`.
     #[rstest]
     #[tokio::test]
-    async fn get_keys_by_username_http_not_found_returns_not_found_error(server: MockServer) {
-        let username = "octocat";
+    async fn get_keys_by_username_http_not_found_returns_not_found_error(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"));
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(StatusCode::NOT_FOUND.into());
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
         let error_result = api
-            .get_keys_by_username(username, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
             .await
             .unwrap_err();
 
@@ -169,22 +176,19 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn get_keys_by_username_http_unauthorized_bad_credentials_returns_bad_credentials(
-        server: MockServer,
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
     ) {
-        let username = "octocat";
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"));
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(StatusCode::UNAUTHORIZED.into())
                 .json_body(json!({"message": "Bad credentials"}));
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
         let error_result = api
-            .get_keys_by_username(username, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
             .await
             .unwrap_err();
 
@@ -194,20 +198,19 @@ mod tests {
     /// A HTTP unauthorized status code without a known error message in the body returns a `SourceError::Other`.
     #[rstest]
     #[tokio::test]
-    async fn get_keys_by_username_http_unauthorized_other_returns_other(server: MockServer) {
-        let username = "octocat";
+    async fn get_keys_by_username_http_unauthorized_other_returns_other(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"));
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(StatusCode::UNAUTHORIZED.into());
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
         let error_result = api
-            .get_keys_by_username(username, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
             .await
             .unwrap_err();
 
@@ -219,22 +222,19 @@ mod tests {
     #[rstest]
     #[tokio::test]
     async fn get_keys_by_username_http_forbidden_rate_limit_exceeded_returns_rate_limit_exceeded(
-        server: MockServer,
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
     ) {
-        let username = "octocat";
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"));
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(StatusCode::FORBIDDEN.into())
                 .json_body(json!({"message": "rate limit exceeded"}));
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
         let error_result = api
-            .get_keys_by_username(username, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
             .await
             .unwrap_err();
 
@@ -244,20 +244,19 @@ mod tests {
     /// A HTTP forbidden status code without a known error message in the body returns a `SourceError::Other`.
     #[rstest]
     #[tokio::test]
-    async fn get_keys_by_username_http_forbidden_other_returns_other(server: MockServer) {
-        let username = "octocat";
+    async fn get_keys_by_username_http_forbidden_other_returns_other(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"));
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(StatusCode::FORBIDDEN.into());
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
         let error_result = api
-            .get_keys_by_username(username, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
             .await
             .unwrap_err();
 
