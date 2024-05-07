@@ -1,4 +1,4 @@
-use super::{Result, Source};
+use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Url};
@@ -90,6 +90,7 @@ impl From<ApiSshKey> for SshPublicKey {
 mod tests {
     use super::*;
     use httpmock::prelude::*;
+    use reqwest::StatusCode;
     use rstest::*;
 
     const API_ACCEPT_HEADER: &str = "application/json";
@@ -185,5 +186,49 @@ mod tests {
             .unwrap();
 
         assert_eq!(keys, expected);
+    }
+
+    /// A HTTP not found status code returns a `SourceError::NotFound`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_not_found_returns_not_found_error(
+        api_w_mock_server: (Gitlab, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
+            then.status(StatusCode::NOT_FOUND.into());
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::NotFound));
+    }
+
+    /// A HTTP unauthorized status code returns a `SourceError::BadCredentials`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_unauthorized_returns_bad_credentials(
+        api_w_mock_server: (Gitlab, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
+            then.status(StatusCode::UNAUTHORIZED.into());
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::BadCredentials));
     }
 }
