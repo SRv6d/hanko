@@ -23,25 +23,47 @@ pub type SourceMap = HashMap<String, Box<dyn Source>>;
 /// An error that can occur when interacting with a source.
 #[derive(Error, Debug)]
 pub enum SourceError {
-    #[error("The used credentials are invalid.")]
+    #[error("used credentials are invalid")]
     BadCredentials,
-    #[error("The rate limit has been exceeded.")]
+    #[error("rate limit has been exceeded")]
     RatelimitExceeded,
-    #[error("The requested user could not be found.")]
+    #[error("requested user could not be found")]
     UserNotFound,
-    #[error("A connection error occurred.")]
+    #[error("connection error occurred")]
     ConnectionError,
-    #[error("An unknown request error occurred.")]
-    Other(Box<dyn std::error::Error>),
+    #[error("server error occurred")]
+    ServerError(#[from] ServerError),
+    #[error("client request error")]
+    ClientError(reqwest::Error),
 }
 
-/// A fallback conversion for generic reqwest errors.
+/// Conversion for generic reqwest errors not specific to any `Source`.
 impl From<reqwest::Error> for SourceError {
+    #[allow(clippy::panic)]
     fn from(error: reqwest::Error) -> Self {
         if error.is_connect() || error.is_timeout() {
             SourceError::ConnectionError
+        } else if error.is_request() {
+            SourceError::ClientError(error)
+        } else if error.is_status()
+            && error
+                .status()
+                .expect("missing error status code")
+                .is_server_error()
+        {
+            ServerError::StatusCode(error.status().unwrap()).into()
+        } else if error.is_body() {
+            ServerError::InvalidResponseBody.into()
         } else {
-            SourceError::Other(Box::new(error))
+            panic!("Unexpected reqwest error: {error:?}");
         }
     }
+}
+
+#[derive(Error, Debug)]
+pub enum ServerError {
+    #[error("invalid response body")]
+    InvalidResponseBody,
+    #[error("{0}")]
+    StatusCode(reqwest::StatusCode),
 }
