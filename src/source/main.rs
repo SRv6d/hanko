@@ -32,5 +32,18 @@ pub enum SourceError {
     Other(Box<dyn std::error::Error>),
 }
 
+/// A fallback conversion for generic reqwest errors.
+impl From<reqwest::Error> for SourceError {
+    fn from(error: reqwest::Error) -> Self {
+        if error.is_connect() || error.is_timeout() {
+            SourceError::ConnectionError
+        } else if error.status() == Some(reqwest::StatusCode::NOT_FOUND) {
+            SourceError::NotFound
+        } else {
+            SourceError::Other(Box::new(error))
+        }
+    }
+}
+
 /// A `Result` alias where the `Err` case is a `SourceError`.
 pub type Result<T> = std::result::Result<T, SourceError>;
