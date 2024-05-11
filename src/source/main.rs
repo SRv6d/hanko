@@ -43,8 +43,6 @@ impl From<reqwest::Error> for SourceError {
     fn from(error: reqwest::Error) -> Self {
         if error.is_connect() || error.is_timeout() {
             SourceError::ConnectionError
-        } else if error.is_request() {
-            SourceError::ClientError(error.status().expect("missing error status code"))
         } else if error.is_status()
             && error
                 .status()
@@ -52,6 +50,13 @@ impl From<reqwest::Error> for SourceError {
                 .is_server_error()
         {
             ServerError::StatusCode(error.status().unwrap()).into()
+        } else if error.is_status()
+            && error
+                .status()
+                .expect("missing error status code")
+                .is_client_error()
+        {
+            SourceError::ClientError(error.status().unwrap())
         } else if error.is_body() {
             ServerError::InvalidResponseBody.into()
         } else {
