@@ -57,7 +57,7 @@ impl From<reqwest::Error> for SourceError {
                 .is_client_error()
         {
             SourceError::ClientError(error.status().unwrap())
-        } else if error.is_body() {
+        } else if error.is_body() || error.is_decode() {
             ServerError::InvalidResponseBody.into()
         } else {
             panic!("Unexpected reqwest error: {error:?}");
@@ -123,9 +123,9 @@ mod tests {
         error
     }
 
-    /// A reqwest body error.
+    /// A reqwest decode error.
     #[fixture]
-    fn reqwest_body_error() -> reqwest::Error {
+    fn reqwest_decode_error() -> reqwest::Error {
         let server = MockServer::start();
         server.mock(|when, then| {
             when.any_request();
@@ -135,7 +135,7 @@ mod tests {
             .unwrap()
             .json::<serde_json::Value>()
             .unwrap_err();
-        assert!(error.is_body());
+        assert!(error.is_decode());
         error
     }
 
@@ -183,10 +183,10 @@ mod tests {
     }
 
     #[rstest]
-    fn source_error_from_reqwest_body_error_is_invalid_response_body(
-        reqwest_body_error: reqwest::Error,
+    fn source_error_from_reqwest_decode_error_is_server_error_invalid_response_body(
+        reqwest_decode_error: reqwest::Error,
     ) {
         let expected_conversion = SourceError::from(ServerError::InvalidResponseBody);
-        assert_eq!(SourceError::from(reqwest_body_error), expected_conversion);
+        assert_eq!(SourceError::from(reqwest_decode_error), expected_conversion);
     }
 }
