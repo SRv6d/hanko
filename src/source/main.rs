@@ -113,14 +113,25 @@ mod tests {
     }
 
     /// A reqwest connection error.
+    /// Returns an `Option` since the error is created by causing an actual connection error,
+    /// for which we need to find a free port. If the used port is not free, or we cannot determine
+    /// if it is, `None` is returned.
     #[fixture]
-    fn reqwest_connection_error() -> reqwest::Error {
-        let error = reqwest::blocking::get("http://2001:db8:1/")
-            .unwrap()
-            .error_for_status()
-            .unwrap_err();
+    fn reqwest_connection_error() -> Option<reqwest::Error> {
+        let test_port = 43286;
+        // This should work on macOS and most Linux distributions.
+        let test_port_in_use = std::process::Command::new("lsof")
+            .args(["-nP", format!("-i:{test_port}").as_str()])
+            .status()
+            .ok()?
+            .success(); // nonzero exit code if the port is not in use
+        if test_port_in_use {
+            return None;
+        }
+
+        let error = reqwest::blocking::get(format!("http://localhost:{test_port}/")).unwrap_err();
         assert!(error.is_connect());
-        error
+        Some(error)
     }
 
     /// A reqwest decode error.
@@ -176,10 +187,15 @@ mod tests {
 
     #[rstest]
     fn source_error_from_reqwest_connect_or_timeout_error_is_connection_error(
-        #[values(reqwest_connection_error(), reqwest_timeout_error())] error: reqwest::Error,
+        #[values(reqwest_connection_error(), reqwest_timeout_error().into())] error: Option<
+            reqwest::Error,
+        >,
     ) {
         let expected_conversion = SourceError::ConnectionError;
-        assert_eq!(SourceError::from(error), expected_conversion);
+        // The assertion is skipped if the used fixtured failed to create an error.
+        if let Some(error) = error {
+            assert_eq!(SourceError::from(error), expected_conversion);
+        }
     }
 
     #[rstest]
