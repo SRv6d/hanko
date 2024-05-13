@@ -1,7 +1,8 @@
 use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
-use reqwest::{Client, Url};
+use serde::Deserialize;
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct Github {
@@ -42,6 +43,19 @@ impl Source for Github {
     }
 }
 
+/// A message from the GitHub API.
+#[derive(Debug, Deserialize)]
+struct Message {
+    message: String,
+}
+
+impl Deref for Message {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.message
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,6 +154,16 @@ mod tests {
             .unwrap();
 
         assert_eq!(keys, expected);
+    }
+
+    #[test]
+    fn json_message_parsed_correctly() {
+        let content = "I've Gotta Get a Message to You";
+        let json = json!({"message": content});
+
+        let message: Message = serde_json::from_value(json).unwrap();
+
+        assert_eq!(*message, *content);
     }
 
     /// A HTTP not found status code returns a `SourceError::UserNotFound`.
