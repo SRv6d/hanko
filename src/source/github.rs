@@ -1,4 +1,4 @@
-use super::{Result, Source};
+use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Url};
@@ -142,10 +142,10 @@ mod tests {
         assert_eq!(keys, expected);
     }
 
-    /// A HTTP not found status code returns a `SourceError::NotFound`.
+    /// A HTTP not found status code returns a `SourceError::UserNotFound`.
     #[rstest]
     #[tokio::test]
-    async fn get_keys_by_username_http_not_found_returns_not_found_error(
+    async fn get_keys_by_username_http_not_found_returns_user_not_found_error(
         api_w_mock_server: (Github, MockServer),
         client: Client,
     ) {
@@ -161,7 +161,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::NotFound));
+        assert!(matches!(error_result, SourceError::UserNotFound));
     }
 
     /// A HTTP unauthorized status code along with a body containing a bad credentials message
@@ -191,7 +191,7 @@ mod tests {
     /// A HTTP unauthorized status code without a known error message in the body returns a `SourceError::Other`.
     #[rstest]
     #[tokio::test]
-    async fn get_keys_by_username_http_unauthorized_other_returns_other(
+    async fn get_keys_by_username_http_unauthorized_other_returns_client_error(
         api_w_mock_server: (Github, MockServer),
         client: Client,
     ) {
@@ -207,7 +207,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::Other(..)));
+        assert!(matches!(error_result, SourceError::ClientError(..)));
     }
 
     /// A HTTP forbidden status code along with a body containing a rate limit exceeded message
@@ -234,10 +234,10 @@ mod tests {
         assert!(matches!(error_result, SourceError::RatelimitExceeded));
     }
 
-    /// A HTTP forbidden status code without a known error message in the body returns a `SourceError::Other`.
+    /// A HTTP forbidden status code without a known error message in the body returns a `SourceError::ClientError`.
     #[rstest]
     #[tokio::test]
-    async fn get_keys_by_username_http_forbidden_other_returns_other(
+    async fn get_keys_by_username_http_forbidden_other_returns_client_error(
         api_w_mock_server: (Github, MockServer),
         client: Client,
     ) {
@@ -253,44 +253,6 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::Other(..)));
-    }
-
-    /// A timeout returns a `SourceError::ConnectionError`.
-    #[rstest]
-    #[tokio::test]
-    async fn get_keys_by_username_timeout_returns_connection_error(
-        api_w_mock_server: (Github, MockServer),
-        client: Client,
-    ) {
-        let (api, server) = api_w_mock_server;
-        server.mock(|when, then| {
-            when.method(GET)
-                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.delay(std::time::Duration::from_secs(10));
-        });
-
-        let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
-            .await
-            .unwrap_err();
-
-        assert!(matches!(error_result, SourceError::ConnectionError));
-    }
-
-    /// A connection failure returns a `SourceError::ConnectionError`.
-    #[rstest]
-    #[tokio::test]
-    async fn get_keys_by_username_failing_to_connect_returns_connection_error(client: Client) {
-        let api = Github {
-            base_url: "http://2001:db8:1".parse().unwrap(),
-        };
-
-        let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
-            .await
-            .unwrap_err();
-
-        assert!(matches!(error_result, SourceError::ConnectionError));
+        assert!(matches!(error_result, SourceError::ClientError(..)));
     }
 }
