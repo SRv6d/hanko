@@ -1,4 +1,4 @@
-use super::{Result, Source, SourceError};
+use super::{Result, Source};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Url};
@@ -39,13 +39,6 @@ impl Source for Github {
         let response = request.send().await?;
         let signing_keys: Vec<SshPublicKey> = response.json().await?;
         Ok(signing_keys)
-    }
-}
-
-// Dummy implementation to make the code compile.
-impl From<reqwest::Error> for SourceError {
-    fn from(error: reqwest::Error) -> Self {
-        SourceError::Other(Box::new(error))
     }
 }
 
