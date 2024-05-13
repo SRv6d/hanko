@@ -192,7 +192,7 @@ mod tests {
         >,
     ) {
         let expected_conversion = SourceError::ConnectionError;
-        // The assertion is skipped if the used fixtured failed to create an error.
+        // The assertion is skipped if the used fixture failed to create an error.
         if let Some(error) = error {
             assert_eq!(SourceError::from(error), expected_conversion);
         }
