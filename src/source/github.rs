@@ -1,6 +1,7 @@
 use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
+use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
 use std::ops::Deref;
 
@@ -37,9 +38,8 @@ impl Source for Github {
             .header("Accept", Self::ACCEPT_HEADER)
             .header("X-GitHub-Api-Version", Self::VERSION);
 
-        let response = request.send().await?;
-        let signing_keys: Vec<SshPublicKey> = response.json().await?;
-        Ok(signing_keys)
+        let response = handle_github_errors(request.send().await).await?;
+        Ok(response.json().await?)
     }
 }
 
@@ -56,6 +56,48 @@ impl Deref for Message {
         &self.message
     }
 }
+
+/// Handle GitHub specific HTTP errors.
+/// Takes a reqwest result containing a response, converting it into the `Result` type used in this
+/// module which contains either an `Err` variant with a `SourceError` or an `Ok` variant with the
+/// response that can be deserialized.
+/// If the error is not specific to GitHub, it is converted into a `SourceError` using the
+/// more generic `From<reqwest::Error>` implementation.
+async fn handle_github_errors(request_result: reqwest::Result<Response>) -> Result<Response> {
+    match request_result {
+        Err(error) => Err(SourceError::from(error)),
+        Ok(response) => {
+            if let Err(error) = response.error_for_status_ref() {
+                let status = error
+                    .status()
+                    .expect("Status code error must contain status code");
+                match status {
+                    StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+                    StatusCode::FORBIDDEN => {
+                        if let Ok(message) = &response.json::<Message>().await {
+                            if message.to_lowercase().contains("rate limit exceeded") {
+                                return Err(SourceError::RatelimitExceeded);
+                            }
+                        }
+                        return Err(SourceError::from(error));
+                    }
+                    StatusCode::UNAUTHORIZED => {
+                        if let Ok(message) = response.json::<Message>().await {
+                            if message.to_lowercase().contains("bad credentials") {
+                                return Err(SourceError::BadCredentials);
+                            }
+                        }
+                        return Err(SourceError::from(error));
+                    }
+
+                    _ => return Err(SourceError::from(error)),
+                }
+            }
+            Ok(response)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
