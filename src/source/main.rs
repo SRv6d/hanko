@@ -38,6 +38,11 @@ pub enum SourceError {
 }
 
 /// Conversion for generic reqwest errors not specific to any `Source`.
+///
+/// # Panics
+///
+/// Since the error type is not and enum and cannot be matched exhaustively, this conversion panics
+/// as a last resort if an unexpected error is encountered.
 impl From<reqwest::Error> for SourceError {
     #[allow(clippy::panic)]
     fn from(error: reqwest::Error) -> Self {
