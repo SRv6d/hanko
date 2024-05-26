@@ -1,7 +1,7 @@
 use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
-use reqwest::{Client, Url};
+use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ impl Source for Gitlab {
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER);
 
-        let response = request.send().await?;
+        let response = handle_gitlab_errors(request.send().await)?;
         // The API has no way to filter keys by usage type, so this contains all the user's keys.
         let all_keys: Vec<ApiSshKey> = response.json().await?;
         // Filter out the keys that are not used for signing.
@@ -49,6 +49,27 @@ impl Source for Gitlab {
 
         Ok(signing_keys.map(SshPublicKey::from).collect())
     }
+}
+
+/// Handle GitLab specific HTTP errors.
+fn handle_gitlab_errors(request_result: reqwest::Result<Response>) -> Result<Response> {
+    let response = request_result?;
+
+    if let Err(error) = response.error_for_status_ref() {
+        let status = error
+            .status()
+            .expect("Status code error must contain status code");
+
+        match status {
+            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::UNAUTHORIZED => {
+                return Err(SourceError::BadCredentials);
+            }
+            _ => return Err(SourceError::from(error)),
+        }
+    }
+
+    Ok(response)
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
