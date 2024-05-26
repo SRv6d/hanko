@@ -1,7 +1,9 @@
-use super::Source;
+use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
-use reqwest::{Client, Result, Url};
+use reqwest::{Client, Response, StatusCode, Url};
+use serde::Deserialize;
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct Github {
@@ -36,38 +38,105 @@ impl Source for Github {
             .header("Accept", Self::ACCEPT_HEADER)
             .header("X-GitHub-Api-Version", Self::VERSION);
 
-        let response = request.send().await?;
-        response.json().await
+        let response = handle_github_errors(request.send().await).await?;
+        Ok(response.json().await?)
     }
+}
+
+/// A message from the GitHub API.
+#[derive(Debug, Deserialize)]
+struct Message {
+    message: String,
+}
+
+impl Deref for Message {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.message
+    }
+}
+
+/// Handle GitHub specific HTTP errors.
+/// Takes a reqwest result containing a response, converting it into the `Result` type used in this
+/// module which contains either an `Err` variant with a `SourceError` or an `Ok` variant with the
+/// response that can be deserialized.
+/// If the error is not specific to GitHub, it is converted into a `SourceError` using the
+/// more generic `From<reqwest::Error>` implementation.
+async fn handle_github_errors(request_result: reqwest::Result<Response>) -> Result<Response> {
+    let response = request_result?;
+
+    if let Err(error) = response.error_for_status_ref() {
+        let status = error
+            .status()
+            .expect("Status code error must contain status code");
+        let message = response.json::<Message>().await.ok();
+
+        match status {
+            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::FORBIDDEN
+                if message
+                    .as_ref()
+                    .is_some_and(|m| m.to_lowercase().contains("rate limit exceeded")) =>
+            {
+                return Err(SourceError::RatelimitExceeded);
+            }
+            StatusCode::UNAUTHORIZED
+                if message
+                    .as_ref()
+                    .is_some_and(|m| m.to_lowercase().contains("bad credentials")) =>
+            {
+                return Err(SourceError::BadCredentials);
+            }
+            _ => return Err(SourceError::from(error)),
+        }
+    }
+
+    Ok(response)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use httpmock::prelude::*;
-    use rstest::rstest;
+    use reqwest::StatusCode;
+    use rstest::*;
+    use serde_json::json;
 
     const API_VERSION: &str = "2022-11-28";
     const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
 
-    /// The API request made to get a users signing keys is correct.
-    #[tokio::test]
-    async fn api_request_is_correct() {
-        let username = "octocat";
+    const EXAMPLE_USERNAME: &str = "octocat";
+
+    /// An API instance and a mock server with the APIs base url configured to that of the mock server.
+    #[fixture]
+    fn api_w_mock_server() -> (Github, MockServer) {
         let server = MockServer::start();
+        let api = Github {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        (api, server)
+    }
+
+    #[fixture]
+    fn client() -> Client {
+        Client::new()
+    }
+
+    /// The API request made to get a users signing keys is correct.
+    #[rstest]
+    #[tokio::test]
+    async fn api_request_is_correct(api_w_mock_server: (Github, MockServer), client: Client) {
+        let (api, server) = api_w_mock_server;
         let mock = server.mock(|when, _| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"))
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"))
                 .header("accept", API_ACCEPT_HEADER)
                 .header("x-github-api-version", API_VERSION)
                 .header("user-agent", USER_AGENT);
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let _ = api.get_keys_by_username(username, &client).await;
+        let _ = api.get_keys_by_username(EXAMPLE_USERNAME, &client).await;
 
         mock.assert();
     }
@@ -106,23 +175,147 @@ mod tests {
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
         #[case] expected: Vec<SshPublicKey>,
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
     ) {
-        let username = "octocat";
-        let server = MockServer::start();
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/users/{username}/ssh_signing_keys"));
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(200)
                 .header("Content-Type", "application/json; charset=utf-8")
                 .body(body);
         });
 
-        let client = Client::new();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let keys = api.get_keys_by_username(username, &client).await.unwrap();
+        let keys = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap();
 
         assert_eq!(keys, expected);
+    }
+
+    #[test]
+    fn json_message_parsed_correctly() {
+        let content = "I've Gotta Get a Message to You";
+        let json = json!({"message": content});
+
+        let message: Message = serde_json::from_value(json).unwrap();
+
+        assert_eq!(*message, *content);
+    }
+
+    /// A HTTP not found status code returns a `SourceError::UserNotFound`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_not_found_returns_user_not_found_error(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
+            then.status(StatusCode::NOT_FOUND.into());
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::UserNotFound));
+    }
+
+    /// A HTTP unauthorized status code along with a body containing a bad credentials message
+    /// returns a `SourceError::BadCredentials`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_unauthorized_bad_credentials_returns_bad_credentials(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
+            then.status(StatusCode::UNAUTHORIZED.into())
+                .json_body(json!({"message": "Bad credentials"}));
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::BadCredentials));
+    }
+
+    /// A HTTP unauthorized status code without a known error message in the body returns a `SourceError::Other`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_unauthorized_other_returns_client_error(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
+            then.status(StatusCode::UNAUTHORIZED.into());
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::ClientError(..)));
+    }
+
+    /// A HTTP forbidden status code along with a body containing a rate limit exceeded message
+    /// returns a `SourceError::RatelimitExceeded`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_forbidden_rate_limit_exceeded_returns_rate_limit_exceeded(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
+            then.status(StatusCode::FORBIDDEN.into())
+                .json_body(json!({"message": "rate limit exceeded"}));
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::RatelimitExceeded));
+    }
+
+    /// A HTTP forbidden status code without a known error message in the body returns a `SourceError::ClientError`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_forbidden_other_returns_client_error(
+        api_w_mock_server: (Github, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
+            then.status(StatusCode::FORBIDDEN.into());
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::ClientError(..)));
     }
 }

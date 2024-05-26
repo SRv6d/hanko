@@ -1,7 +1,7 @@
-use super::Source;
+use super::{Result, Source, SourceError};
 use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
-use reqwest::{Client, Result, Url};
+use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ impl Source for Gitlab {
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER);
 
-        let response = request.send().await?;
+        let response = handle_gitlab_errors(request.send().await)?;
         // The API has no way to filter keys by usage type, so this contains all the user's keys.
         let all_keys: Vec<ApiSshKey> = response.json().await?;
         // Filter out the keys that are not used for signing.
@@ -49,6 +49,27 @@ impl Source for Gitlab {
 
         Ok(signing_keys.map(SshPublicKey::from).collect())
     }
+}
+
+/// Handle GitLab specific HTTP errors.
+fn handle_gitlab_errors(request_result: reqwest::Result<Response>) -> Result<Response> {
+    let response = request_result?;
+
+    if let Err(error) = response.error_for_status_ref() {
+        let status = error
+            .status()
+            .expect("Status code error must contain status code");
+
+        match status {
+            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::UNAUTHORIZED => {
+                return Err(SourceError::BadCredentials);
+            }
+            _ => return Err(SourceError::from(error)),
+        }
+    }
+
+    Ok(response)
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -90,27 +111,41 @@ impl From<ApiSshKey> for SshPublicKey {
 mod tests {
     use super::*;
     use httpmock::prelude::*;
-    use rstest::rstest;
+    use reqwest::StatusCode;
+    use rstest::*;
 
     const API_ACCEPT_HEADER: &str = "application/json";
 
-    /// The API request made to get a users signing keys is correct.
-    #[tokio::test]
-    async fn api_request_is_correct() {
-        let username = "tanuki";
+    const EXAMPLE_USERNAME: &str = "tanuki";
+
+    /// An API instance and a mock server with the APIs base url configured to that of the mock server.
+    #[fixture]
+    fn api_w_mock_server() -> (Gitlab, MockServer) {
         let server = MockServer::start();
+        let api = Gitlab {
+            base_url: server.base_url().parse().unwrap(),
+        };
+        (api, server)
+    }
+
+    #[fixture]
+    fn client() -> Client {
+        Client::new()
+    }
+
+    /// The API request made to get a users signing keys is correct.
+    #[rstest]
+    #[tokio::test]
+    async fn api_request_is_correct(api_w_mock_server: (Gitlab, MockServer), client: Client) {
+        let (api, server) = api_w_mock_server;
         let mock = server.mock(|when, _| {
             when.method(GET)
-                .path(format!("/api/v4/users/{username}/keys"))
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"))
                 .header("accept", API_ACCEPT_HEADER)
                 .header("user-agent", USER_AGENT);
         });
 
-        let client = Client::new();
-        let api = Gitlab {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let _ = api.get_keys_by_username(username, &client).await;
+        let _ = api.get_keys_by_username(EXAMPLE_USERNAME, &client).await;
 
         mock.assert();
     }
@@ -154,23 +189,67 @@ mod tests {
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
         #[case] expected: Vec<SshPublicKey>,
+        api_w_mock_server: (Gitlab, MockServer),
+        client: Client,
     ) {
-        let username = "tanuki";
-        let server = MockServer::start();
+        let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
             when.method(GET)
-                .path(format!("/api/v4/users/{username}/keys"));
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
             then.status(200)
                 .header("Content-Type", "application/json")
                 .body(body);
         });
 
-        let client = Client::new();
-        let api = Gitlab {
-            base_url: server.base_url().parse().unwrap(),
-        };
-        let keys = api.get_keys_by_username(username, &client).await.unwrap();
+        let keys = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap();
 
         assert_eq!(keys, expected);
+    }
+
+    /// A HTTP not found status code returns a `SourceError::UserNotFound`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_not_found_returns_user_not_found_error(
+        api_w_mock_server: (Gitlab, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
+            then.status(StatusCode::NOT_FOUND.into());
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::UserNotFound));
+    }
+
+    /// A HTTP unauthorized status code returns a `SourceError::BadCredentials`.
+    #[rstest]
+    #[tokio::test]
+    async fn get_keys_by_username_http_unauthorized_returns_bad_credentials(
+        api_w_mock_server: (Gitlab, MockServer),
+        client: Client,
+    ) {
+        let (api, server) = api_w_mock_server;
+        server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
+            then.status(StatusCode::UNAUTHORIZED.into());
+        });
+
+        let error_result = api
+            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error_result, SourceError::BadCredentials));
     }
 }

@@ -24,8 +24,12 @@ chrono = "0.4.37"
 clap = { version = "4.5.4", features = ["derive", "env", "string"] }
 figment = { version = "0.10.16", features = ["toml"] }
 gix-config = "0.36.1"
-reqwest = { version = "0.12.2", features = ["json"] }
+reqwest = { version = "0.12.2", features = [
+    "json",
+    "blocking", # required for tests
+] }
 serde = { version = "1.0.197", features = ["derive"] }
+thiserror = "1.0.59"
 tokio = { version = "1.37.0", features = ["full"] }
 
 [dev-dependencies]
@@ -33,7 +37,9 @@ codspeed-criterion-compat = "2.4.1"
 criterion = "0.5.1"
 httpmock = "0.7.0"
 indoc = "2.0.5"
+proptest = "1.4.0"
 rstest = "0.19.0"
+serde_json = "1.0.116"
 tempfile = "3.10.1"
 
 [[bench]]

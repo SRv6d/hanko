@@ -1,6 +1,7 @@
 pub use github::Github;
 pub use gitlab::Gitlab;
-pub use main::{Source, SourceMap};
+pub(super) use main::Result;
+pub use main::{Source, SourceError, SourceMap};
 
 mod github;
 mod gitlab;
