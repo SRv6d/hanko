@@ -64,38 +64,35 @@ impl Deref for Message {
 /// If the error is not specific to GitHub, it is converted into a `SourceError` using the
 /// more generic `From<reqwest::Error>` implementation.
 async fn handle_github_errors(request_result: reqwest::Result<Response>) -> Result<Response> {
-    match request_result {
-        Err(error) => Err(SourceError::from(error)),
-        Ok(response) => {
-            if let Err(error) = response.error_for_status_ref() {
-                let status = error
-                    .status()
-                    .expect("Status code error must contain status code");
-                match status {
-                    StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
-                    StatusCode::FORBIDDEN => {
-                        if let Ok(message) = &response.json::<Message>().await {
-                            if message.to_lowercase().contains("rate limit exceeded") {
-                                return Err(SourceError::RatelimitExceeded);
-                            }
-                        }
-                        return Err(SourceError::from(error));
-                    }
-                    StatusCode::UNAUTHORIZED => {
-                        if let Ok(message) = response.json::<Message>().await {
-                            if message.to_lowercase().contains("bad credentials") {
-                                return Err(SourceError::BadCredentials);
-                            }
-                        }
-                        return Err(SourceError::from(error));
-                    }
+    let response = request_result?;
 
-                    _ => return Err(SourceError::from(error)),
-                }
+    if let Err(error) = response.error_for_status_ref() {
+        let status = error
+            .status()
+            .expect("Status code error must contain status code");
+        let message = response.json::<Message>().await.ok();
+
+        match status {
+            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::FORBIDDEN
+                if message
+                    .as_ref()
+                    .is_some_and(|m| m.to_lowercase().contains("rate limit exceeded")) =>
+            {
+                return Err(SourceError::RatelimitExceeded);
             }
-            Ok(response)
+            StatusCode::UNAUTHORIZED
+                if message
+                    .as_ref()
+                    .is_some_and(|m| m.to_lowercase().contains("bad credentials")) =>
+            {
+                return Err(SourceError::BadCredentials);
+            }
+            _ => return Err(SourceError::from(error)),
         }
     }
+
+    Ok(response)
 }
 
 #[cfg(test)]
