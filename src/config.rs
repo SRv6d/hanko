@@ -71,12 +71,6 @@ impl Configuration {
         figment.admerge(Toml::file(path)).extract()
     }
 
-    /// Load the configuration from a figment provider without using any defaults.
-    #[cfg(test)]
-    fn _load_from_provider(provider: impl figment::Provider) -> figment::Result<Self> {
-        Figment::from(provider).extract()
-    }
-
     /// Save the configuration.
     fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
         todo!("Save the configuration while preserving formatting.");
@@ -196,8 +190,12 @@ mod tests {
             ]
         };
 
-        let config = Configuration::_load_from_provider(Toml::string(toml)).unwrap();
-        assert_eq!(config, expected);
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(CONFIG, toml)?;
+            let config = Configuration::load(&PathBuf::from(CONFIG), false).unwrap();
+            assert_eq!(config, expected);
+            Ok(())
+        });
     }
 
     /// The default configuration contains the default GitHub and GitLab sources.
