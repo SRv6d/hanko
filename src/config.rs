@@ -122,12 +122,16 @@ struct SourceConfiguration {
 mod tests {
     use super::*;
     use indoc::indoc;
+    use rstest::*;
 
-    const CONFIG: &str = "config.toml";
+    #[fixture]
+    fn config_path() -> PathBuf {
+        PathBuf::from("config.toml")
+    }
 
     /// The example configuration is rendered correctly.
-    #[test]
-    fn example_config() {
+    #[rstest]
+    fn example_config(config_path: PathBuf) {
         let toml = indoc! {r#"
         users = [
             { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
@@ -191,8 +195,8 @@ mod tests {
         };
 
         figment::Jail::expect_with(|jail| {
-            jail.create_file(CONFIG, toml)?;
-            let config = Configuration::load(&PathBuf::from(CONFIG), false).unwrap();
+            jail.create_file(&config_path, toml)?;
+            let config = Configuration::load(&config_path, false).unwrap();
             assert_eq!(config, expected);
             Ok(())
         });
@@ -215,11 +219,11 @@ mod tests {
     }
 
     /// Loading an empty configuration file with defaults enabled returns the default configuration.
-    #[test]
-    fn load_empty_file_with_default_returns_exact_default() {
+    #[rstest]
+    fn load_empty_file_with_default_returns_exact_default(config_path: PathBuf) {
         figment::Jail::expect_with(|jail| {
-            jail.create_file(CONFIG, "")?;
-            let config = Configuration::load(&PathBuf::from(CONFIG), true).unwrap();
+            jail.create_file(&config_path, "")?;
+            let config = Configuration::load(&config_path, true).unwrap();
             assert_eq!(config, Configuration::default());
             Ok(())
         });
@@ -227,11 +231,11 @@ mod tests {
 
     /// Loading an empty configuration file without defaults enabled returns an error because
     /// there are missing fields.
-    #[test]
-    fn load_empty_file_without_default_returns_error() {
+    #[rstest]
+    fn load_empty_file_without_default_returns_error(config_path: PathBuf) {
         figment::Jail::expect_with(|jail| {
-            jail.create_file(CONFIG, "")?;
-            Configuration::load(&PathBuf::from(CONFIG), false).unwrap_err();
+            jail.create_file(&config_path, "")?;
+            Configuration::load(&config_path, false).unwrap_err();
             Ok(())
         });
     }
