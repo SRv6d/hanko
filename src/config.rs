@@ -60,16 +60,15 @@ impl Configuration {
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
-    pub fn load(path: &Path) -> figment::Result<Self> {
-        Figment::from(Serialized::defaults(Configuration::default()))
-            .admerge(Toml::file(path))
-            .extract()
-    }
-
-    /// Load the configuration from a figment provider without using any defaults.
-    #[cfg(test)]
-    fn _load_from_provider(provider: impl figment::Provider) -> figment::Result<Self> {
-        Figment::from(provider).extract()
+    pub fn load(path: &Path, defaults: bool) -> figment::Result<Self> {
+        let figment = {
+            if defaults {
+                Figment::from(Serialized::defaults(Configuration::default()))
+            } else {
+                Figment::new()
+            }
+        };
+        figment.admerge(Toml::file(path)).extract()
     }
 
     /// Save the configuration.
@@ -123,10 +122,16 @@ struct SourceConfiguration {
 mod tests {
     use super::*;
     use indoc::indoc;
+    use rstest::*;
+
+    #[fixture]
+    fn config_path() -> PathBuf {
+        PathBuf::from("config.toml")
+    }
 
     /// The example configuration is rendered correctly.
-    #[test]
-    fn example_config() {
+    #[rstest]
+    fn example_config(config_path: PathBuf) {
         let toml = indoc! {r#"
         users = [
             { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
@@ -189,8 +194,12 @@ mod tests {
             ]
         };
 
-        let config = Configuration::_load_from_provider(Toml::string(toml)).unwrap();
-        assert_eq!(config, expected);
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, toml)?;
+            let config = Configuration::load(&config_path, false).unwrap();
+            assert_eq!(config, expected);
+            Ok(())
+        });
     }
 
     /// The default configuration contains the default GitHub and GitLab sources.
@@ -207,5 +216,27 @@ mod tests {
             provider: SourceType::Gitlab,
             url: "https://gitlab.com".to_string(),
         }));
+    }
+
+    /// Loading an empty configuration file with defaults enabled returns the default configuration.
+    #[rstest]
+    fn load_empty_file_with_default_returns_exact_default(config_path: PathBuf) {
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, "")?;
+            let config = Configuration::load(&config_path, true).unwrap();
+            assert_eq!(config, Configuration::default());
+            Ok(())
+        });
+    }
+
+    /// Loading an empty configuration file without defaults enabled returns an error because
+    /// there are missing fields.
+    #[rstest]
+    fn load_empty_file_without_default_returns_error(config_path: PathBuf) {
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, "")?;
+            Configuration::load(&config_path, false).unwrap_err();
+            Ok(())
+        });
     }
 }

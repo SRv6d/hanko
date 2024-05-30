@@ -842,7 +842,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdefe49ed1057d124dc81a0681c30dd07de56ad96e32adc7b64e8f28eaab31c4"
 dependencies = [
  "atomic",
+ "parking_lot",
  "serde",
+ "tempfile",
  "toml",
  "uncased",
  "version_check",
