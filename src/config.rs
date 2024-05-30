@@ -60,10 +60,15 @@ impl Configuration {
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
-    pub fn load(path: &Path) -> figment::Result<Self> {
-        Figment::from(Serialized::defaults(Configuration::default()))
-            .admerge(Toml::file(path))
-            .extract()
+    pub fn load(path: &Path, defaults: bool) -> figment::Result<Self> {
+        let figment = {
+            if defaults {
+                Figment::from(Serialized::defaults(Configuration::default()))
+            } else {
+                Figment::new()
+            }
+        };
+        figment.admerge(Toml::file(path)).extract()
     }
 
     /// Load the configuration from a figment provider without using any defaults.
@@ -123,6 +128,8 @@ struct SourceConfiguration {
 mod tests {
     use super::*;
     use indoc::indoc;
+
+    const CONFIG: &str = "config.toml";
 
     /// The example configuration is rendered correctly.
     #[test]
@@ -207,5 +214,27 @@ mod tests {
             provider: SourceType::Gitlab,
             url: "https://gitlab.com".to_string(),
         }));
+    }
+
+    /// Loading an empty configuration file with defaults enabled returns the default configuration.
+    #[test]
+    fn load_empty_file_with_default_returns_exact_default() {
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(CONFIG, "")?;
+            let config = Configuration::load(&PathBuf::from(CONFIG), true).unwrap();
+            assert_eq!(config, Configuration::default());
+            Ok(())
+        });
+    }
+
+    /// Loading an empty configuration file without defaults enabled returns an error because
+    /// there are missing fields.
+    #[test]
+    fn load_empty_file_without_default_returns_error() {
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(CONFIG, "")?;
+            Configuration::load(&PathBuf::from(CONFIG), false).unwrap_err();
+            Ok(())
+        });
     }
 }
