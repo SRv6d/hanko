@@ -203,6 +203,7 @@ mod tests {
 
     /// Loading a configuration with a missing source returns an error.
     #[rstest]
+    #[allow(clippy::panic)]
     fn loading_configuration_with_missing_source_returns_error(config_path: PathBuf) {
         let toml = indoc! {r#"
         users = [
