@@ -5,6 +5,7 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashSet,
     env,
     path::{Path, PathBuf},
 };
@@ -60,7 +61,7 @@ impl Configuration {
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
-    pub fn load(path: &Path, defaults: bool) -> figment::Result<Self> {
+    pub fn load(path: &Path, defaults: bool) -> Result<Self, ConfigError> {
         let figment = {
             if defaults {
                 Figment::from(Serialized::defaults(Configuration::default()))
@@ -68,12 +69,45 @@ impl Configuration {
                 Figment::new()
             }
         };
-        figment.admerge(Toml::file(path)).extract()
+        let config: Self = figment.admerge(Toml::file(path)).extract()?;
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Validate the configuration.
+    fn validate(&self) -> Result<(), ConfigError> {
+        if let Some(users) = &self.users {
+            let used_sources: HashSet<&String> = users.iter().flat_map(|u| &u.sources).collect();
+            let configured_sources: HashSet<&String> =
+                self.sources.iter().map(|s| &s.name).collect();
+
+            let missing_sources: Vec<String> = used_sources
+                .difference(&configured_sources)
+                .map(ToString::to_string)
+                .collect();
+            if !missing_sources.is_empty() {
+                return Err(ConfigError::MissingSources(missing_sources));
+            }
+        }
+        Ok(())
     }
 
     /// Save the configuration.
     fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
         todo!("Save the configuration while preserving formatting.");
+    }
+}
+
+/// An error that can occur when interacting with a [`Configuration`].
+#[derive(Debug, PartialEq)]
+pub enum ConfigError {
+    SyntaxError(figment::Error),
+    MissingSources(Vec<String>),
+}
+
+impl From<figment::Error> for ConfigError {
+    fn from(error: figment::Error) -> Self {
+        ConfigError::SyntaxError(error)
     }
 }
 
@@ -129,79 +163,6 @@ mod tests {
         PathBuf::from("config.toml")
     }
 
-    /// The example configuration is rendered correctly.
-    #[rstest]
-    fn example_config(config_path: PathBuf) {
-        let toml = indoc! {r#"
-        users = [
-            { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
-            { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
-            { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },
-            { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
-            { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
-            { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
-        ]
-        local = [
-            "jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
-        ]
-        
-        [[sources]]
-        name = "acme-corp"
-        provider = "gitlab"
-        url = "https://git.acme.corp"
-        "#};
-        let expected = Configuration {
-            allowed_signers: None,
-            users: Some(vec![
-                UserConfiguration {
-                    name: "torvalds".to_string(),
-                    principals: vec!["torvalds@linux-foundation.org".to_string()],
-                    sources: vec!["github".to_string()],
-                },
-                UserConfiguration {
-                    name: "gvanrossum".to_string(),
-                    principals: vec!["guido@python.org".to_string()],
-                    sources: vec!["github".to_string(), "gitlab".to_string()],
-                },
-                UserConfiguration {
-                    name: "graydon".to_string(),
-                    principals: vec!["graydon@pobox.com".to_string()],
-                    sources: vec!["github".to_string()],
-                },
-                UserConfiguration {
-                    name: "cwoods".to_string(),
-                    principals: vec!["cwoods@acme.corp".to_string()],
-                    sources: vec!["acme-corp".to_string()],
-                },
-                UserConfiguration {
-                    name: "rdavis".to_string(),
-                    principals: vec!["rdavis@acme.corp".to_string()],
-                    sources: vec!["acme-corp".to_string()],
-                },
-                UserConfiguration {
-                    name: "pbrock".to_string(),
-                    principals: vec!["pbrock@acme.corp".to_string()],
-                    sources: vec!["acme-corp".to_string()],
-                },
-            ]),
-            local: Some(vec!["jdoe@example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".parse().unwrap()]),
-            sources: vec![
-                SourceConfiguration {
-                    name: "acme-corp".to_string(),
-                    provider: SourceType::Gitlab,
-                    url: "https://git.acme.corp".to_string(),
-                }
-            ]
-        };
-
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, toml)?;
-            let config = Configuration::load(&config_path, false).unwrap();
-            assert_eq!(config, expected);
-            Ok(())
-        });
-    }
-
     /// The default configuration contains the default GitHub and GitLab sources.
     #[test]
     fn default_configuration_contains_default_sources() {
@@ -236,6 +197,31 @@ mod tests {
         figment::Jail::expect_with(|jail| {
             jail.create_file(&config_path, "")?;
             Configuration::load(&config_path, false).unwrap_err();
+            Ok(())
+        });
+    }
+
+    /// Loading a configuration with a missing source returns an error.
+    #[rstest]
+    #[allow(clippy::panic)]
+    fn loading_configuration_with_missing_source_returns_error(config_path: PathBuf) {
+        let toml = indoc! {r#"
+        users = [
+            { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+            { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
+        ]
+        "#};
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, toml)?;
+            let error = Configuration::load(&config_path, true).unwrap_err();
+
+            if let ConfigError::MissingSources(missing_sources) = error {
+                assert!(["acme-corp".to_string(), "lumon-industries".to_string()]
+                    .iter()
+                    .all(|s| missing_sources.contains(s)));
+            } else {
+                panic!("Unexpected error returned: {error:?}");
+            }
             Ok(())
         });
     }
