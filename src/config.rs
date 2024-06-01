@@ -3,7 +3,8 @@ use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
 };
-use serde::{Deserialize, Serialize};
+use reqwest::Url;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::HashSet,
     env,
@@ -31,12 +32,12 @@ impl Default for Configuration {
                 SourceConfiguration {
                     name: "github".to_string(),
                     provider: SourceType::Github,
-                    url: "https://api.github.com".to_string(),
+                    url: "https://api.github.com".parse().unwrap(),
                 },
                 SourceConfiguration {
                     name: "gitlab".to_string(),
                     provider: SourceType::Gitlab,
-                    url: "https://gitlab.com".to_string(),
+                    url: "https://gitlab.com".parse().unwrap(),
                 },
             ],
         }
@@ -52,8 +53,8 @@ impl Configuration {
             .map(|source_config| {
                 let name = source_config.name.clone();
                 let source: Box<dyn Source> = match source_config.provider {
-                    SourceType::Github => Box::new(Github::new(source_config.url.parse().unwrap())),
-                    SourceType::Gitlab => Box::new(Gitlab::new(source_config.url.parse().unwrap())),
+                    SourceType::Github => Box::new(Github::new(source_config.url.clone())),
+                    SourceType::Gitlab => Box::new(Gitlab::new(source_config.url.clone())),
                 };
                 (name, source)
             })
@@ -149,7 +150,25 @@ pub struct UserConfiguration {
 struct SourceConfiguration {
     name: String,
     provider: SourceType,
-    url: String,
+    #[serde(serialize_with = "serialize_url", deserialize_with = "deserialize_url")]
+    url: Url,
+}
+
+fn deserialize_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    let url = reqwest::Url::parse(&s).map_err(serde::de::Error::custom)?;
+    Ok(url)
+}
+
+fn serialize_url<U, S>(url: U, serializer: S) -> Result<S::Ok, S::Error>
+where
+    U: AsRef<str>,
+    S: Serializer,
+{
+    serializer.serialize_str(url.as_ref())
 }
 
 #[cfg(test)]
@@ -170,12 +189,12 @@ mod tests {
         assert!(default_sources.contains(&SourceConfiguration {
             name: "github".to_string(),
             provider: SourceType::Github,
-            url: "https://api.github.com".to_string(),
+            url: "https://api.github.com".parse().unwrap(),
         }));
         assert!(default_sources.contains(&SourceConfiguration {
             name: "gitlab".to_string(),
             provider: SourceType::Gitlab,
-            url: "https://gitlab.com".to_string(),
+            url: "https://gitlab.com".parse().unwrap(),
         }));
     }
 
