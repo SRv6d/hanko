@@ -1,3 +1,3 @@
-fn main() {
-    hanko::cli::entrypoint().unwrap_or_else(|err| eprintln!("error: {err}"))
+fn main() -> Result<(), anyhow::Error> {
+    hanko::cli::entrypoint()
 }

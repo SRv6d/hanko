@@ -103,7 +103,7 @@ impl Configuration {
 /// An error that can occur when interacting with a [`Configuration`].
 #[derive(Debug, PartialEq, Error)]
 pub enum ConfigError {
-    #[error("contains a syntax error")]
+    #[error("{0}")]
     SyntaxError(figment::Error),
     #[error("missing sources")]
     MissingSources(Vec<String>),

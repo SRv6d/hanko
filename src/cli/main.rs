@@ -1,11 +1,11 @@
 use super::{manage_signers::ManageSigners, manage_sources::ManageSources, update::update};
-use crate::{ConfigError, Configuration};
+use crate::Configuration;
+use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
     Args, Parser, Subcommand,
 };
 use std::{env, path::PathBuf};
-use thiserror::Error;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -57,12 +57,6 @@ enum Commands {
     Source(ManageSources),
 }
 
-#[derive(Debug, Error)]
-pub enum CliError {
-    #[error("invalid configuration, {0}")]
-    Config(#[from] ConfigError),
-}
-
 /// The default configuration file path according to the XDG Base Directory Specification.
 /// If neither `$XDG_CONFIG_HOME` nor `$HOME` are set, `Resettable::Reset` is returned, forcing the user to specify the path.
 fn default_config_path() -> Resettable<OsStr> {
@@ -78,9 +72,9 @@ fn default_config_path() -> Resettable<OsStr> {
     }
 }
 /// The main CLI entrypoint.
-pub fn entrypoint() -> Result<(), CliError> {
+pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
-    let config = Configuration::load(&cli.config, true)?;
+    let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
 
     match &cli.command {
         Commands::Update => {
