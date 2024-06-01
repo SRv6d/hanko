@@ -10,6 +10,7 @@ use std::{
     env,
     path::{Path, PathBuf},
 };
+use thiserror::Error;
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -100,9 +101,11 @@ impl Configuration {
 }
 
 /// An error that can occur when interacting with a [`Configuration`].
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Error)]
 pub enum ConfigError {
+    #[error("contains a syntax error")]
     SyntaxError(figment::Error),
+    #[error("missing sources")]
     MissingSources(Vec<String>),
 }
 

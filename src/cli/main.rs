@@ -4,10 +4,6 @@ use clap::{
     builder::{OsStr, Resettable},
     Args, Parser, Subcommand,
 };
-use figment::{
-    providers::{Format, Serialized, Toml},
-    Figment,
-};
 use std::{env, error::Error, path::PathBuf};
 
 #[derive(Debug, Parser)]
@@ -77,10 +73,7 @@ fn default_config_path() -> Resettable<OsStr> {
 /// The main CLI entrypoint.
 pub fn entrypoint() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    let config: Configuration = Figment::from(Serialized::defaults(Configuration::default()))
-        .admerge(Toml::file(cli.config))
-        .extract()
-        .unwrap();
+    let config = Configuration::load(&cli.config, true)?;
 
     match &cli.command {
         Commands::Update => {
