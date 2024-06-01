@@ -1,5 +1,3 @@
-use std::error::Error;
-
-fn main() -> Result<(), Box<dyn Error>> {
-    hanko::cli::entrypoint()
+fn main() {
+    hanko::cli::entrypoint().unwrap_or_else(|err| eprintln!("error: {err}"))
 }
