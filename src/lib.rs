@@ -2,7 +2,7 @@
 #![warn(clippy::panic)]
 #![forbid(unsafe_code)]
 
-pub use config::Configuration;
+pub use config::{ConfigError, Configuration};
 pub use core::*;
 pub use signer::{AllowedSignersEntry, AllowedSignersFile};
 pub use source::{Github, Gitlab, Source, SourceError, SourceMap};
