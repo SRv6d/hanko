@@ -10,7 +10,6 @@ use std::{
     env,
     path::{Path, PathBuf},
 };
-use thiserror::Error;
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -63,7 +62,7 @@ impl Configuration {
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
-    pub fn load(path: &Path, defaults: bool) -> Result<Self, ConfigError> {
+    pub fn load(path: &Path, defaults: bool) -> Result<Self, Error> {
         let figment = {
             if defaults {
                 Figment::from(Serialized::defaults(Configuration::default()))
@@ -77,7 +76,7 @@ impl Configuration {
     }
 
     /// Validate the configuration.
-    fn validate(&self) -> Result<(), ConfigError> {
+    fn validate(&self) -> Result<(), Error> {
         if let Some(users) = &self.users {
             let used_sources: HashSet<&String> = users.iter().flat_map(|u| &u.sources).collect();
             let configured_sources: HashSet<&String> =
@@ -88,7 +87,7 @@ impl Configuration {
                 .map(ToString::to_string)
                 .collect();
             if !missing_sources.is_empty() {
-                return Err(ConfigError::MissingSources(missing_sources));
+                return Err(Error::MissingSources(missing_sources));
             }
         }
         Ok(())
@@ -101,17 +100,17 @@ impl Configuration {
 }
 
 /// An error that can occur when interacting with a [`Configuration`].
-#[derive(Debug, PartialEq, Error)]
-pub enum ConfigError {
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub enum Error {
     #[error("{0}")]
     SyntaxError(figment::Error),
     #[error("missing sources")]
     MissingSources(Vec<String>),
 }
 
-impl From<figment::Error> for ConfigError {
+impl From<figment::Error> for Error {
     fn from(error: figment::Error) -> Self {
-        ConfigError::SyntaxError(error)
+        Error::SyntaxError(error)
     }
 }
 
@@ -237,7 +236,7 @@ mod tests {
             jail.create_file(&config_path, toml)?;
             let error = Configuration::load(&config_path, true).unwrap_err();
 
-            if let ConfigError::MissingSources(missing_sources) = error {
+            if let Error::MissingSources(missing_sources) = error {
                 assert!(["acme-corp".to_string(), "lumon-industries".to_string()]
                     .iter()
                     .all(|s| missing_sources.contains(s)));
