@@ -1,3 +1,5 @@
-fn main() {
-    hanko::cli::entrypoint();
+use std::error::Error;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    hanko::cli::entrypoint()
 }

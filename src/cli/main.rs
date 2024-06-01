@@ -8,7 +8,7 @@ use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
 };
-use std::{env, path::PathBuf};
+use std::{env, error::Error, path::PathBuf};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -75,7 +75,7 @@ fn default_config_path() -> Resettable<OsStr> {
     }
 }
 /// The main CLI entrypoint.
-pub fn entrypoint() {
+pub fn entrypoint() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     let config: Configuration = Figment::from(Serialized::defaults(Configuration::default()))
         .admerge(Toml::file(cli.config))
@@ -93,6 +93,7 @@ pub fn entrypoint() {
             panic!("Not yet implemented");
         }
     }
+    Ok(())
 }
 
 #[cfg(test)]
