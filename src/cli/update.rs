@@ -5,7 +5,7 @@ use crate::{
 };
 use tokio::runtime::Runtime;
 
-pub(super) fn update(config: Configuration) {
+pub(super) fn update(config: Configuration) -> Result<(), Error> {
     let rt = Runtime::new().unwrap();
     let sources = config.get_sources();
     let path = &config.allowed_signers.expect("no default value");
@@ -26,7 +26,12 @@ pub(super) fn update(config: Configuration) {
     }
 
     file.write().unwrap();
+    Ok(())
 }
+
+/// An error that can occur when updating the allowed signers file.
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub enum Error {}
 
 async fn get_public_keys(user: &UserConfiguration, sources: &SourceMap) -> Vec<SshPublicKey> {
     let client = reqwest::Client::new();

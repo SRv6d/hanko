@@ -77,15 +77,8 @@ pub fn entrypoint() -> Result<()> {
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
 
     match &cli.command {
-        Commands::Update => {
-            update(config);
-        }
-        Commands::Signer(_) => {
-            panic!("Not yet implemented");
-        }
-        Commands::Source(_) => {
-            panic!("Not yet implemented");
-        }
+        Commands::Update => update(config).context("Failed to update the allowed signers file")?,
+        _ => panic!("Not yet implemented"),
     }
     Ok(())
 }
