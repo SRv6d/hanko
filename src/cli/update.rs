@@ -3,9 +3,10 @@ use crate::{
     config::UserConfiguration, AllowedSignersEntry, AllowedSignersFile, Configuration, SourceMap,
     SshPublicKey,
 };
+use anyhow::{Context, Result};
 use tokio::runtime::Runtime;
 
-pub(super) fn update(config: Configuration) -> Result<(), Error> {
+pub(super) fn update(config: Configuration) -> Result<()> {
     let rt = Runtime::new().unwrap();
     let sources = config.get_sources();
     let path = &config.allowed_signers.expect("no default value");
@@ -24,14 +25,13 @@ pub(super) fn update(config: Configuration) -> Result<(), Error> {
             }
         }
     }
+    file.write().context(format!(
+        "Failed to write allowed signers file to {}",
+        path.display()
+    ))?;
 
-    file.write().unwrap();
     Ok(())
 }
-
-/// An error that can occur when updating the allowed signers file.
-#[derive(Debug, PartialEq, thiserror::Error)]
-pub enum Error {}
 
 async fn get_public_keys(user: &UserConfiguration, sources: &SourceMap) -> Vec<SshPublicKey> {
     let client = reqwest::Client::new();
