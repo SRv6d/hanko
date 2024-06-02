@@ -7,7 +7,8 @@ use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::HashSet,
-    env,
+    env, fmt,
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
@@ -87,7 +88,7 @@ impl Configuration {
                 .map(ToString::to_string)
                 .collect();
             if !missing_sources.is_empty() {
-                return Err(Error::MissingSources(missing_sources));
+                return Err(Error::MissingSources(MissingSourcesError(missing_sources)));
             }
         }
         Ok(())
@@ -104,13 +105,28 @@ impl Configuration {
 pub enum Error {
     #[error("{0}")]
     SyntaxError(figment::Error),
-    #[error("missing sources")]
-    MissingSources(Vec<String>),
+    #[error("missing sources {0}")]
+    MissingSources(MissingSourcesError),
 }
 
 impl From<figment::Error> for Error {
     fn from(error: figment::Error) -> Self {
         Error::SyntaxError(error)
+    }
+}
+
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub struct MissingSourcesError(Vec<String>);
+impl fmt::Display for MissingSourcesError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0.join(", "))
+    }
+}
+impl Deref for MissingSourcesError {
+    type Target = Vec<String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
