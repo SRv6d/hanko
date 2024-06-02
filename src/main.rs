@@ -1,3 +1,3 @@
-fn main() {
-    hanko::cli::entrypoint();
+fn main() -> Result<(), anyhow::Error> {
+    hanko::cli::entrypoint()
 }
