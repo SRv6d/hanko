@@ -8,7 +8,7 @@ use std::{
     fmt,
     fs::File,
     io::{self, Write},
-    path::Path,
+    path::PathBuf,
 };
 
 /// A single entry in the allowed signers file.
@@ -67,30 +67,28 @@ impl fmt::Display for AllowedSignersEntry {
 /// The allowed signers file.
 #[derive(Debug)]
 pub struct AllowedSignersFile {
-    pub file: File,
+    pub path: PathBuf,
     pub signers: HashSet<AllowedSignersEntry>,
 }
 
 impl AllowedSignersFile {
     /// Create a new allowed signers file.
-    pub fn new(path: &Path) -> io::Result<Self> {
-        let file = File::create(path)?;
-        Ok(Self {
-            file,
+    pub fn new(path: PathBuf) -> Self {
+        Self {
+            path,
             signers: HashSet::new(),
-        })
+        }
     }
 
     /// Create a new allowed signers file with a set of signers.
     pub fn with_signers(
-        path: &Path,
+        path: PathBuf,
         signers: impl IntoIterator<Item = AllowedSignersEntry>,
-    ) -> io::Result<Self> {
-        let file = File::create(path)?;
-        Ok(Self {
-            file,
+    ) -> Self {
+        Self {
+            path,
             signers: HashSet::from_iter(signers),
-        })
+        }
     }
 
     /// Add an entry to the file.
@@ -99,8 +97,10 @@ impl AllowedSignersFile {
     }
 
     /// Write the allowed signers file.
-    pub fn write(&mut self) -> io::Result<()> {
-        let mut file_buf = io::BufWriter::new(&mut self.file);
+    pub fn write(&self) -> io::Result<()> {
+        let file = File::create(&self.path)?;
+        let mut file_buf = io::BufWriter::new(file);
+
         let sorted_signers = {
             let mut signers = self.signers.iter().collect::<Vec<_>>();
             signers.sort();
@@ -179,15 +179,14 @@ mod tests {
         let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
         (
             AllowedSignersFile::with_signers(
-                &path,
+                path.to_path_buf(),
                 vec![
                     signer_jsnow(),
                     signer_imalcom(),
                     signer_cwoods(),
                     signer_ebert(),
                 ],
-            )
-            .unwrap(),
+            ),
             path,
         )
     }

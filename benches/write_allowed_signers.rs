@@ -3,8 +3,11 @@ use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
 use hanko::{AllowedSignersEntry, AllowedSignersFile};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let mut file = AllowedSignersFile::with_signers(
-        &tempfile::NamedTempFile::new().unwrap().into_temp_path(),
+    let file = AllowedSignersFile::with_signers(
+        tempfile::NamedTempFile::new()
+            .unwrap()
+            .into_temp_path()
+            .to_path_buf(),
         vec![
         AllowedSignersEntry {
             principals: vec!["j.snow@wall.com".to_string()],
@@ -31,8 +34,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .unwrap(),
         },
     ],
-    )
-    .unwrap();
+    );
 
     c.bench_function("write the signers file", |b| {
         b.iter(|| file.write().unwrap())

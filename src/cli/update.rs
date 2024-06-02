@@ -8,8 +8,9 @@ use tokio::runtime::Runtime;
 pub(super) fn update(config: Configuration) {
     let rt = Runtime::new().unwrap();
     let sources = config.get_sources();
+    let path = &config.allowed_signers.expect("no default value");
 
-    let mut file = AllowedSignersFile::new(&config.allowed_signers.unwrap()).unwrap();
+    let mut file = AllowedSignersFile::new(path.clone());
     if let Some(users) = config.users {
         for user in users {
             let public_keys = rt.block_on(get_public_keys(&user, &sources));
