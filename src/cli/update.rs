@@ -1,9 +1,14 @@
 //! The update subcommand used to get the latest allowed signers and write them to the output file.
 use crate::{key::get_public_keys, AllowedSignersEntry, AllowedSignersFile, Configuration};
 use anyhow::{Context, Result};
+use std::time::Instant;
 use tokio::runtime::Runtime;
+use tracing::{debug, instrument};
 
+#[instrument]
 pub(super) fn update(config: Configuration) -> Result<()> {
+    let start = Instant::now();
+
     let rt = Runtime::new().unwrap();
     let client = reqwest::Client::new();
     let sources = config.get_sources();
@@ -37,6 +42,13 @@ pub(super) fn update(config: Configuration) -> Result<()> {
         "Failed to write allowed signers file to {}",
         path.display()
     ))?;
+
+    let duration = start.elapsed();
+    debug!(
+        "Updated allowed signers file {} in {:?}",
+        path.display(),
+        duration
+    );
 
     Ok(())
 }
