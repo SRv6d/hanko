@@ -1,20 +1,28 @@
 //! The update subcommand used to get the latest allowed signers and write them to the output file.
-use crate::{
-    config::UserConfiguration, AllowedSignersEntry, AllowedSignersFile, Configuration, SourceMap,
-    SshPublicKey,
-};
+use crate::{key::get_public_keys, AllowedSignersEntry, AllowedSignersFile, Configuration};
 use anyhow::{Context, Result};
 use tokio::runtime::Runtime;
 
 pub(super) fn update(config: Configuration) -> Result<()> {
     let rt = Runtime::new().unwrap();
+    let client = reqwest::Client::new();
     let sources = config.get_sources();
     let path = &config.allowed_signers.expect("no default value");
 
     let mut file = AllowedSignersFile::new(path.clone());
     if let Some(users) = config.users {
         for user in users {
-            let public_keys = rt.block_on(get_public_keys(&user, &sources));
+            let sources = user
+                .sources
+                .iter()
+                .map(|name| {
+                    sources
+                        .get(name)
+                        .expect("configuration validated incorrectly")
+                })
+                .map(AsRef::as_ref);
+
+            let public_keys = rt.block_on(get_public_keys(&user.name, sources, &client))?;
             for public_key in public_keys {
                 file.add(AllowedSignersEntry {
                     principals: user.principals.clone(),
@@ -31,19 +39,4 @@ pub(super) fn update(config: Configuration) -> Result<()> {
     ))?;
 
     Ok(())
-}
-
-async fn get_public_keys(user: &UserConfiguration, sources: &SourceMap) -> Vec<SshPublicKey> {
-    let client = reqwest::Client::new();
-    let mut keys: Vec<SshPublicKey> = Vec::new();
-    for source_name in &user.sources {
-        let source = sources.get(source_name).unwrap();
-        keys.extend(
-            source
-                .get_keys_by_username(&user.name, &client)
-                .await
-                .unwrap(),
-        );
-    }
-    keys
 }
