@@ -76,7 +76,7 @@ pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
 
     if cli.logging.verbose {
-        configure_logging();
+        setup_tracing();
     }
 
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
@@ -89,7 +89,7 @@ pub fn entrypoint() -> Result<()> {
     Ok(())
 }
 
-fn configure_logging() {
+fn setup_tracing() {
     let builder = tracing_subscriber::fmt()
         .compact()
         .with_max_level(tracing::Level::DEBUG);
