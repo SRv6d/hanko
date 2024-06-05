@@ -5,6 +5,7 @@ use std::time::Instant;
 use tokio::runtime::Runtime;
 use tracing::info;
 
+#[tracing::instrument(skip_all)]
 pub(super) fn update(config: Configuration) -> Result<()> {
     let start = Instant::now();
 
