@@ -77,21 +77,29 @@ pub fn entrypoint() -> Result<()> {
     Ok(())
 }
 
-fn setup_tracing(level: u8) {
-    if level == 0 {
-        return;
-    }
-
-    let builder = tracing_subscriber::fmt()
+fn setup_tracing(vebosity_level: u8) {
+    let level = match vebosity_level {
+        0 => return, // The user did not specify a verbosity level, do not configure tracing.
+        1 => Level::INFO,
+        2 => Level::DEBUG,
+        _ => Level::TRACE,
+    };
+    let filter = {
+        // For verbosity levels of 3 and above, given a debug build, traces from external crates are included.
+        if vebosity_level > 3 && cfg!(debug_assertions) {
+            tracing_subscriber::filter::EnvFilter::new(format!("{level}"))
+        } else {
+            // Otherwise, traces from external crates are filtered.
+            tracing_subscriber::filter::EnvFilter::new(format!(
+                "{}={level}",
+                env!("CARGO_PKG_NAME")
+            ))
+        }
+    };
+    tracing_subscriber::fmt()
         .compact()
-        .with_max_level(match level {
-            0 => unreachable!(),
-            1 => Level::INFO,
-            2 => Level::DEBUG,
-            _ => Level::TRACE,
-        });
-
-    builder.init();
+        .with_env_filter(filter)
+        .init();
 }
 
 #[cfg(test)]
