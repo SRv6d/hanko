@@ -6,6 +6,7 @@ use clap::{
     Parser, Subcommand,
 };
 use std::{env, path::PathBuf};
+use tracing::Level;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -24,9 +25,9 @@ pub struct Cli {
     #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
     pub output: Option<PathBuf>,
 
-    /// Enable verbose logging.
-    #[arg(short, long)]
-    verbose: bool,
+    /// Increase verbosity.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 
     #[command(subcommand)]
     command: Commands,
@@ -65,9 +66,7 @@ fn default_config_path() -> Resettable<OsStr> {
 pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
 
-    if cli.verbose {
-        setup_tracing();
-    }
+    setup_tracing(cli.verbose);
 
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
 
@@ -78,17 +77,19 @@ pub fn entrypoint() -> Result<()> {
     Ok(())
 }
 
-fn setup_tracing() {
+fn setup_tracing(level: u8) {
+    if level == 0 {
+        return;
+    }
+
     let builder = tracing_subscriber::fmt()
         .compact()
-        .with_max_level(tracing::Level::DEBUG);
-
-    // Only output crate local logs in non debug builds.
-    #[cfg(not(debug_assertions))]
-    let builder = builder.with_env_filter(tracing_subscriber::filter::EnvFilter::new(format!(
-        "{}=debug",
-        env!("CARGO_PKG_NAME")
-    )));
+        .with_max_level(match level {
+            0 => unreachable!(),
+            1 => Level::INFO,
+            2 => Level::DEBUG,
+            _ => Level::TRACE,
+        });
 
     builder.init();
 }
