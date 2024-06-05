@@ -75,7 +75,9 @@ fn default_config_path() -> Resettable<OsStr> {
 pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
 
-    configure_logging()?;
+    if cli.logging.verbose {
+        configure_logging();
+    }
 
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
     tracing::info!("Using configuration file {}", &cli.config.display());
@@ -87,10 +89,19 @@ pub fn entrypoint() -> Result<()> {
     Ok(())
 }
 
-fn configure_logging() -> Result<()> {
-    let subscriber = tracing_subscriber::FmtSubscriber::new();
-    tracing::subscriber::set_global_default(subscriber)?;
-    Ok(())
+fn configure_logging() {
+    let builder = tracing_subscriber::fmt()
+        .compact()
+        .with_max_level(tracing::Level::DEBUG);
+
+    // Only output crate local logs in non debug builds.
+    #[cfg(not(debug_assertions))]
+    let builder = builder.with_env_filter(tracing_subscriber::filter::EnvFilter::new(format!(
+        "{}=debug",
+        env!("CARGO_PKG_NAME")
+    )));
+
+    builder.init();
 }
 
 #[cfg(test)]
