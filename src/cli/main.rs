@@ -3,7 +3,7 @@ use crate::Configuration;
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
-    Args, Parser, Subcommand,
+    Parser, Subcommand,
 };
 use std::{env, path::PathBuf};
 
@@ -24,23 +24,12 @@ pub struct Cli {
     #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
     pub output: Option<PathBuf>,
 
-    #[command(flatten)]
-    logging: Logging,
-
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Debug, Args)]
-#[group(multiple = false)]
-struct Logging {
     /// Enable verbose logging.
     #[arg(short, long)]
     verbose: bool,
 
-    /// Disable all output.
-    #[arg(long)]
-    silent: bool,
+    #[command(subcommand)]
+    command: Commands,
 }
 
 #[derive(Debug, Subcommand)]
@@ -76,7 +65,7 @@ fn default_config_path() -> Resettable<OsStr> {
 pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
 
-    if cli.logging.verbose {
+    if cli.verbose {
         setup_tracing();
     }
 
