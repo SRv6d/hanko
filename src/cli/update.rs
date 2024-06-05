@@ -3,7 +3,7 @@ use crate::{key::get_public_keys, AllowedSignersEntry, AllowedSignersFile, Confi
 use anyhow::{Context, Result};
 use std::time::Instant;
 use tokio::runtime::Runtime;
-use tracing::debug;
+use tracing::info;
 
 pub(super) fn update(config: Configuration) -> Result<()> {
     let start = Instant::now();
@@ -43,7 +43,7 @@ pub(super) fn update(config: Configuration) -> Result<()> {
     ))?;
 
     let duration = start.elapsed();
-    debug!(
+    info!(
         "Updated allowed signers file {} in {:?}",
         path.display(),
         duration
