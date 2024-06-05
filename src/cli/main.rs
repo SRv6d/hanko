@@ -3,7 +3,7 @@ use crate::Configuration;
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
-    Args, Parser, Subcommand,
+    Parser, Subcommand,
 };
 use std::{env, path::PathBuf};
 
@@ -24,23 +24,12 @@ pub struct Cli {
     #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
     pub output: Option<PathBuf>,
 
-    #[command(flatten)]
-    logging: Logging,
-
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Debug, Args)]
-#[group(multiple = false)]
-struct Logging {
     /// Enable verbose logging.
     #[arg(short, long)]
     verbose: bool,
 
-    /// Disable all output.
-    #[arg(long)]
-    silent: bool,
+    #[command(subcommand)]
+    command: Commands,
 }
 
 #[derive(Debug, Subcommand)]
@@ -71,9 +60,15 @@ fn default_config_path() -> Resettable<OsStr> {
         Resettable::Reset
     }
 }
+
 /// The main CLI entrypoint.
 pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
+
+    if cli.verbose {
+        setup_tracing();
+    }
+
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
 
     match &cli.command {
@@ -81,6 +76,21 @@ pub fn entrypoint() -> Result<()> {
         _ => panic!("Not yet implemented"),
     }
     Ok(())
+}
+
+fn setup_tracing() {
+    let builder = tracing_subscriber::fmt()
+        .compact()
+        .with_max_level(tracing::Level::DEBUG);
+
+    // Only output crate local logs in non debug builds.
+    #[cfg(not(debug_assertions))]
+    let builder = builder.with_env_filter(tracing_subscriber::filter::EnvFilter::new(format!(
+        "{}=debug",
+        env!("CARGO_PKG_NAME")
+    )));
+
+    builder.init();
 }
 
 #[cfg(test)]
