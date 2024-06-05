@@ -3,9 +3,8 @@ use crate::{key::get_public_keys, AllowedSignersEntry, AllowedSignersFile, Confi
 use anyhow::{Context, Result};
 use std::time::Instant;
 use tokio::runtime::Runtime;
-use tracing::{debug, instrument};
+use tracing::debug;
 
-#[instrument]
 pub(super) fn update(config: Configuration) -> Result<()> {
     let start = Instant::now();
 
