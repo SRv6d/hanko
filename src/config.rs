@@ -11,7 +11,7 @@ use std::{
     ops::Deref,
     path::{Path, PathBuf},
 };
-use tracing::info;
+use tracing::{debug, info};
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -135,6 +135,7 @@ impl Deref for MissingSourcesError {
 
 /// The path to the allowed signers file as configured within Git. If an error occurs while
 /// retrieving the path, `None` is returned.
+#[tracing::instrument(level = "debug")]
 fn git_allowed_signers() -> Option<PathBuf> {
     let file = gix_config::File::from_globals().ok()?;
     let path = file
@@ -148,6 +149,10 @@ fn git_allowed_signers() -> Option<PathBuf> {
         })
         .ok()?;
 
+    debug!(
+        path = %path.to_string_lossy(),
+        "Found allowed signers file configured in Git."
+    );
     Some(path.into())
 }
 

@@ -6,6 +6,7 @@ use clap::{
     Parser, Subcommand,
 };
 use std::{env, path::PathBuf};
+use tracing::Level;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -24,9 +25,9 @@ pub struct Cli {
     #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
     pub output: Option<PathBuf>,
 
-    /// Enable verbose logging.
-    #[arg(short, long)]
-    verbose: bool,
+    /// Increase verbosity.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 
     #[command(subcommand)]
     command: Commands,
@@ -65,9 +66,7 @@ fn default_config_path() -> Resettable<OsStr> {
 pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
 
-    if cli.verbose {
-        setup_tracing();
-    }
+    setup_tracing(cli.verbose);
 
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
 
@@ -78,19 +77,29 @@ pub fn entrypoint() -> Result<()> {
     Ok(())
 }
 
-fn setup_tracing() {
-    let builder = tracing_subscriber::fmt()
+fn setup_tracing(vebosity_level: u8) {
+    let level = match vebosity_level {
+        0 => return, // The user did not specify a verbosity level, do not configure tracing.
+        1 => Level::INFO,
+        2 => Level::DEBUG,
+        _ => Level::TRACE,
+    };
+    let filter = {
+        // For verbosity levels of 3 and above, given a debug build, traces from external crates are included.
+        if vebosity_level > 3 && cfg!(debug_assertions) {
+            tracing_subscriber::filter::EnvFilter::new(format!("{level}"))
+        } else {
+            // Otherwise, traces from external crates are filtered.
+            tracing_subscriber::filter::EnvFilter::new(format!(
+                "{}={level}",
+                env!("CARGO_PKG_NAME")
+            ))
+        }
+    };
+    tracing_subscriber::fmt()
         .compact()
-        .with_max_level(tracing::Level::DEBUG);
-
-    // Only output crate local logs in non debug builds.
-    #[cfg(not(debug_assertions))]
-    let builder = builder.with_env_filter(tracing_subscriber::filter::EnvFilter::new(format!(
-        "{}=debug",
-        env!("CARGO_PKG_NAME")
-    )));
-
-    builder.init();
+        .with_env_filter(filter)
+        .init();
 }
 
 #[cfg(test)]

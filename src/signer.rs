@@ -10,6 +10,7 @@ use std::{
     io::{self, Write},
     path::PathBuf,
 };
+use tracing::trace;
 
 /// A single entry in the allowed signers file.
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -97,7 +98,9 @@ impl AllowedSignersFile {
     }
 
     /// Write the allowed signers file.
+    #[tracing::instrument(skip(self), fields(path = %self.path.display()), level = "trace")]
     pub fn write(&self) -> io::Result<()> {
+        trace!("Opening allowed signers file for writing");
         let file = File::create(&self.path)?;
         let mut file_buf = io::BufWriter::new(file);
 
@@ -106,6 +109,7 @@ impl AllowedSignersFile {
             signers.sort();
             signers
         };
+        trace!("Writing to allowed signers file");
         for signer in sorted_signers {
             writeln!(file_buf, "{signer}")?;
         }
