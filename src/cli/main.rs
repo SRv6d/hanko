@@ -71,6 +71,7 @@ fn default_config_path() -> Resettable<OsStr> {
         Resettable::Reset
     }
 }
+
 /// The main CLI entrypoint.
 pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
@@ -80,7 +81,6 @@ pub fn entrypoint() -> Result<()> {
     }
 
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
-    tracing::info!("Using configuration file {}", &cli.config.display());
 
     match &cli.command {
         Commands::Update => update(config).context("Failed to update the allowed signers file")?,

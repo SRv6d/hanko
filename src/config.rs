@@ -11,6 +11,7 @@ use std::{
     ops::Deref,
     path::{Path, PathBuf},
 };
+use tracing::info;
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -63,6 +64,7 @@ impl Configuration {
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
+    #[tracing::instrument]
     pub fn load(path: &Path, defaults: bool) -> Result<Self, Error> {
         let figment = {
             if defaults {
@@ -71,6 +73,7 @@ impl Configuration {
                 Figment::new()
             }
         };
+        info!("Loading configuration file");
         let config: Self = figment.admerge(Toml::file(path)).extract()?;
         config.validate()?;
         Ok(config)
