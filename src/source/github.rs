@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
 use std::ops::Deref;
+use tracing::trace;
 
 #[derive(Debug)]
 pub struct Github {
@@ -23,6 +24,7 @@ impl Github {
 #[async_trait]
 impl Source for Github {
     // [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
+    #[tracing::instrument(skip(self, client), level = "trace")]
     async fn get_keys_by_username(
         &self,
         username: &str,
@@ -36,9 +38,12 @@ impl Source for Github {
             .get(url)
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER)
-            .header("X-GitHub-Api-Version", Self::VERSION);
+            .header("X-GitHub-Api-Version", Self::VERSION)
+            .build()
+            .unwrap();
 
-        let response = handle_github_errors(request.send().await).await?;
+        trace!(url = %request.url(), "Sending request to GitHub API");
+        let response = handle_github_errors(client.execute(request).await).await?;
         Ok(response.json().await?)
     }
 }

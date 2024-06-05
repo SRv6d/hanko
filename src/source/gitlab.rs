@@ -3,6 +3,7 @@ use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
+use tracing::trace;
 
 #[derive(Debug)]
 pub struct Gitlab {
@@ -22,6 +23,7 @@ impl Gitlab {
 #[async_trait]
 impl Source for Gitlab {
     // [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
+    #[tracing::instrument(skip(self, client), level = "trace")]
     async fn get_keys_by_username(
         &self,
         username: &str,
@@ -37,9 +39,12 @@ impl Source for Gitlab {
         let request = client
             .get(url)
             .header("User-Agent", USER_AGENT)
-            .header("Accept", Self::ACCEPT_HEADER);
+            .header("Accept", Self::ACCEPT_HEADER)
+            .build()
+            .unwrap();
 
-        let response = handle_gitlab_errors(request.send().await)?;
+        trace!(url = %request.url(), "Sending request to GitLab API");
+        let response = handle_gitlab_errors(client.execute(request).await)?;
         // The API has no way to filter keys by usage type, so this contains all the user's keys.
         let all_keys: Vec<ApiSshKey> = response.json().await?;
         // Filter out the keys that are not used for signing.
