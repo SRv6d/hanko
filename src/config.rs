@@ -18,8 +18,8 @@ use tracing::{debug, info};
 pub struct Configuration {
     pub allowed_signers: Option<PathBuf>,
     pub users: Option<Vec<UserConfiguration>>,
-    local: Option<Vec<String>>,
-    sources: Vec<SourceConfiguration>,
+    pub local: Option<Vec<String>>,
+    pub sources: Vec<SourceConfiguration>,
 }
 
 impl Default for Configuration {
@@ -173,7 +173,7 @@ pub struct UserConfiguration {
 
 /// The representation of a [`Source`] in configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct SourceConfiguration {
+pub struct SourceConfiguration {
     name: String,
     provider: SourceType,
     #[serde(serialize_with = "serialize_url", deserialize_with = "deserialize_url")]
