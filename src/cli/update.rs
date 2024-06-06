@@ -2,14 +2,13 @@
 use crate::{key::get_public_keys, AllowedSignersEntry, AllowedSignersFile, Configuration};
 use anyhow::{Context, Result};
 use std::time::Instant;
-use tokio::runtime::Runtime;
 use tracing::info;
 
 #[tracing::instrument(skip_all)]
-pub(super) fn update(config: Configuration) -> Result<()> {
+#[tokio::main]
+pub(super) async fn update(config: Configuration) -> Result<()> {
     let start = Instant::now();
 
-    let rt = Runtime::new().unwrap();
     let client = reqwest::Client::new();
     let sources = config.get_sources();
     let path = &config.allowed_signers.expect("no default value");
@@ -27,7 +26,7 @@ pub(super) fn update(config: Configuration) -> Result<()> {
                 })
                 .map(AsRef::as_ref);
 
-            let public_keys = rt.block_on(get_public_keys(&user.name, sources, &client))?;
+            let public_keys = get_public_keys(&user.name, sources, &client).await?;
             for public_key in public_keys {
                 file.add(AllowedSignersEntry {
                     principals: user.principals.clone(),
