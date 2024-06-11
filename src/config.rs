@@ -17,9 +17,12 @@ use tracing::{debug, info};
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
     pub allowed_signers: Option<PathBuf>,
-    users: Option<Vec<UserConfiguration>>,
-    local: Option<Vec<String>>,
-    sources: Vec<SourceConfiguration>,
+    #[serde(rename = "users")]
+    user_config: Option<Vec<UserConfiguration>>,
+    #[serde(rename = "local")]
+    local_user_config: Option<Vec<String>>,
+    #[serde(rename = "sources")]
+    source_config: Vec<SourceConfiguration>,
 }
 
 impl Default for Configuration {
@@ -48,21 +51,21 @@ impl Default for Configuration {
 impl Configuration {
     fn new(
         allowed_signers: Option<PathBuf>,
-        user_configuration: Option<Vec<UserConfiguration>>,
-        source_configuration: Vec<SourceConfiguration>,
+        user_config: Option<Vec<UserConfiguration>>,
+        source_config: Vec<SourceConfiguration>,
     ) -> Self {
         Self {
             allowed_signers,
-            users: user_configuration,
-            local: None,
-            sources: source_configuration,
+            user_config,
+            local_user_config: None,
+            source_config,
         }
     }
 
     /// Get the configured sources.
     #[must_use]
     pub fn get_sources(&self) -> SourceMap {
-        self.sources
+        self.source_config
             .iter()
             .map(|source_config| {
                 let name = source_config.name.clone();
@@ -93,10 +96,11 @@ impl Configuration {
 
     /// Validate the configuration.
     fn validate(&self) -> Result<(), Error> {
-        if let Some(users) = &self.users {
-            let used_sources: HashSet<&String> = users.iter().flat_map(|u| &u.sources).collect();
+        if let Some(user_configs) = &self.user_config {
+            let used_sources: HashSet<&String> =
+                user_configs.iter().flat_map(|u| &u.sources).collect();
             let configured_sources: HashSet<&String> =
-                self.sources.iter().map(|s| &s.name).collect();
+                self.source_config.iter().map(|s| &s.name).collect();
 
             let missing_sources: Vec<String> = used_sources
                 .difference(&configured_sources)
@@ -223,7 +227,7 @@ mod tests {
     /// The default configuration contains the default GitHub and GitLab sources.
     #[test]
     fn default_configuration_contains_default_sources() {
-        let default_sources = Configuration::default().sources;
+        let default_sources = Configuration::default().source_config;
         assert!(default_sources.contains(&SourceConfiguration {
             name: "github".to_string(),
             provider: SourceType::Github,
