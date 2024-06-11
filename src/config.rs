@@ -17,7 +17,7 @@ use tracing::{debug, info};
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
     pub allowed_signers: Option<PathBuf>,
-    pub users: Option<Vec<UserConfiguration>>,
+    users: Option<Vec<UserConfiguration>>,
     local: Option<Vec<String>>,
     sources: Vec<SourceConfiguration>,
 }
@@ -26,11 +26,10 @@ impl Default for Configuration {
     /// The default configuration containing common sources as well as the location of the allowed
     /// signers file if it is configured within Git.
     fn default() -> Self {
-        Configuration {
-            allowed_signers: git_allowed_signers(),
-            users: None,
-            local: None,
-            sources: vec![
+        Self::new(
+            git_allowed_signers(),
+            None,
+            vec![
                 SourceConfiguration {
                     name: "github".to_string(),
                     provider: SourceType::Github,
@@ -42,11 +41,24 @@ impl Default for Configuration {
                     url: "https://gitlab.com".parse().unwrap(),
                 },
             ],
-        }
+        )
     }
 }
 
 impl Configuration {
+    fn new(
+        allowed_signers: Option<PathBuf>,
+        user_configuration: Option<Vec<UserConfiguration>>,
+        source_configuration: Vec<SourceConfiguration>,
+    ) -> Self {
+        Self {
+            allowed_signers,
+            users: user_configuration,
+            local: None,
+            sources: source_configuration,
+        }
+    }
+
     /// Get the configured sources.
     #[must_use]
     pub fn get_sources(&self) -> SourceMap {
