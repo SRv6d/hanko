@@ -16,13 +16,14 @@ use tracing::{debug, info};
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
-    pub allowed_signers: Option<PathBuf>,
     #[serde(rename = "users")]
     user_config: Option<Vec<UserConfiguration>>,
     #[serde(rename = "local")]
     local_user_config: Option<Vec<String>>,
     #[serde(rename = "sources")]
     source_config: Vec<SourceConfiguration>,
+    /// The path used to write the allowed signers file.
+    allowed_signers: Option<PathBuf>,
 }
 
 impl Default for Configuration {
@@ -60,6 +61,11 @@ impl Configuration {
             local_user_config: None,
             source_config,
         }
+    }
+
+    #[must_use]
+    pub fn allowed_signers(&self) -> Option<&Path> {
+        self.allowed_signers.as_deref()
     }
 
     /// Get the configured sources.
