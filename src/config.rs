@@ -1,4 +1,4 @@
-use crate::{Github, Gitlab, Source, SourceMap};
+use crate::{user::User, Github, Gitlab, Source, SourceMap};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -75,6 +75,28 @@ impl Configuration {
             .iter()
             .map(|config| (config.name.clone(), config.build_source()))
             .collect()
+    }
+
+    /// The configured users.
+    pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<User<'b>>> {
+        let configs = self.user_config.as_ref()?;
+        let users = configs
+            .iter()
+            .map(|config| {
+                let sources = config
+                    .sources
+                    .iter()
+                    .map(|name| sources.get(name).unwrap().as_ref())
+                    .collect();
+                User {
+                    // TODO: Use references instead of cloning.
+                    name: config.name.clone(),
+                    principals: config.principals.clone(),
+                    sources,
+                }
+            })
+            .collect();
+        Some(users)
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
