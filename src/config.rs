@@ -68,19 +68,12 @@ impl Configuration {
         self.allowed_signers.as_deref()
     }
 
-    /// Get the configured sources.
+    /// The configured sources.
     #[must_use]
-    pub fn get_sources(&self) -> SourceMap {
+    pub fn sources(&self) -> SourceMap {
         self.source_config
             .iter()
-            .map(|source_config| {
-                let name = source_config.name.clone();
-                let source: Box<dyn Source> = match source_config.provider {
-                    SourceType::Github => Box::new(Github::new(source_config.url.clone())),
-                    SourceType::Gitlab => Box::new(Gitlab::new(source_config.url.clone())),
-                };
-                (name, source)
-            })
+            .map(|config| (config.name.clone(), config.build_source()))
             .collect()
     }
 
