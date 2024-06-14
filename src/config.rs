@@ -219,6 +219,16 @@ where
     serializer.serialize_str(url.as_ref())
 }
 
+impl SourceConfiguration {
+    fn build_source(&self) -> Box<dyn Source> {
+        let url = self.url.clone();
+        match self.provider {
+            SourceType::Github => Box::new(Github::new(url)),
+            SourceType::Gitlab => Box::new(Gitlab::new(url)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
