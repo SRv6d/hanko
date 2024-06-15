@@ -75,6 +75,7 @@ impl Configuration {
     }
 
     /// The configured users.
+    #[must_use]
     pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<User<'b>>> {
         let configs = self.users.as_ref()?;
         let users = configs
