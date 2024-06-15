@@ -9,7 +9,7 @@ pub struct User<'a> {
 
 impl User<'_> {
     /// Get the users allowed signer entries.
-    async fn get_allowed_signers(
+    pub async fn get_allowed_signers(
         &self,
         client: &reqwest::Client,
     ) -> Result<Vec<AllowedSignersEntry>, SourceError> {
