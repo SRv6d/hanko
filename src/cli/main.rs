@@ -5,8 +5,8 @@ use clap::{
     builder::{OsStr, Resettable},
     Parser, Subcommand,
 };
-use std::{env, path::PathBuf};
-use tracing::Level;
+use std::{env, path::PathBuf, time::Instant};
+use tracing::{info, Level};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -64,6 +64,7 @@ fn default_config_path() -> Resettable<OsStr> {
 
 /// The main CLI entrypoint.
 pub fn entrypoint() -> Result<()> {
+    let start = Instant::now();
     let cli = Cli::parse();
 
     setup_tracing(cli.verbose);
@@ -71,7 +72,20 @@ pub fn entrypoint() -> Result<()> {
     let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
 
     match &cli.command {
-        Commands::Update => update(config).context("Failed to update the allowed signers file")?,
+        Commands::Update => {
+            let path = config.allowed_signers().expect("no default value");
+            let sources = config.sources();
+            if let Some(users) = config.users(&sources) {
+                update(path, &users).context("Failed to update the allowed signers file")?;
+
+                let duration = start.elapsed();
+                info!(
+                    "Updated allowed signers file {} in {:?}",
+                    path.display(),
+                    duration
+                );
+            }
+        }
         _ => panic!("Not yet implemented"),
     }
     Ok(())
