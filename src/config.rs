@@ -17,7 +17,6 @@ use tracing::{debug, info};
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
     users: Option<Vec<UserConfiguration>>,
-    local: Option<Vec<String>>,
     sources: Vec<SourceConfiguration>,
     allowed_signers: Option<PathBuf>,
 }
@@ -53,7 +52,6 @@ impl Configuration {
     ) -> Self {
         Self {
             users,
-            local: None,
             sources,
             allowed_signers,
         }
