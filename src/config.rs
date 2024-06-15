@@ -1,4 +1,4 @@
-use crate::{Github, Gitlab, Source, SourceMap};
+use crate::{user::User, Github, Gitlab, Source, SourceMap};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -16,21 +16,19 @@ use tracing::{debug, info};
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
-    pub allowed_signers: Option<PathBuf>,
-    pub users: Option<Vec<UserConfiguration>>,
+    users: Option<Vec<UserConfiguration>>,
     local: Option<Vec<String>>,
     sources: Vec<SourceConfiguration>,
+    allowed_signers: Option<PathBuf>,
 }
 
 impl Default for Configuration {
     /// The default configuration containing common sources as well as the location of the allowed
     /// signers file if it is configured within Git.
     fn default() -> Self {
-        Configuration {
-            allowed_signers: git_allowed_signers(),
-            users: None,
-            local: None,
-            sources: vec![
+        Self::new(
+            None,
+            vec![
                 SourceConfiguration {
                     name: "github".to_string(),
                     provider: SourceType::Github,
@@ -42,25 +40,61 @@ impl Default for Configuration {
                     url: "https://gitlab.com".parse().unwrap(),
                 },
             ],
-        }
+            git_allowed_signers(),
+        )
     }
 }
 
 impl Configuration {
-    /// Get the configured sources.
+    fn new(
+        users: Option<Vec<UserConfiguration>>,
+        sources: Vec<SourceConfiguration>,
+        allowed_signers: Option<PathBuf>,
+    ) -> Self {
+        Self {
+            users,
+            local: None,
+            sources,
+            allowed_signers,
+        }
+    }
+
+    /// The configured path to write the allowed signers file to.
     #[must_use]
-    pub fn get_sources(&self) -> SourceMap {
+    pub fn allowed_signers(&self) -> Option<&Path> {
+        self.allowed_signers.as_deref()
+    }
+
+    /// The configured sources.
+    #[must_use]
+    pub fn sources(&self) -> SourceMap {
         self.sources
             .iter()
-            .map(|source_config| {
-                let name = source_config.name.clone();
-                let source: Box<dyn Source> = match source_config.provider {
-                    SourceType::Github => Box::new(Github::new(source_config.url.clone())),
-                    SourceType::Gitlab => Box::new(Gitlab::new(source_config.url.clone())),
-                };
-                (name, source)
-            })
+            .map(|config| (config.name.clone(), config.build_source()))
             .collect()
+    }
+
+    /// The configured users.
+    #[must_use]
+    pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<User<'b>>> {
+        let configs = self.users.as_ref()?;
+        let users = configs
+            .iter()
+            .map(|config| {
+                let sources = config
+                    .sources
+                    .iter()
+                    .map(|name| sources.get(name).unwrap().as_ref())
+                    .collect();
+                User {
+                    // TODO: Use references instead of cloning.
+                    name: config.name.clone(),
+                    principals: config.principals.clone(),
+                    sources,
+                }
+            })
+            .collect();
+        Some(users)
     }
 
     /// Load the configuration from a TOML file, using defaults for values that were not provided.
@@ -195,6 +229,16 @@ where
     S: Serializer,
 {
     serializer.serialize_str(url.as_ref())
+}
+
+impl SourceConfiguration {
+    fn build_source(&self) -> Box<dyn Source> {
+        let url = self.url.clone();
+        match self.provider {
+            SourceType::Github => Box::new(Github::new(url)),
+            SourceType::Gitlab => Box::new(Gitlab::new(url)),
+        }
+    }
 }
 
 #[cfg(test)]
