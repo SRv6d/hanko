@@ -25,9 +25,9 @@ impl Default for Configuration {
     /// The default configuration containing common sources as well as the location of the allowed
     /// signers file if it is configured within Git.
     fn default() -> Self {
-        Self::new(
-            None,
-            vec![
+        Self {
+            users: None,
+            sources: vec![
                 SourceConfiguration {
                     name: "github".to_string(),
                     provider: SourceType::Github,
@@ -39,24 +39,12 @@ impl Default for Configuration {
                     url: "https://gitlab.com".parse().unwrap(),
                 },
             ],
-            git_allowed_signers(),
-        )
+            allowed_signers: git_allowed_signers(),
+        }
     }
 }
 
 impl Configuration {
-    fn new(
-        users: Option<Vec<UserConfiguration>>,
-        sources: Vec<SourceConfiguration>,
-        allowed_signers: Option<PathBuf>,
-    ) -> Self {
-        Self {
-            users,
-            sources,
-            allowed_signers,
-        }
-    }
-
     /// The configured path to write the allowed signers file to.
     #[must_use]
     pub fn allowed_signers(&self) -> Option<&Path> {
