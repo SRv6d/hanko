@@ -22,7 +22,6 @@ pub struct Configuration {
     local_user_config: Option<Vec<String>>,
     #[serde(rename = "sources")]
     source_config: Vec<SourceConfiguration>,
-    /// The path used to write the allowed signers file.
     allowed_signers: Option<PathBuf>,
 }
 
@@ -63,6 +62,7 @@ impl Configuration {
         }
     }
 
+    /// The configured path to write the allowed signers file to.
     #[must_use]
     pub fn allowed_signers(&self) -> Option<&Path> {
         self.allowed_signers.as_deref()
