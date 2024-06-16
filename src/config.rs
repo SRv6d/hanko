@@ -6,7 +6,6 @@ use figment::{
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::HashSet,
     env, fmt,
     ops::Deref,
     path::{Path, PathBuf},
@@ -17,7 +16,7 @@ use tracing::{debug, info};
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
     users: Option<Vec<UserConfiguration>>,
-    sources: Vec<SourceConfiguration>,
+    sources: Option<Vec<SourceConfiguration>>,
     allowed_signers: Option<PathBuf>,
 }
 
@@ -27,37 +26,50 @@ impl Default for Configuration {
     fn default() -> Self {
         Self {
             users: None,
-            sources: vec![
-                SourceConfiguration {
-                    name: "github".to_string(),
-                    provider: SourceType::Github,
-                    url: "https://api.github.com".parse().unwrap(),
-                },
-                SourceConfiguration {
-                    name: "gitlab".to_string(),
-                    provider: SourceType::Gitlab,
-                    url: "https://gitlab.com".parse().unwrap(),
-                },
-            ],
+            sources: None,
             allowed_signers: git_allowed_signers(),
         }
     }
 }
 
 impl Configuration {
+    /// The default GitHub and GitLab sources.
+    fn default_sources() -> SourceMap {
+        [
+            SourceConfiguration {
+                name: "github".to_string(),
+                provider: SourceType::Github,
+                url: "https://api.github.com".parse().unwrap(),
+            },
+            SourceConfiguration {
+                name: "gitlab".to_string(),
+                provider: SourceType::Gitlab,
+                url: "https://gitlab.com".parse().unwrap(),
+            },
+        ]
+        .iter()
+        .map(|config| (config.name.clone(), config.build_source()))
+        .collect()
+    }
+
     /// The configured path to write the allowed signers file to.
     #[must_use]
     pub fn allowed_signers(&self) -> Option<&Path> {
         self.allowed_signers.as_deref()
     }
 
-    /// The configured sources.
+    /// The configured and default sources.
     #[must_use]
     pub fn sources(&self) -> SourceMap {
-        self.sources
-            .iter()
-            .map(|config| (config.name.clone(), config.build_source()))
-            .collect()
+        let mut sources = Self::default_sources();
+        if let Some(configs) = &self.sources {
+            sources.extend(
+                configs
+                    .iter()
+                    .map(|config| (config.name.clone(), config.build_source())),
+            );
+        }
+        sources
     }
 
     /// The configured users.
@@ -101,20 +113,7 @@ impl Configuration {
 
     /// Validate the configuration.
     fn validate(&self) -> Result<(), Error> {
-        if let Some(users) = &self.users {
-            let used_sources: HashSet<&String> = users.iter().flat_map(|u| &u.sources).collect();
-            let configured_sources: HashSet<&String> =
-                self.sources.iter().map(|s| &s.name).collect();
-
-            let missing_sources: Vec<String> = used_sources
-                .difference(&configured_sources)
-                .map(ToString::to_string)
-                .collect();
-            if !missing_sources.is_empty() {
-                return Err(Error::MissingSources(MissingSourcesError(missing_sources)));
-            }
-        }
-        Ok(())
+        todo!()
     }
 
     /// Save the configuration.
@@ -238,20 +237,14 @@ mod tests {
         PathBuf::from("config.toml")
     }
 
-    /// The default configuration contains the default GitHub and GitLab sources.
+    /// The default configuration has the default GitHub and GitLab sources.
     #[test]
-    fn default_configuration_contains_default_sources() {
-        let default_sources = Configuration::default().sources;
-        assert!(default_sources.contains(&SourceConfiguration {
-            name: "github".to_string(),
-            provider: SourceType::Github,
-            url: "https://api.github.com".parse().unwrap(),
-        }));
-        assert!(default_sources.contains(&SourceConfiguration {
-            name: "gitlab".to_string(),
-            provider: SourceType::Gitlab,
-            url: "https://gitlab.com".parse().unwrap(),
-        }));
+    fn default_configuration_has_default_sources() {
+        let config = Configuration::default();
+        let sources = config.sources();
+
+        assert!(sources.contains_key("github"));
+        assert!(sources.contains_key("gitlab"));
     }
 
     /// Loading an empty configuration file with defaults enabled returns the default configuration.
