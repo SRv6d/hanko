@@ -11,7 +11,7 @@ use tracing::{info, Level};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
-pub struct Cli {
+pub struct Args {
     /// The configuration file.
     #[arg(
         short,
@@ -83,13 +83,13 @@ fn default_config_path() -> Resettable<OsStr> {
 /// The main CLI entrypoint.
 pub fn entrypoint() -> Result<()> {
     let start = Instant::now();
-    let cli = Cli::parse();
+    let args = Args::parse();
 
-    setup_tracing(cli.verbose);
+    setup_tracing(args.verbose);
 
-    let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
+    let config = Configuration::load(&args.config, true).context("Failed to load configuration")?;
 
-    match &cli.command {
+    match &args.command {
         Commands::Update => {
             let path = config.allowed_signers().expect("no default value");
             let sources = config.sources();
@@ -141,6 +141,6 @@ mod tests {
     #[test]
     fn verify_cli() {
         use clap::CommandFactory;
-        Cli::command().debug_assert();
+        Args::command().debug_assert();
     }
 }
