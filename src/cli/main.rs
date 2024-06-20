@@ -5,6 +5,7 @@ use clap::{
     builder::{OsStr, Resettable},
     Parser, Subcommand,
 };
+use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf, time::Instant};
 use tracing::{info, Level};
 
@@ -45,6 +46,23 @@ enum Commands {
     /// Manage sources.
     #[command(subcommand)]
     Source(ManageSources),
+}
+
+/// Runtime configuration that overrides the configuration file.
+#[derive(Debug, Parser, Serialize, Deserialize)]
+pub struct RuntimeConfiguration {
+    /// The allowed signers file.
+    #[arg(
+        long,
+        value_name = "PATH",
+        env = "HANKO_ALLOWED_SIGNERS",
+        default_value = "TODO"
+    )]
+    pub allowed_signers: Option<PathBuf>,
+
+    /// Increase verbosity.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 /// The default configuration file path according to the XDG Base Directory Specification.

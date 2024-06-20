@@ -1,4 +1,4 @@
-pub use main::entrypoint;
+pub use main::{entrypoint, RuntimeConfiguration};
 
 mod main;
 mod manage_signers;
