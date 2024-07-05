@@ -6,11 +6,11 @@ use figment::{
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    env, fmt,
+    fmt,
     ops::Deref,
     path::{Path, PathBuf},
 };
-use tracing::{debug, info};
+use tracing::info;
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -134,29 +134,6 @@ impl Deref for MissingSourcesError {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-/// The path to the allowed signers file as configured within Git. If an error occurs while
-/// retrieving the path, `None` is returned.
-#[tracing::instrument(level = "debug")]
-fn git_allowed_signers() -> Option<PathBuf> {
-    let file = gix_config::File::from_globals().ok()?;
-    let path = file
-        .path("gpg", Some("ssh".into()), "allowedsignersfile")?
-        .interpolate(gix_config::path::interpolate::Context {
-            home_dir: env::var("HOME")
-                .ok()
-                .map(std::convert::Into::<PathBuf>::into)
-                .as_deref(),
-            ..Default::default()
-        })
-        .ok()?;
-
-    debug!(
-        path = %path.to_string_lossy(),
-        "Found allowed signers file configured in Git."
-    );
-    Some(path.into())
 }
 
 /// The type of source.

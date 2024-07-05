@@ -52,7 +52,7 @@ pub struct RuntimeConfiguration {
         long,
         value_name = "PATH",
         env = "HANKO_ALLOWED_SIGNERS",
-        default_value = "TODO"
+        default_value = git_allowed_signers()
     )]
     pub allowed_signers: Option<PathBuf>,
 
@@ -74,6 +74,25 @@ fn default_config_path() -> Resettable<OsStr> {
     } else {
         Resettable::Reset
     }
+}
+
+/// The path to the allowed signers file as configured within Git.
+fn git_allowed_signers() -> Resettable<OsStr> {
+    if let Ok(file) = gix_config::File::from_globals() {
+        if let Some(path) = file.path("gpg", Some("ssh".into()), "allowedsignersfile") {
+            if let Ok(interpolated) = path.interpolate(gix_config::path::interpolate::Context {
+                home_dir: env::var("HOME")
+                    .ok()
+                    .map(std::convert::Into::<PathBuf>::into)
+                    .as_deref(),
+                ..Default::default()
+            }) {
+                return Resettable::Value(OsStr::from(interpolated.to_string_lossy().to_string()));
+            }
+        }
+    }
+
+    Resettable::Reset
 }
 
 /// The main CLI entrypoint.
