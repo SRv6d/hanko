@@ -22,13 +22,9 @@ pub struct Args {
     )]
     pub config: PathBuf,
 
-    /// Override where allowed signers are written to.
-    #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
-    pub output: Option<PathBuf>,
-
-    /// Increase verbosity.
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    // The runtime configuration.
+    #[command(flatten)]
+    runtime_config: RuntimeConfiguration,
 
     #[command(subcommand)]
     command: Commands,
@@ -49,7 +45,7 @@ enum Commands {
 }
 
 /// Runtime configuration that overrides the configuration file.
-#[derive(Debug, Parser, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, clap::Args)]
 pub struct RuntimeConfiguration {
     /// The allowed signers file.
     #[arg(
@@ -85,9 +81,10 @@ pub fn entrypoint() -> Result<()> {
     let start = Instant::now();
     let args = Args::parse();
 
-    setup_tracing(args.verbose);
+    setup_tracing(args.runtime_config.verbose);
 
-    let config = Configuration::load(&args.config, true).context("Failed to load configuration")?;
+    let config = Configuration::load(&args.config, Some(args.runtime_config))
+        .context("Failed to load configuration")?;
 
     match &args.command {
         Commands::Update => {
