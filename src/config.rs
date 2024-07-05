@@ -17,7 +17,7 @@ use tracing::info;
 pub struct Configuration {
     users: Vec<UserConfiguration>,
     sources: Option<Vec<SourceConfiguration>>,
-    allowed_signers: Option<PathBuf>,
+    allowed_signers: PathBuf,
 }
 
 impl Configuration {
@@ -42,8 +42,8 @@ impl Configuration {
 
     /// The configured path to write the allowed signers file to.
     #[must_use]
-    pub fn allowed_signers(&self) -> Option<&Path> {
-        self.allowed_signers.as_deref()
+    pub fn allowed_signers(&self) -> &Path {
+        self.allowed_signers.as_ref()
     }
 
     /// The configured and default sources.

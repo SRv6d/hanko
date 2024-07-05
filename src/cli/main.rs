@@ -107,7 +107,7 @@ pub fn entrypoint() -> Result<()> {
 
     match &args.command {
         Commands::Update => {
-            let path = config.allowed_signers().expect("no default value");
+            let path = config.allowed_signers();
             let sources = config.sources();
             if let Some(users) = config.users(&sources) {
                 update(path, &users).context("Failed to update the allowed signers file")?;
