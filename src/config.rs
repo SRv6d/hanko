@@ -6,6 +6,7 @@ use figment::{
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
+    collections::HashSet,
     fmt,
     ops::Deref,
     path::{Path, PathBuf},
@@ -87,17 +88,35 @@ impl Configuration {
     #[tracing::instrument]
     pub fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
         info!("Loading configuration file");
-        let config: Self = Figment::new()
-            .merge(Toml::file(path))
-            .merge(Serialized::defaults(runtime_config))
-            .extract()?;
+        let figment = {
+            if let Some(runtime_config) = runtime_config {
+                Figment::from(Toml::file(path)).merge(Serialized::defaults(runtime_config))
+            } else {
+                Figment::from(Toml::file(path))
+            }
+        };
+        let config: Self = figment.extract()?;
         config.validate()?;
         Ok(config)
     }
 
     /// Validate the configuration.
     fn validate(&self) -> Result<(), Error> {
-        todo!()
+        let configured_sources = self.sources();
+        let used_source_names: HashSet<&String> =
+            self.users.iter().flat_map(|u| &u.sources).collect();
+        let configured_source_names: HashSet<&String> = configured_sources.keys().collect();
+
+        let missing_source_names: Vec<String> = used_source_names
+            .difference(&configured_source_names)
+            .map(ToString::to_string)
+            .collect();
+        if !missing_source_names.is_empty() {
+            return Err(Error::MissingSources(MissingSourcesError(
+                missing_source_names,
+            )));
+        }
+        Ok(())
     }
 
     /// Save the configuration.
@@ -217,10 +236,55 @@ mod tests {
         todo!();
     }
 
-    /// Loading a configuration with a missing source returns an error.
+    /// Loading configuration missing sources returns an appropriate error.
     #[rstest]
+    #[case(
+        indoc!{r#"
+            users = [
+                { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+                { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
+            ]
+            allowed_signers = "~/allowed_signers"
+
+            [[sources]]
+            name = "acme-corp"
+            provider = "gitlab"
+            url = "https://git.acme.corp"
+        "#},
+        vec!["lumon-industries".to_string()]
+    )]
+    #[case(
+        indoc!{r#"
+            users = [
+                { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+                { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
+            ]
+            allowed_signers = "~/allowed_signers"
+        "#},
+        vec!["acme-corp".to_string(), "lumon-industries".to_string()]
+    )]
     #[allow(clippy::panic)]
-    fn loading_configuration_with_missing_source_returns_error(config_path: PathBuf) {
-        todo!();
+    fn loading_configuration_with_missing_source_returns_error(
+        config_path: PathBuf,
+        #[case] config: &str,
+        #[case] mut expected_missing: Vec<String>,
+    ) {
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, config)?;
+
+            let err = Configuration::load(&config_path, None).unwrap_err();
+            if let Error::MissingSources(err_missing) = err {
+                expected_missing.sort();
+                let err_missing = {
+                    let mut m = err_missing.clone();
+                    m.sort();
+                    m
+                };
+                assert_eq!(expected_missing, *err_missing);
+                Ok(())
+            } else {
+                Err("Did not return expected error".into())
+            }
+        });
     }
 }
