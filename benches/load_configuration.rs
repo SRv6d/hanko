@@ -13,6 +13,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
             { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
         ]
+        allowed_signers = "~/allowed_signers"
         
         [[sources]]
         name = "acme-corp"
