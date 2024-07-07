@@ -287,4 +287,29 @@ mod tests {
             }
         });
     }
+
+    /// Runtime options override those specified in the configuration.
+    #[rstest]
+    fn runtime_option_overrides_config(config_path: PathBuf) {
+        let config = indoc! {r#"
+            users = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+            ]
+            allowed_signers = "/value/in/config"
+        "#};
+        let runtime_allowed_signers = PathBuf::from("/value/at/runtime");
+        let runtime_config = RuntimeConfiguration {
+            allowed_signers: Some(runtime_allowed_signers.clone()),
+            verbose: 0,
+        };
+
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, config)?;
+
+            let config = Configuration::load(&config_path, Some(runtime_config)).unwrap();
+
+            assert_eq!(config.allowed_signers, runtime_allowed_signers);
+            Ok(())
+        });
+    }
 }

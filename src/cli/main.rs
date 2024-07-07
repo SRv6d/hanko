@@ -58,7 +58,7 @@ pub struct RuntimeConfiguration {
 
     /// Increase verbosity.
     #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    pub verbose: u8,
 }
 
 /// The default configuration file path according to the XDG Base Directory Specification.
