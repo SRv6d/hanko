@@ -7,7 +7,7 @@ use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::HashSet,
-    fmt,
+    fmt, io,
     ops::Deref,
     path::{Path, PathBuf},
 };
@@ -126,8 +126,10 @@ impl Configuration {
 }
 
 /// An error that can occur when interacting with a [`Configuration`].
-#[derive(Debug, PartialEq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("{0}")]
+    Io(#[from] io::Error),
     #[error("{0}")]
     SyntaxError(figment::Error),
     #[error("missing sources {0}")]
@@ -234,6 +236,18 @@ mod tests {
 
         assert!(sources.contains_key("github"));
         assert!(sources.contains_key("gitlab"));
+    }
+
+    #[rstest]
+    fn loading_non_existent_configuration_returns_io_error(config_path: PathBuf) {
+        figment::Jail::expect_with(|_| {
+            let err = Configuration::load(&config_path, None).unwrap_err();
+            if let Error::Io(_) = err {
+                Ok(())
+            } else {
+                Err("Did not return expected error".into())
+            }
+        });
     }
 
     /// Loading configuration missing sources returns an appropriate error.
