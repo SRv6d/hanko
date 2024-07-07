@@ -217,23 +217,23 @@ mod tests {
         PathBuf::from("config.toml")
     }
 
-    /// The default configuration has the default GitHub and GitLab sources.
+    /// A configuration without any explicitly configured sources contains the default sources.
     #[test]
-    fn default_configuration_has_default_sources() {
-        todo!();
-    }
+    fn configuration_has_default_sources() {
+        let config = Configuration {
+            users: vec![UserConfiguration {
+                name: "torvalds".to_string(),
+                principals: vec!["torvalds@linux-foundation.org".to_string()],
+                sources: vec!["github".to_string()],
+            }],
+            sources: None,
+            allowed_signers: "~/allowed_signers".into(),
+        };
 
-    /// Loading an empty configuration file with defaults enabled returns the default configuration.
-    #[rstest]
-    fn load_empty_file_with_default_returns_exact_default(config_path: PathBuf) {
-        todo!();
-    }
+        let sources = config.sources();
 
-    /// Loading an empty configuration file without defaults enabled returns an error because
-    /// there are missing fields.
-    #[rstest]
-    fn load_empty_file_without_default_returns_error(config_path: PathBuf) {
-        todo!();
+        assert!(sources.contains_key("github"));
+        assert!(sources.contains_key("gitlab"));
     }
 
     /// Loading configuration missing sources returns an appropriate error.
