@@ -131,14 +131,14 @@ pub enum Error {
     #[error("{0}")]
     Io(#[from] io::Error),
     #[error("{0}")]
-    SyntaxError(figment::Error),
+    Syntax(figment::Error),
     #[error("missing sources {0}")]
     MissingSources(MissingSourcesError),
 }
 
 impl From<figment::Error> for Error {
     fn from(error: figment::Error) -> Self {
-        Error::SyntaxError(error)
+        Error::Syntax(error)
     }
 }
 
