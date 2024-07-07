@@ -5,12 +5,13 @@ use clap::{
     builder::{OsStr, Resettable},
     Parser, Subcommand,
 };
+use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf, time::Instant};
 use tracing::{info, Level};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
-pub struct Cli {
+pub struct Args {
     /// The configuration file.
     #[arg(
         short,
@@ -21,13 +22,9 @@ pub struct Cli {
     )]
     pub config: PathBuf,
 
-    /// Override where allowed signers are written to.
-    #[arg(long, value_name = "PATH", env = "HANKO_OUTPUT")]
-    pub output: Option<PathBuf>,
-
-    /// Increase verbosity.
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    // The runtime configuration.
+    #[command(flatten)]
+    runtime_config: RuntimeConfiguration,
 
     #[command(subcommand)]
     command: Commands,
@@ -47,6 +44,23 @@ enum Commands {
     Source(ManageSources),
 }
 
+/// Runtime configuration that overrides the configuration file.
+#[derive(Debug, Serialize, Deserialize, clap::Args)]
+pub struct RuntimeConfiguration {
+    /// The allowed signers file.
+    #[arg(
+        long,
+        value_name = "PATH",
+        env = "HANKO_ALLOWED_SIGNERS",
+        default_value = git_allowed_signers()
+    )]
+    pub allowed_signers: Option<PathBuf>,
+
+    /// Increase verbosity.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    pub verbose: u8,
+}
+
 /// The default configuration file path according to the XDG Base Directory Specification.
 /// If neither `$XDG_CONFIG_HOME` nor `$HOME` are set, `Resettable::Reset` is returned, forcing the user to specify the path.
 fn default_config_path() -> Resettable<OsStr> {
@@ -62,18 +76,38 @@ fn default_config_path() -> Resettable<OsStr> {
     }
 }
 
+/// The path to the allowed signers file as configured within Git.
+fn git_allowed_signers() -> Resettable<OsStr> {
+    if let Ok(file) = gix_config::File::from_globals() {
+        if let Some(path) = file.path("gpg", Some("ssh".into()), "allowedsignersfile") {
+            if let Ok(interpolated) = path.interpolate(gix_config::path::interpolate::Context {
+                home_dir: env::var("HOME")
+                    .ok()
+                    .map(std::convert::Into::<PathBuf>::into)
+                    .as_deref(),
+                ..Default::default()
+            }) {
+                return Resettable::Value(OsStr::from(interpolated.to_string_lossy().to_string()));
+            }
+        }
+    }
+
+    Resettable::Reset
+}
+
 /// The main CLI entrypoint.
 pub fn entrypoint() -> Result<()> {
     let start = Instant::now();
-    let cli = Cli::parse();
+    let args = Args::parse();
 
-    setup_tracing(cli.verbose);
+    setup_tracing(args.runtime_config.verbose);
 
-    let config = Configuration::load(&cli.config, true).context("Failed to load configuration")?;
+    let config = Configuration::load(&args.config, Some(args.runtime_config))
+        .context("Failed to load configuration")?;
 
-    match &cli.command {
+    match &args.command {
         Commands::Update => {
-            let path = config.allowed_signers().expect("no default value");
+            let path = config.allowed_signers();
             let sources = config.sources();
             if let Some(users) = config.users(&sources) {
                 update(path, &users).context("Failed to update the allowed signers file")?;
@@ -123,6 +157,6 @@ mod tests {
     #[test]
     fn verify_cli() {
         use clap::CommandFactory;
-        Cli::command().debug_assert();
+        Args::command().debug_assert();
     }
 }

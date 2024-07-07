@@ -13,6 +13,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
             { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
         ]
+        allowed_signers = "~/allowed_signers"
         
         [[sources]]
         name = "acme-corp"
@@ -24,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let path: &Path = &file.into_temp_path();
 
     c.bench_function("load the example configuration", |b| {
-        b.iter(|| Configuration::load(path, true).unwrap());
+        b.iter(|| Configuration::load(path, None).unwrap());
     });
 }
 

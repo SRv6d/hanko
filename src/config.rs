@@ -1,4 +1,4 @@
-use crate::{user::User, Github, Gitlab, Source, SourceMap};
+use crate::{cli::RuntimeConfiguration, user::User, Github, Gitlab, Source, SourceMap};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -7,75 +7,64 @@ use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::HashSet,
-    env, fmt,
+    fmt,
     ops::Deref,
     path::{Path, PathBuf},
 };
-use tracing::{debug, info};
+use tracing::info;
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
-    users: Option<Vec<UserConfiguration>>,
-    sources: Vec<SourceConfiguration>,
-    allowed_signers: Option<PathBuf>,
-}
-
-impl Default for Configuration {
-    /// The default configuration containing common sources as well as the location of the allowed
-    /// signers file if it is configured within Git.
-    fn default() -> Self {
-        Self::new(
-            None,
-            vec![
-                SourceConfiguration {
-                    name: "github".to_string(),
-                    provider: SourceType::Github,
-                    url: "https://api.github.com".parse().unwrap(),
-                },
-                SourceConfiguration {
-                    name: "gitlab".to_string(),
-                    provider: SourceType::Gitlab,
-                    url: "https://gitlab.com".parse().unwrap(),
-                },
-            ],
-            git_allowed_signers(),
-        )
-    }
+    users: Vec<UserConfiguration>,
+    sources: Option<Vec<SourceConfiguration>>,
+    allowed_signers: PathBuf,
 }
 
 impl Configuration {
-    fn new(
-        users: Option<Vec<UserConfiguration>>,
-        sources: Vec<SourceConfiguration>,
-        allowed_signers: Option<PathBuf>,
-    ) -> Self {
-        Self {
-            users,
-            sources,
-            allowed_signers,
-        }
+    /// The default GitHub and GitLab sources.
+    fn default_sources() -> SourceMap {
+        [
+            SourceConfiguration {
+                name: "github".to_string(),
+                provider: SourceType::Github,
+                url: "https://api.github.com".parse().unwrap(),
+            },
+            SourceConfiguration {
+                name: "gitlab".to_string(),
+                provider: SourceType::Gitlab,
+                url: "https://gitlab.com".parse().unwrap(),
+            },
+        ]
+        .iter()
+        .map(|config| (config.name.clone(), config.build_source()))
+        .collect()
     }
 
     /// The configured path to write the allowed signers file to.
     #[must_use]
-    pub fn allowed_signers(&self) -> Option<&Path> {
-        self.allowed_signers.as_deref()
+    pub fn allowed_signers(&self) -> &Path {
+        self.allowed_signers.as_ref()
     }
 
-    /// The configured sources.
+    /// The configured and default sources.
     #[must_use]
     pub fn sources(&self) -> SourceMap {
-        self.sources
-            .iter()
-            .map(|config| (config.name.clone(), config.build_source()))
-            .collect()
+        let mut sources = Self::default_sources();
+        if let Some(configs) = &self.sources {
+            sources.extend(
+                configs
+                    .iter()
+                    .map(|config| (config.name.clone(), config.build_source())),
+            );
+        }
+        sources
     }
 
     /// The configured users.
     #[must_use]
     pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<User<'b>>> {
-        let configs = self.users.as_ref()?;
+        let configs = &self.users;
         let users = configs
             .iter()
             .map(|config| {
@@ -95,36 +84,37 @@ impl Configuration {
         Some(users)
     }
 
-    /// Load the configuration from a TOML file, using defaults for values that were not provided.
+    /// Load the configuration from a TOML file optionally merged with runtime configuration.
     #[tracing::instrument]
-    pub fn load(path: &Path, defaults: bool) -> Result<Self, Error> {
+    pub fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
+        info!("Loading configuration file");
         let figment = {
-            if defaults {
-                Figment::from(Serialized::defaults(Configuration::default()))
+            if let Some(runtime_config) = runtime_config {
+                Figment::from(Toml::file(path)).merge(Serialized::defaults(runtime_config))
             } else {
-                Figment::new()
+                Figment::from(Toml::file(path))
             }
         };
-        info!("Loading configuration file");
-        let config: Self = figment.admerge(Toml::file(path)).extract()?;
+        let config: Self = figment.extract()?;
         config.validate()?;
         Ok(config)
     }
 
     /// Validate the configuration.
     fn validate(&self) -> Result<(), Error> {
-        if let Some(users) = &self.users {
-            let used_sources: HashSet<&String> = users.iter().flat_map(|u| &u.sources).collect();
-            let configured_sources: HashSet<&String> =
-                self.sources.iter().map(|s| &s.name).collect();
+        let configured_sources = self.sources();
+        let used_source_names: HashSet<&String> =
+            self.users.iter().flat_map(|u| &u.sources).collect();
+        let configured_source_names: HashSet<&String> = configured_sources.keys().collect();
 
-            let missing_sources: Vec<String> = used_sources
-                .difference(&configured_sources)
-                .map(ToString::to_string)
-                .collect();
-            if !missing_sources.is_empty() {
-                return Err(Error::MissingSources(MissingSourcesError(missing_sources)));
-            }
+        let missing_source_names: Vec<String> = used_source_names
+            .difference(&configured_source_names)
+            .map(ToString::to_string)
+            .collect();
+        if !missing_source_names.is_empty() {
+            return Err(Error::MissingSources(MissingSourcesError(
+                missing_source_names,
+            )));
         }
         Ok(())
     }
@@ -163,29 +153,6 @@ impl Deref for MissingSourcesError {
     fn deref(&self) -> &Self::Target {
         &self.0
     }
-}
-
-/// The path to the allowed signers file as configured within Git. If an error occurs while
-/// retrieving the path, `None` is returned.
-#[tracing::instrument(level = "debug")]
-fn git_allowed_signers() -> Option<PathBuf> {
-    let file = gix_config::File::from_globals().ok()?;
-    let path = file
-        .path("gpg", Some("ssh".into()), "allowedsignersfile")?
-        .interpolate(gix_config::path::interpolate::Context {
-            home_dir: env::var("HOME")
-                .ok()
-                .map(std::convert::Into::<PathBuf>::into)
-                .as_deref(),
-            ..Default::default()
-        })
-        .ok()?;
-
-    debug!(
-        path = %path.to_string_lossy(),
-        "Found allowed signers file configured in Git."
-    );
-    Some(path.into())
 }
 
 /// The type of source.
@@ -250,65 +217,98 @@ mod tests {
         PathBuf::from("config.toml")
     }
 
-    /// The default configuration contains the default GitHub and GitLab sources.
+    /// A configuration without any explicitly configured sources contains the default sources.
     #[test]
-    fn default_configuration_contains_default_sources() {
-        let default_sources = Configuration::default().sources;
-        assert!(default_sources.contains(&SourceConfiguration {
-            name: "github".to_string(),
-            provider: SourceType::Github,
-            url: "https://api.github.com".parse().unwrap(),
-        }));
-        assert!(default_sources.contains(&SourceConfiguration {
-            name: "gitlab".to_string(),
-            provider: SourceType::Gitlab,
-            url: "https://gitlab.com".parse().unwrap(),
-        }));
+    fn configuration_has_default_sources() {
+        let config = Configuration {
+            users: vec![UserConfiguration {
+                name: "torvalds".to_string(),
+                principals: vec!["torvalds@linux-foundation.org".to_string()],
+                sources: vec!["github".to_string()],
+            }],
+            sources: None,
+            allowed_signers: "~/allowed_signers".into(),
+        };
+
+        let sources = config.sources();
+
+        assert!(sources.contains_key("github"));
+        assert!(sources.contains_key("gitlab"));
     }
 
-    /// Loading an empty configuration file with defaults enabled returns the default configuration.
+    /// Loading configuration missing sources returns an appropriate error.
     #[rstest]
-    fn load_empty_file_with_default_returns_exact_default(config_path: PathBuf) {
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, "")?;
-            let config = Configuration::load(&config_path, true).unwrap();
-            assert_eq!(config, Configuration::default());
-            Ok(())
-        });
-    }
+    #[case(
+        indoc!{r#"
+            users = [
+                { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+                { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
+            ]
+            allowed_signers = "~/allowed_signers"
 
-    /// Loading an empty configuration file without defaults enabled returns an error because
-    /// there are missing fields.
-    #[rstest]
-    fn load_empty_file_without_default_returns_error(config_path: PathBuf) {
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, "")?;
-            Configuration::load(&config_path, false).unwrap_err();
-            Ok(())
-        });
-    }
-
-    /// Loading a configuration with a missing source returns an error.
-    #[rstest]
+            [[sources]]
+            name = "acme-corp"
+            provider = "gitlab"
+            url = "https://git.acme.corp"
+        "#},
+        vec!["lumon-industries".to_string()]
+    )]
+    #[case(
+        indoc!{r#"
+            users = [
+                { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
+                { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
+            ]
+            allowed_signers = "~/allowed_signers"
+        "#},
+        vec!["acme-corp".to_string(), "lumon-industries".to_string()]
+    )]
     #[allow(clippy::panic)]
-    fn loading_configuration_with_missing_source_returns_error(config_path: PathBuf) {
-        let toml = indoc! {r#"
-        users = [
-            { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
-            { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
-        ]
-        "#};
+    fn loading_configuration_with_missing_source_returns_error(
+        config_path: PathBuf,
+        #[case] config: &str,
+        #[case] mut expected_missing: Vec<String>,
+    ) {
         figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, toml)?;
-            let error = Configuration::load(&config_path, true).unwrap_err();
+            jail.create_file(&config_path, config)?;
 
-            if let Error::MissingSources(missing_sources) = error {
-                assert!(["acme-corp".to_string(), "lumon-industries".to_string()]
-                    .iter()
-                    .all(|s| missing_sources.contains(s)));
+            let err = Configuration::load(&config_path, None).unwrap_err();
+            if let Error::MissingSources(err_missing) = err {
+                expected_missing.sort();
+                let err_missing = {
+                    let mut m = err_missing.clone();
+                    m.sort();
+                    m
+                };
+                assert_eq!(expected_missing, *err_missing);
+                Ok(())
             } else {
-                panic!("Unexpected error returned: {error:?}");
+                Err("Did not return expected error".into())
             }
+        });
+    }
+
+    /// Runtime options override those specified in the configuration.
+    #[rstest]
+    fn runtime_option_overrides_config(config_path: PathBuf) {
+        let config = indoc! {r#"
+            users = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+            ]
+            allowed_signers = "/value/in/config"
+        "#};
+        let runtime_allowed_signers = PathBuf::from("/value/at/runtime");
+        let runtime_config = RuntimeConfiguration {
+            allowed_signers: Some(runtime_allowed_signers.clone()),
+            verbose: 0,
+        };
+
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, config)?;
+
+            let config = Configuration::load(&config_path, Some(runtime_config)).unwrap();
+
+            assert_eq!(config.allowed_signers, runtime_allowed_signers);
             Ok(())
         });
     }
