@@ -89,10 +89,11 @@ impl Configuration {
     pub fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
         info!("Loading configuration file");
         let figment = {
+            let toml = Figment::from(Toml::file_exact(path));
             if let Some(runtime_config) = runtime_config {
-                Figment::from(Toml::file(path)).merge(Serialized::defaults(runtime_config))
+                toml.merge(Serialized::defaults(runtime_config))
             } else {
-                Figment::from(Toml::file(path))
+                toml
             }
         };
         let config: Self = figment.extract()?;
