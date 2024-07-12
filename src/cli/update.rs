@@ -18,5 +18,10 @@ pub(super) async fn update(path: &Path, users: &Vec<User>) -> Result<()> {
 
 async fn get_signer_entries(users: &[User<'_>]) -> Result<Vec<AllowedSignersEntry>> {
     let client = Rc::new(reqwest::Client::new());
-    todo!()
+
+    let mut entries = Vec::new();
+    for user in users {
+        entries.extend(user.get_allowed_signers(&client).await?);
+    }
+    Ok(entries)
 }
