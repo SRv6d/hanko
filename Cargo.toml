@@ -24,7 +24,7 @@ async-trait = "0.1.80"
 chrono = "0.4.37"
 clap = { version = "4.5.4", features = ["derive", "env", "string"] }
 figment = { version = "0.10.16", features = ["toml", "test"] }
-gix-config = "0.36.1"
+gix-config = "0.37.0"
 reqwest = { version = "0.12.2", features = [
     "json",
     "blocking", # required for tests
@@ -42,7 +42,7 @@ criterion = "0.5.1"
 httpmock = "0.7.0"
 indoc = "2.0.5"
 proptest = "1.4.0"
-rstest = "0.19.0"
+rstest = "0.21.0"
 serde_json = "1.0.116"
 tempfile = "3.10.1"
 
