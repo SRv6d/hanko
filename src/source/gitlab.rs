@@ -43,7 +43,7 @@ impl Source for Gitlab {
             .build()
             .unwrap();
 
-        trace!(url = %request.url(), "Sending request to GitLab API");
+        trace!(?request, "Sending request to GitLab API");
         let response = handle_gitlab_errors(client.execute(request).await)?;
         // The API has no way to filter keys by usage type, so this contains all the user's keys.
         let all_keys: Vec<ApiSshKey> = response.json().await?;
