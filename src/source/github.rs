@@ -106,7 +106,7 @@ mod tests {
     use httpmock::prelude::*;
     use reqwest::StatusCode;
     use rstest::*;
-    use serde_json::json;
+    use serde_json::{json, Value as JsonValue};
 
     const API_VERSION: &str = "2022-11-28";
     const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
@@ -148,9 +148,9 @@ mod tests {
 
     /// Keys returned from the API are deserialized correctly.
     #[rstest]
-    #[case("[]", vec![])]
-    #[case(
-        r#"[
+    #[case(json!([]), vec![])]
+    #[case(json!(
+        [
             {
                 "id": 773452,
                 "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS",
@@ -169,7 +169,7 @@ mod tests {
                 "title": "key-3",
                 "created_at": "2023-12-04T19:32:23.794Z"
               }
-        ]"#,
+        ]),
         vec![
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS".parse().unwrap(),
             "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=".parse().unwrap(),
@@ -178,7 +178,7 @@ mod tests {
     )]
     #[tokio::test]
     async fn keys_returned_by_api_deserialized_correctly(
-        #[case] body: &str,
+        #[case] body: JsonValue,
         #[case] expected: Vec<SshPublicKey>,
         api_w_mock_server: (Github, MockServer),
         client: Client,
@@ -189,7 +189,7 @@ mod tests {
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
             then.status(200)
                 .header("Content-Type", "application/json; charset=utf-8")
-                .body(body);
+                .json_body(body);
         });
 
         let keys = api
