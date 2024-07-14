@@ -36,6 +36,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dev-dependencies]
+assert_cmd = "2.0.14"
 codspeed-criterion-compat = "2.4.1"
 criterion = "0.5.1"
 httpmock = "0.7.0"
