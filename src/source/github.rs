@@ -42,7 +42,7 @@ impl Source for Github {
             .build()
             .unwrap();
 
-        trace!(url = %request.url(), "Sending request to GitHub API");
+        trace!(?request, "Sending request to GitHub API");
         let response = handle_github_errors(client.execute(request).await).await?;
         Ok(response.json().await?)
     }
