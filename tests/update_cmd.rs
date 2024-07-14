@@ -7,17 +7,14 @@ use serde_json::json;
 use std::io::Write;
 use tempfile::NamedTempFile;
 
-/// When running the update command with an example configuration and mocked endpoints,
-/// the expected allowed signers file is written to disk.
-#[rstest]
-fn update_writes_expected_allowed_signers() {
-    let github_server = {
-        let server = MockServer::start();
-        let mock_jsnow = server.mock(|when, then| {
-            when.method(GET)
-                .path("users/jsnow/ssh_signing_keys");
-            then.status(200)
-                .json_body(json!(
+/// A mock github server with preconfigured responses.
+#[fixture]
+fn mock_github_server() -> MockServer {
+    let server = MockServer::start();
+    let responses = [
+        (
+            "jsnow",
+            json!(
                 [
                     {
                         "id": 773452,
@@ -26,36 +23,42 @@ fn update_writes_expected_allowed_signers() {
                         "created_at": "2023-05-23T09:35:15.638Z"
                     }
                 ]
-            ));
-        });
-        let mock_imalcom = server.mock(|when, then| {
-            when.method(GET).
-                path("users/imalcom/ssh_signing_keys");
-            then.status(200)
-                .json_body(json!(
+            ),
+        ),
+        (
+            "imalcom",
+            json!(
                 [
                     {
                         "id": 773453,
                         "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=",
                         "title": "key-2",
                         "created_at": "2023-07-22T23:04:29.415Z"
-                      }
+                    }
                 ]
-            ));
-        });
-        let mock_napplic = server.mock(|when, then| {
-            when.method(GET).path("users/napplic/ssh_signing_keys");
-            then.status(200).json_body(json!([]));
-        });
-        server
-    };
-    let gitlab_server = {
-        let server = MockServer::start();
-        let mock_cwoods = server.mock(|when, then| {
+            ),
+        ),
+        ("napplic", json!([])),
+    ];
+    for (user, body) in responses {
+        server.mock(|when, then| {
             when.method(GET)
-                .path("/api/v4/users/cwoods/keys");
-            then.status(200)
-                .json_body(json!(
+                .path(format!("/users/{user}/ssh_signing_keys"));
+            then.status(200).json_body(body);
+        });
+    }
+
+    server
+}
+
+/// A mock gitlab server with preconfigured responses.
+#[fixture]
+fn mock_gitlab_server() -> MockServer {
+    let server = MockServer::start();
+    let responses = [
+        (
+            "cwoods",
+            json!(
                 [
                     {
                         "id": 1121029,
@@ -66,13 +69,11 @@ fn update_writes_expected_allowed_signers() {
                         "usage_type": "auth_and_signing"
                     }
                 ]
-            ));
-        });
-        let mock_ernie = server.mock(|when, then| {
-            when.method(GET)
-                .path("/api/v4/users/ernie/keys");
-            then.status(200)
-                .json_body(json!(
+            ),
+        ),
+        (
+            "ernie",
+            json!(
                 [
                     {
                         "id": 1121031,
@@ -83,10 +84,26 @@ fn update_writes_expected_allowed_signers() {
                         "usage_type": "signing"
                     }
                 ]
-            ));
+            ),
+        ),
+    ];
+    for (user, body) in responses {
+        server.mock(|when, then| {
+            when.method(GET).path(format!("/api/v4/users/{user}/keys"));
+            then.status(200).json_body(body);
         });
-        server
-    };
+    }
+
+    server
+}
+
+/// When running the update command with an example configuration and mocked endpoints,
+/// the expected allowed signers file is written to disk.
+#[rstest]
+fn update_writes_expected_allowed_signers(
+    mock_github_server: MockServer,
+    mock_gitlab_server: MockServer,
+) {
     let config = {
         let toml = formatdoc! {r#"
             users = [
@@ -106,7 +123,7 @@ fn update_writes_expected_allowed_signers() {
             name = "mock-gitlab"
             provider = "gitlab"
             url = "{gitlab_url}"
-        "#, github_url = github_server.base_url(), gitlab_url=gitlab_server.base_url()};
+        "#, github_url = mock_github_server.base_url(), gitlab_url=mock_gitlab_server.base_url()};
         let mut file = NamedTempFile::new().unwrap();
         file.write_all(toml.as_bytes()).unwrap();
         file
