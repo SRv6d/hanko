@@ -7,7 +7,7 @@ use clap::{
 };
 use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf, time::Instant};
-use tracing::{info, Level};
+use tracing::{debug, info, Level};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -109,6 +109,7 @@ pub fn entrypoint() -> Result<()> {
         Commands::Update => {
             let path = config.allowed_signers();
             let sources = config.sources();
+            debug!(?sources, "Initialized sources");
             if let Some(users) = config.users(&sources) {
                 update(path, &users).context("Failed to update the allowed signers file")?;
 

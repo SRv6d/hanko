@@ -4,13 +4,14 @@ use anyhow::{Context, Result};
 use std::path::Path;
 
 #[tokio::main]
-#[tracing::instrument]
+#[tracing::instrument(skip_all)]
 pub(super) async fn update(path: &Path, users: &Vec<User>) -> Result<()> {
     let client = reqwest::Client::new();
 
     let mut entries = Vec::new();
     for user in users {
-        entries.extend(user.get_allowed_signers(&client).await?);
+        let allowed_signers = user.get_allowed_signers(&client).await?;
+        entries.extend(allowed_signers);
     }
 
     let file = AllowedSignersFile::with_signers(path.into(), entries);
