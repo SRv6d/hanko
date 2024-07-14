@@ -1,4 +1,4 @@
-use super::{manage_signers::ManageSigners, manage_sources::ManageSources, update::update};
+use super::update::update;
 use crate::Configuration;
 use anyhow::{Context, Result};
 use clap::{
@@ -34,14 +34,13 @@ pub struct Args {
 enum Commands {
     /// Update the allowed signers file.
     Update,
+    // /// Manage signers.
+    // #[command(subcommand)]
+    // Signer(ManageSigners),
 
-    /// Manage signers.
-    #[command(subcommand)]
-    Signer(ManageSigners),
-
-    /// Manage sources.
-    #[command(subcommand)]
-    Source(ManageSources),
+    // /// Manage sources.
+    // #[command(subcommand)]
+    // Source(ManageSources),
 }
 
 /// Runtime configuration that overrides the configuration file.
@@ -121,7 +120,6 @@ pub fn entrypoint() -> Result<()> {
                 );
             }
         }
-        _ => panic!("Not yet implemented"),
     }
     Ok(())
 }
