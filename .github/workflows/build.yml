@@ -5,6 +5,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -28,9 +31,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: "${{ matrix.target }}"
       - uses: Swatinem/rust-cache@v2
+      - name: Print versions
+        shell: bash
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose --release --target ${{ matrix.target }}
+          args: --release --locked --target ${{ matrix.target }}
+      - name: Create Release Archive
+        run: >-
+          tar -czvf "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.tar.gz"
+          target/release/hanko
+        shell: bash
+      - name: Upload Release Archive
+        run: >-
+          gh release upload "${GITHUB_REF#refs/tags/}"
+          "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.tar.gz"
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
