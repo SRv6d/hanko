@@ -56,16 +56,24 @@ jobs:
         with:
           command: build
           args: --release --locked --target ${{ matrix.target }}
-      - name: Create Release Archive
+      - name: Create Release Tar Archive
         run: >-
           tar -czvf "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.tar.gz"
           -C target/${{ matrix.target }}/release
           hanko
         shell: bash
+        if: ${{ !startsWith(matrix.os, 'windows') }}
+      - name: Create Release Zip Archive
+        run: >-
+          zip "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.zip"
+          target/${{ matrix.target }}/release/hanko
+        shell: bash
+        if: ${{ startsWith(matrix.os, 'windows') }}
       - name: Upload Release Archive
         run: >-
           gh release upload "${GITHUB_REF#refs/tags/}"
-          "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.tar.gz"
+          "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.${FILE_EXTENSION}"
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FILE_EXTENSION: ${{ startsWith(matrix.os, 'windows') && 'zip' || 'tar.gz' }}
