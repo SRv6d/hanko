@@ -65,9 +65,9 @@ jobs:
         if: ${{ !startsWith(matrix.os, 'windows') }}
       - name: Create Release Zip Archive
         run: >-
-          Compress-Archive -Destination "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.zip"
-          -Path target/${{ matrix.target }}/release/hanko.exe
-        shell: pwsh
+          7z a "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.zip"
+          target/${{ matrix.target }}/release/hanko.exe
+        shell: bash
         if: ${{ startsWith(matrix.os, 'windows') }}
       - name: Upload Release Archive
         run: >-
