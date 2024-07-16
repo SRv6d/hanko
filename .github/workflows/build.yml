@@ -51,7 +51,8 @@ jobs:
       - name: Create Release Archive
         run: >-
           tar -czvf "hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.tar.gz"
-          target/${{ matrix.target }}/release/hanko
+          -C target/${{ matrix.target }}/release
+          hanko
         shell: bash
       - name: Upload Release Archive
         run: >-
