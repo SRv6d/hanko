@@ -45,6 +45,7 @@ impl Source for Gitlab {
 
         trace!(?request, "Sending request to GitLab API");
         let response = handle_gitlab_errors(client.execute(request).await)?;
+        trace!(?response, "Received response from GitLab API.");
         // The API has no way to filter keys by usage type, so this contains all the user's keys.
         let all_keys: Vec<ApiSshKey> = response.json().await?;
         // Filter out the keys that are not used for signing.
