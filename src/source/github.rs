@@ -44,6 +44,7 @@ impl Source for Github {
 
         trace!(?request, "Sending request to GitHub API");
         let response = handle_github_errors(client.execute(request).await).await?;
+        trace!(?response, "Received response from GitHub API.");
         Ok(response.json().await?)
     }
 }
