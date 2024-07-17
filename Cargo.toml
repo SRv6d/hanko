@@ -27,7 +27,8 @@ figment = { version = "0.10.16", features = ["toml", "test"] }
 gix-config = "0.37.0"
 reqwest = { version = "0.12.2", features = [
     "json",
-    "blocking", # required for tests
+    "rustls-tls-native-roots",
+    "blocking",                # required for tests
 ] }
 serde = { version = "1.0.197", features = ["derive"] }
 thiserror = "1.0.59"

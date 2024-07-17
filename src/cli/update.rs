@@ -29,6 +29,7 @@ fn get_client() -> reqwest::Client {
         .user_agent(USER_AGENT)
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(10))
+        .use_rustls_tls()
         .build()
         .unwrap()
 }
