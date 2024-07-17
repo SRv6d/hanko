@@ -28,6 +28,8 @@ gix-config = "0.37.0"
 reqwest = { version = "0.12.2", features = [
     "json",
     "rustls-tls-native-roots",
+    "gzip",
+    "zstd",
     "blocking",                # required for tests
 ] }
 serde = { version = "1.0.197", features = ["derive"] }
