@@ -6,6 +6,8 @@ on:
     types: [published]
 
 permissions:
+  id-token: write
+  attestations: write
   contents: write
 
 concurrency:
@@ -69,6 +71,12 @@ jobs:
           ./target/${{ matrix.target }}/release/hanko.exe
         shell: bash
         if: ${{ startsWith(matrix.os, 'windows') }}
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: hanko-${GITHUB_REF#refs/tags/}-${{ matrix.target }}.${FILE_EXTENSION}
+        env:
+          FILE_EXTENSION: ${{ startsWith(matrix.os, 'windows') && 'zip' || 'tar.gz' }}
       - name: Upload Release Archive
         run: >-
           gh release upload "${GITHUB_REF#refs/tags/}"
