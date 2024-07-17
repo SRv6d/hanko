@@ -44,6 +44,7 @@ impl Source for Github {
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER)
             .header("X-GitHub-Api-Version", Self::VERSION)
+            .version(reqwest::Version::HTTP_2)
             .build()
             .unwrap();
 
