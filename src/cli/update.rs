@@ -30,6 +30,7 @@ fn get_client() -> reqwest::Client {
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(10))
         .use_rustls_tls()
+        .http2_prior_knowledge()
         .build()
         .unwrap()
 }
