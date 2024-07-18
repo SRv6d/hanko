@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: check for typos
-        uses: crate-ci/typos@v1.20.8
+        uses: crate-ci/typos@v1.23.2
   cargo-test:
     runs-on: ${{ matrix.os }}
     strategy:
