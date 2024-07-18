@@ -80,7 +80,7 @@ jobs:
           subject-path: ${{ env.ARCHIVE_FILENAME }}
       - name: Upload Release Archive
         run: >-
-          gh release upload "${GITHUB_REF#refs/tags/}"
+          gh release upload "${GITHUB_REF_NAME}"
           "${ARCHIVE_FILENAME}"
         shell: bash
         env:
