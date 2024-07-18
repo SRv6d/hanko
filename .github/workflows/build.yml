@@ -47,6 +47,12 @@ jobs:
         with:
           targets: "${{ matrix.target }}"
       - uses: Swatinem/rust-cache@v2
+      - name: Install GCC for aarch64
+        run: sudo apt install -y gcc-aarch64-linux-gnu
+        if: ${{ contains(matrix.target, 'aarch64') && contains(matrix.target, 'linux') }}
+      - name: Install musl tools
+        run: sudo apt install -y musl-tools
+        if: ${{ contains(matrix.target, 'musl') && contains(matrix.target, 'linux') }}
       - name: Print versions
         shell: bash
         run: |
@@ -80,7 +86,7 @@ jobs:
           subject-path: ${{ env.ARCHIVE_FILENAME }}
       - name: Upload Release Archive
         run: >-
-          gh release upload "${GITHUB_REF#refs/tags/}"
+          gh release upload "${GITHUB_REF_NAME}"
           "${ARCHIVE_FILENAME}"
         shell: bash
         env:
