@@ -25,12 +25,14 @@ chrono = "0.4.37"
 clap = { version = "4.5.4", features = ["derive", "env", "string"] }
 figment = { version = "0.10.16", features = ["toml", "test"] }
 gix-config = "0.37.0"
-reqwest = { version = "0.12.2", features = [
+reqwest = { version = "0.12.2", default-features = false, features = [
     "json",
     "rustls-tls-native-roots",
     "gzip",
     "zstd",
-    "blocking",                # required for tests
+    "http2",
+    "macos-system-configuration", # use macOS proxy configuration automatically
+    "blocking",                   # required for tests
 ] }
 serde = { version = "1.0.197", features = ["derive"] }
 thiserror = "1.0.59"
