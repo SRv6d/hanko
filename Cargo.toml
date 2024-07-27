@@ -1,6 +1,6 @@
 [package]
 name = "hanko"
-description = "Manage Git allowed signers."
+description = "Keeps your allowed signers file up to date with signing keys configured on platforms like GitHub and GitLab."
 version = "0.3.0"
 keywords = ["git", "ssh", "security", "encryption"]
 categories = [
