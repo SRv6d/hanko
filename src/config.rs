@@ -11,7 +11,7 @@ use std::{
     ops::Deref,
     path::{Path, PathBuf},
 };
-use tracing::info;
+use tracing::{debug, info, trace};
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -85,12 +85,16 @@ impl Configuration {
     }
 
     /// Load the configuration from a TOML file optionally merged with runtime configuration.
-    #[tracing::instrument]
+    #[tracing::instrument(skip(runtime_config))]
     pub fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
         info!("Loading configuration file");
         let figment = {
             let toml = Figment::from(Toml::file_exact(path));
             if let Some(runtime_config) = runtime_config {
+                debug!(
+                    ?runtime_config,
+                    "Merging configuration file with runtime configuration"
+                );
                 toml.merge(Serialized::defaults(runtime_config))
             } else {
                 toml
@@ -117,6 +121,7 @@ impl Configuration {
                 missing_source_names,
             )));
         }
+        trace!(?self, "Validated configuration");
         Ok(())
     }
 
