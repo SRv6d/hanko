@@ -313,4 +313,25 @@ mod tests {
             Ok(())
         });
     }
+
+    /// Users have a default GitHub source if no sources were configured explicitly.
+    #[rstest]
+    fn users_have_default_github_source(config_path: PathBuf) {
+        let config = indoc! {r#"
+            users = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+            ]
+            allowed_signers = "~/allowed_signers"
+        "#};
+
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, config)?;
+
+            let mut config = Configuration::load(&config_path, None).unwrap();
+            let user_sources = config.users.pop().unwrap().sources;
+
+            assert_eq!(user_sources, vec!["github"]);
+            Ok(())
+        });
+    }
 }
