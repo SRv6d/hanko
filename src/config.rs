@@ -164,10 +164,15 @@ pub enum SourceType {
     Gitlab,
 }
 
+fn default_user_source() -> Vec<String> {
+    vec!["github".to_string()]
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct UserConfiguration {
     pub name: String,
     pub principals: Vec<String>,
+    #[serde(default = "default_user_source")]
     pub sources: Vec<String>,
 }
 
