@@ -102,7 +102,6 @@ impl Configuration {
         };
         let config: Self = figment.extract()?;
         config.validate()?;
-        trace!(?config, "Validated configuration");
         Ok(config)
     }
 
@@ -122,6 +121,7 @@ impl Configuration {
                 missing_source_names,
             )));
         }
+        trace!(?self, "Validated configuration");
         Ok(())
     }
 
