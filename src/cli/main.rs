@@ -77,7 +77,7 @@ fn default_config_path() -> Resettable<OsStr> {
 
 /// The path to the allowed signers file as configured within Git.
 /// If the `detect-allowed-signers` feature is not enabled or no allowed signers file
-/// is configured within Git, the user will be forced to specify a path manualy.
+/// is configured within Git, the user will be forced to specify a path manually.
 fn git_allowed_signers() -> Resettable<OsStr> {
     #[cfg(feature = "detect-allowed-signers")]
     if let Ok(file) = gix_config::File::from_globals() {
