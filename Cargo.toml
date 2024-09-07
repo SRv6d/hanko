@@ -19,7 +19,7 @@ exclude = [".devcontainer", ".github", "doc/benchmark/**", "tests/**"]
 
 [dependencies]
 anyhow = "1.0.87"
-async-trait = "0.1.80"
+async-trait = "0.1.82"
 chrono = "0.4.37"
 clap = { version = "4.5.17", features = ["derive", "env", "string"] }
 figment = { version = "0.10.16", features = ["toml", "test"] }
