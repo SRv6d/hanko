@@ -20,5 +20,6 @@ jobs:
         with:
           toolchain: ${{ matrix.rust_version }}
       - uses: Swatinem/rust-cache@v2
-      - name: Test
-        run: cargo test
+      - uses: extractions/setup-just@v2
+
+      - run: just test
