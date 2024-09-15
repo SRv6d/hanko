@@ -16,6 +16,19 @@ lint-justfile:
 test:
     cargo test --all-features
 
+# Bump our version
+bump-version $VERSION: (_validate_semver VERSION)
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    test -z "$(git status --porcelain)" || (echo "The working directory is not clean"; exit 1)
+
+    sed -i 's/^version = .*/version = "'$VERSION'"/g' Cargo.toml
+    cargo update -w --offline
+
+    git add Cargo.toml Cargo.lock
+    git commit -m "Bump version to v{{ VERSION }}"
+
 # Publish the crate
 publish: _validate_version_tag
     cargo publish --no-verify
@@ -29,5 +42,14 @@ _validate_version_tag:
 
     if [ ! $PROJECT_VERSION == ${GIT_TAG:1} ]; then
         echo Project version $PROJECT_VERSION does not match git tag $GIT_TAG
+        exit 1
+    fi
+
+# Validate a version against SemVer
+_validate_semver version:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    if [[ ! "{{ version }}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
+        echo Invalid SemVer {{ version }}
         exit 1
     fi
