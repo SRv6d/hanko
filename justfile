@@ -1,4 +1,8 @@
-default: lint test
+default: check-lockfile lint test
+
+# Check if the lockfile is up to date
+check-lockfile:
+    cargo update -w --locked --offline
 
 # Lint code and check formatting
 lint: lint-justfile
