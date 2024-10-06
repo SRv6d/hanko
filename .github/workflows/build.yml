@@ -64,8 +64,10 @@ jobs:
           rustup default
           cargo -V
           rustc -V
+
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
+
       - name: Create Release Tar Archive
         run: >-
           tar -czvf "${ARCHIVE_FILENAME}"
@@ -79,10 +81,12 @@ jobs:
           ./target/${{ matrix.target }}/release/hanko.exe
         shell: bash
         if: ${{ startsWith(matrix.os, 'windows') }}
+
       - name: Attest Build Provenance
         uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
         with:
           subject-path: ${{ env.ARCHIVE_FILENAME }}
+
       - name: Upload Release Archive
         run: >-
           gh release upload "${GITHUB_REF_NAME}"
