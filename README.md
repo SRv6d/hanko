@@ -14,7 +14,12 @@
   </a>
 </div>
 <div align="center">
-  <a href="https://www.bestpractices.dev/projects/9526"><img src="https://www.bestpractices.dev/projects/9526/badge" /></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/SRv6d/hanko">
+    <img src="https://api.scorecard.dev/projects/github.com/SRv6d/hanko/badge" />
+  </a>
+  <a href="https://www.bestpractices.dev/projects/9526">
+    <img src="https://www.bestpractices.dev/projects/9526/badge" />
+  </a>
 </div>
 <br />
 
