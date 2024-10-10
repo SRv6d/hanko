@@ -1,4 +1,3 @@
-use super::update::update;
 use crate::Configuration;
 use anyhow::{Context, Result};
 use clap::{
@@ -113,7 +112,7 @@ pub fn entrypoint() -> Result<()> {
             let sources = config.sources();
             debug!(?sources, "Initialized sources");
             if let Some(users) = config.users(&sources) {
-                update(path, &users).context("Failed to update the allowed signers file")?;
+                // update(path, &users).context("Failed to update the allowed signers file")?;
 
                 let duration = start.elapsed();
                 info!(
