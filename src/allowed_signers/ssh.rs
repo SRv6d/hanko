@@ -5,6 +5,7 @@ use std::{fmt, str::FromStr};
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct PublicKey {
     key: String,
+    // TODO: Add expiration field for GitLab keys.
 }
 
 impl FromStr for PublicKey {
