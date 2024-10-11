@@ -1,6 +1,6 @@
-use crate::allowed_signers::ssh::PublicKey;
+use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 use async_trait::async_trait;
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, time::Duration};
 use thiserror::Error;
 
 /// A `Result` alias where the `Err` case is a `SourceError`.
@@ -10,11 +10,7 @@ pub type Result<T> = std::result::Result<T, SourceError>;
 #[async_trait]
 pub trait Source: Debug + Send + Sync {
     /// Get a users public keys by their username.
-    async fn get_keys_by_username(
-        &self,
-        username: &str,
-        client: &reqwest::Client,
-    ) -> Result<Vec<PublicKey>>;
+    async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>>;
 }
 
 /// A `HashMap` containing named sources.
@@ -76,6 +72,17 @@ pub enum ServerError {
     InvalidResponseBody,
     #[error("{0}")]
     StatusCode(reqwest::StatusCode),
+}
+
+/// The base reqwest Client to be used by sources.
+pub(super) fn base_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .user_agent(USER_AGENT)
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(10))
+        .use_rustls_tls()
+        .build()
+        .unwrap()
 }
 
 #[cfg(test)]
