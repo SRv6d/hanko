@@ -10,7 +10,10 @@ use std::{
 use chrono::{DateTime, Local};
 use tracing::trace;
 
-use super::signer::{get_entries, Signer};
+use super::{
+    signer::{get_entries, Signer},
+    ssh::PublicKey,
+};
 
 /// The allowed signers file.
 #[derive(Debug)]
@@ -64,7 +67,7 @@ pub struct Entry {
     pub principals: Vec<String>,
     pub valid_after: Option<DateTime<Local>>,
     pub valid_before: Option<DateTime<Local>>,
-    pub key: String,
+    pub key: PublicKey,
 }
 
 impl fmt::Display for Entry {
