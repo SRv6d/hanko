@@ -1,4 +1,4 @@
-use crate::SshPublicKey;
+use crate::allowed_signers::ssh::PublicKey;
 use async_trait::async_trait;
 use std::{collections::HashMap, fmt::Debug};
 use thiserror::Error;
@@ -14,7 +14,7 @@ pub trait Source: Debug + Send + Sync {
         &self,
         username: &str,
         client: &reqwest::Client,
-    ) -> Result<Vec<SshPublicKey>>;
+    ) -> Result<Vec<PublicKey>>;
 }
 
 /// A `HashMap` containing named sources.

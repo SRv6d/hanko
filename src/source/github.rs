@@ -1,5 +1,5 @@
 use super::{Result, Source, SourceError};
-use crate::{SshPublicKey, USER_AGENT};
+use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
@@ -29,7 +29,7 @@ impl Source for Github {
         &self,
         username: &str,
         client: &Client,
-    ) -> Result<Vec<SshPublicKey>> {
+    ) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url
             .join(&format!("/users/{username}/ssh_signing_keys"))
@@ -180,7 +180,7 @@ mod tests {
     #[tokio::test]
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: JsonValue,
-        #[case] expected: Vec<SshPublicKey>,
+        #[case] expected: Vec<PublicKey>,
         api_w_mock_server: (Github, MockServer),
         client: Client,
     ) {

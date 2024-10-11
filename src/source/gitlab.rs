@@ -1,5 +1,5 @@
 use super::{Result, Source, SourceError};
-use crate::{SshPublicKey, USER_AGENT};
+use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
@@ -28,7 +28,7 @@ impl Source for Gitlab {
         &self,
         username: &str,
         client: &Client,
-    ) -> Result<Vec<SshPublicKey>> {
+    ) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url
             .join(&format!(
@@ -53,7 +53,7 @@ impl Source for Gitlab {
             .into_iter()
             .filter(|key| key.usage_type.is_signing());
 
-        Ok(signing_keys.map(SshPublicKey::from).collect())
+        Ok(signing_keys.map(PublicKey::from).collect())
     }
 }
 
@@ -107,7 +107,7 @@ pub struct ApiSshKey {
     pub usage_type: ApiSshKeyUsage,
 }
 
-impl From<ApiSshKey> for SshPublicKey {
+impl From<ApiSshKey> for PublicKey {
     fn from(api_key: ApiSshKey) -> Self {
         api_key.key.parse().unwrap()
     }
@@ -194,7 +194,7 @@ mod tests {
     #[tokio::test]
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
-        #[case] expected: Vec<SshPublicKey>,
+        #[case] expected: Vec<PublicKey>,
         api_w_mock_server: (Gitlab, MockServer),
         client: Client,
     ) {
