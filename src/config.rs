@@ -1,4 +1,4 @@
-use crate::{cli::RuntimeConfiguration, user::User, Github, Gitlab, Source, SourceMap};
+use crate::{cli::RuntimeConfiguration, Github, Gitlab, Source, SourceMap};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -63,25 +63,26 @@ impl Configuration {
 
     /// The configured users.
     #[must_use]
-    pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<User<'b>>> {
-        let configs = &self.users;
-        let users = configs
-            .iter()
-            .map(|config| {
-                let sources = config
-                    .sources
-                    .iter()
-                    .map(|name| sources.get(name).unwrap().as_ref())
-                    .collect();
-                User {
-                    // TODO: Use references instead of cloning.
-                    name: config.name.clone(),
-                    principals: config.principals.clone(),
-                    sources,
-                }
-            })
-            .collect();
-        Some(users)
+    pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<()>> {
+        // let configs = &self.users;
+        // let users = configs
+        //     .iter()
+        //     .map(|config| {
+        //         let sources = config
+        //             .sources
+        //             .iter()
+        //             .map(|name| sources.get(name).unwrap().as_ref())
+        //             .collect();
+        //         User {
+        //             // TODO: Use references instead of cloning.
+        //             name: config.name.clone(),
+        //             principals: config.principals.clone(),
+        //             sources,
+        //         }
+        //     })
+        //     .collect();
+        // Some(users)
+        Some(vec![()])
     }
 
     /// Load the configuration from a TOML file optionally merged with runtime configuration.

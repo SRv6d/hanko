@@ -8,7 +8,7 @@ pub type Result<T> = std::result::Result<T, SourceError>;
 
 /// A source implements a way to get public keys from a Git provider.
 #[async_trait]
-pub trait Source: Debug {
+pub trait Source: Debug + Send + Sync {
     /// Get a users public keys by their username.
     async fn get_keys_by_username(
         &self,

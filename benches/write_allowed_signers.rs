@@ -1,15 +1,15 @@
 use chrono::{Local, TimeZone};
 use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
-use hanko::{AllowedSignersEntry, AllowedSignersFile};
+use hanko::allowed_signers::{Entry, File};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
-    let file = AllowedSignersFile::with_signers(
+    let file = File::from_entries(
         tempfile::NamedTempFile::new()
             .unwrap()
             .into_temp_path()
             .to_path_buf(),
         vec![
-        AllowedSignersEntry {
+        Entry {
             principals: vec!["j.snow@wall.com".to_string()],
             valid_after: None,
             valid_before: None,
@@ -17,7 +17,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .parse()
                 .unwrap(),
         },
-        AllowedSignersEntry {
+        Entry {
             principals: vec!["ian.malcom@acme.corp".to_string()],
             valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap()),
             valid_before: None,
@@ -25,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .parse()
                 .unwrap(),
         },
-        AllowedSignersEntry {
+        Entry {
             principals: vec!["cwoods@universal.exports".to_string()],
             valid_after: None,
             valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
