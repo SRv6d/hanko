@@ -18,7 +18,8 @@ use tracing::{debug, info, trace};
 pub struct Configuration {
     users: Vec<UserConfiguration>,
     sources: Option<Vec<SourceConfiguration>>,
-    allowed_signers: PathBuf,
+    /// The path of the allowed signers file.
+    file: PathBuf,
 }
 
 /// A `HashMap` containing named sources.
@@ -46,8 +47,8 @@ impl Configuration {
 
     /// The configured path to write the allowed signers file to.
     #[must_use]
-    pub fn allowed_signers(&self) -> &Path {
-        self.allowed_signers.as_ref()
+    pub fn allowed_signers_file(&self) -> &Path {
+        self.file.as_ref()
     }
 
     /// The configured and default sources.
@@ -242,7 +243,7 @@ mod tests {
                 sources: vec!["github".to_string()],
             }],
             sources: None,
-            allowed_signers: "~/allowed_signers".into(),
+            file: "~/allowed_signers".into(),
         };
 
         let sources = config.sources();
@@ -259,7 +260,7 @@ mod tests {
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
-            allowed_signers = "~/allowed_signers"
+            file = "~/allowed_signers"
 
             [[sources]]
             name = "acme-corp"
@@ -274,7 +275,7 @@ mod tests {
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
-            allowed_signers = "~/allowed_signers"
+            file = "~/allowed_signers"
         "#},
         vec!["acme-corp".to_string(), "lumon-industries".to_string()]
     )]
@@ -310,11 +311,11 @@ mod tests {
             users = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
             ]
-            allowed_signers = "/value/in/config"
+            file = "/value/in/config"
         "#};
         let runtime_allowed_signers = PathBuf::from("/value/at/runtime");
         let runtime_config = RuntimeConfiguration {
-            allowed_signers: Some(runtime_allowed_signers.clone()),
+            file: Some(runtime_allowed_signers.clone()),
             verbose: 0,
         };
 
@@ -323,7 +324,7 @@ mod tests {
 
             let config = Configuration::load(&config_path, Some(runtime_config)).unwrap();
 
-            assert_eq!(config.allowed_signers, runtime_allowed_signers);
+            assert_eq!(config.file, runtime_allowed_signers);
             Ok(())
         });
     }
@@ -335,7 +336,7 @@ mod tests {
             users = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
             ]
-            allowed_signers = "~/allowed_signers"
+            file = "~/allowed_signers"
         "#};
 
         figment::Jail::expect_with(|jail| {
