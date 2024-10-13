@@ -114,7 +114,7 @@ impl Configuration {
     fn validate(&self) -> Result<(), Error> {
         let configured_sources = self.sources();
         let used_source_names: HashSet<&String> =
-            self.signers.iter().flat_map(|u| &u.sources).collect();
+            self.signers.iter().flat_map(|u| &u.source_names).collect();
         let configured_source_names: HashSet<&String> = configured_sources.keys().collect();
 
         let missing_source_names: Vec<String> = used_source_names
@@ -182,8 +182,8 @@ fn default_user_source() -> Vec<String> {
 pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
-    #[serde(default = "default_user_source")]
-    pub sources: Vec<String>,
+    #[serde(rename = "sources", default = "default_user_source")]
+    pub source_names: Vec<String>,
 }
 
 /// The representation of a [`Source`] in configuration.
@@ -240,7 +240,7 @@ mod tests {
             signers: vec![SignerConfiguration {
                 name: "torvalds".to_string(),
                 principals: vec!["torvalds@linux-foundation.org".to_string()],
-                sources: vec!["github".to_string()],
+                source_names: vec!["github".to_string()],
             }],
             sources: None,
             file: "~/allowed_signers".into(),
@@ -343,7 +343,7 @@ mod tests {
             jail.create_file(&config_path, config)?;
 
             let mut config = Configuration::load(&config_path, None).unwrap();
-            let signer_sources = config.signers.pop().unwrap().sources;
+            let signer_sources = config.signers.pop().unwrap().source_names;
 
             assert_eq!(signer_sources, vec!["github"]);
             Ok(())
