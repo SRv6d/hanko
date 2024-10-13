@@ -50,11 +50,7 @@ impl Configuration {
     pub fn sources(&self) -> SourceMap {
         let mut sources = Self::default_sources();
         if let Some(configs) = &self.sources {
-            sources.extend(
-                configs
-                    .iter()
-                    .map(|config| (config.name.clone(), config.build_source())),
-            );
+            sources.extend(configs.iter().map(|c| (c.name.clone(), c.build_source())));
         }
         sources
     }
@@ -114,7 +110,7 @@ impl Configuration {
     fn validate(&self) -> Result<(), Error> {
         let configured_sources = self.sources();
         let used_source_names: HashSet<&String> =
-            self.signers.iter().flat_map(|u| &u.source_names).collect();
+            self.signers.iter().flat_map(|c| &c.source_names).collect();
         let configured_source_names: HashSet<&String> = configured_sources.keys().collect();
 
         let missing_source_names: Vec<String> = used_source_names
