@@ -32,7 +32,7 @@ configured on platforms like GitHub and GitLab.
 # Example Configuration
 
 ```toml
-users = [
+signers = [
     { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
     { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
     { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },
