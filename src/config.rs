@@ -1,4 +1,4 @@
-use crate::{cli::RuntimeConfiguration, Github, Gitlab, Source, SourceMap};
+use crate::{cli::RuntimeConfiguration, Github, Gitlab, Source};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -6,7 +6,7 @@ use figment::{
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fmt,
     ops::Deref,
     path::{Path, PathBuf},
@@ -20,6 +20,9 @@ pub struct Configuration {
     sources: Option<Vec<SourceConfiguration>>,
     allowed_signers: PathBuf,
 }
+
+/// A `HashMap` containing named sources.
+type SourceMap = HashMap<String, Box<dyn Source>>;
 
 impl Configuration {
     /// The default GitHub and GitLab sources.

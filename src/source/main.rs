@@ -1,6 +1,6 @@
 use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 use async_trait::async_trait;
-use std::{collections::HashMap, fmt::Debug, time::Duration};
+use std::{fmt::Debug, time::Duration};
 use thiserror::Error;
 
 /// A `Result` alias where the `Err` case is a `SourceError`.
@@ -12,9 +12,6 @@ pub trait Source: Debug + Send + Sync {
     /// Get a users public keys by their username.
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>>;
 }
-
-/// A `HashMap` containing named sources.
-pub type SourceMap = HashMap<String, Box<dyn Source>>;
 
 /// An error that can occur when interacting with a source.
 #[derive(Error, Debug, PartialEq, Eq)]
