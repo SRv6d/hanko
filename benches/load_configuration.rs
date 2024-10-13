@@ -5,7 +5,7 @@ use std::{io::Write, path::Path};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let toml = indoc! {r#"
-        users = [
+        signers = [
             { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
             { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
             { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },

@@ -111,8 +111,8 @@ pub fn entrypoint() -> Result<()> {
             let path = config.allowed_signers_file();
             let sources = config.sources();
             debug!(?sources, "Initialized sources");
-            if let Some(users) = config.users(&sources) {
-                // update(path, &users).context("Failed to update the allowed signers file")?;
+            if let Some(signers) = config.signers(&sources) {
+                // update(path, &signers).context("Failed to update the allowed signers file")?;
 
                 let duration = start.elapsed();
                 info!(

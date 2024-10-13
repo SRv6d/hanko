@@ -16,7 +16,7 @@ use tracing::{debug, info, trace};
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
-    users: Vec<UserConfiguration>,
+    signers: Vec<SignerConfiguration>,
     sources: Option<Vec<SourceConfiguration>>,
     /// The path of the allowed signers file.
     file: PathBuf,
@@ -65,9 +65,9 @@ impl Configuration {
         sources
     }
 
-    /// The configured users.
+    /// The configured signers.
     #[must_use]
-    pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<()>> {
+    pub fn signers<'b>(&self, sources: &'b SourceMap) -> Option<Vec<()>> {
         // let configs = &self.users;
         // let users = configs
         //     .iter()
@@ -114,7 +114,7 @@ impl Configuration {
     fn validate(&self) -> Result<(), Error> {
         let configured_sources = self.sources();
         let used_source_names: HashSet<&String> =
-            self.users.iter().flat_map(|u| &u.sources).collect();
+            self.signers.iter().flat_map(|u| &u.sources).collect();
         let configured_source_names: HashSet<&String> = configured_sources.keys().collect();
 
         let missing_source_names: Vec<String> = used_source_names
@@ -179,7 +179,7 @@ fn default_user_source() -> Vec<String> {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct UserConfiguration {
+pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
     #[serde(default = "default_user_source")]
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn configuration_has_default_sources() {
         let config = Configuration {
-            users: vec![UserConfiguration {
+            signers: vec![SignerConfiguration {
                 name: "torvalds".to_string(),
                 principals: vec!["torvalds@linux-foundation.org".to_string()],
                 sources: vec!["github".to_string()],
@@ -256,7 +256,7 @@ mod tests {
     #[rstest]
     #[case(
         indoc!{r#"
-            users = [
+            signers = [
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
@@ -271,7 +271,7 @@ mod tests {
     )]
     #[case(
         indoc!{r#"
-            users = [
+            signers = [
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
@@ -308,7 +308,7 @@ mod tests {
     #[rstest]
     fn runtime_option_overrides_config(config_path: PathBuf) {
         let config = indoc! {r#"
-            users = [
+            signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
             ]
             file = "/value/in/config"
@@ -333,7 +333,7 @@ mod tests {
     #[rstest]
     fn users_have_default_github_source(config_path: PathBuf) {
         let config = indoc! {r#"
-            users = [
+            signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
             ]
             file = "~/allowed_signers"
@@ -343,9 +343,9 @@ mod tests {
             jail.create_file(&config_path, config)?;
 
             let mut config = Configuration::load(&config_path, None).unwrap();
-            let user_sources = config.users.pop().unwrap().sources;
+            let signer_sources = config.signers.pop().unwrap().sources;
 
-            assert_eq!(user_sources, vec!["github"]);
+            assert_eq!(signer_sources, vec!["github"]);
             Ok(())
         });
     }
