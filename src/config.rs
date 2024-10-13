@@ -22,12 +22,12 @@ pub struct Configuration {
     file: PathBuf,
 }
 
-/// A `HashMap` containing named sources.
-type SourceMap = HashMap<String, Box<dyn Source>>;
+/// A `HashMap` containing sources by name.
+type NamedSources = HashMap<String, Box<dyn Source>>;
 
 impl Configuration {
     /// Generate the default GitHub and GitLab sources.
-    fn default_sources() -> SourceMap {
+    fn default_sources() -> NamedSources {
         [
             SourceConfiguration {
                 name: "github".to_string(),
@@ -47,7 +47,7 @@ impl Configuration {
 
     /// Generate sources from their configuration extended by the default sources.
     #[must_use]
-    pub fn sources(&self) -> SourceMap {
+    pub fn sources(&self) -> NamedSources {
         let mut sources = Self::default_sources();
         if let Some(configs) = &self.sources {
             sources.extend(configs.iter().map(|c| (c.name.clone(), c.build_source())));
@@ -57,7 +57,7 @@ impl Configuration {
 
     /// Generate signers from their configuration.
     #[must_use]
-    pub fn signers<'b>(&self, sources: &'b SourceMap) -> Option<Vec<()>> {
+    pub fn signers<'b>(&self, sources: &'b NamedSources) -> Option<Vec<()>> {
         // let configs = &self.users;
         // let users = configs
         //     .iter()
