@@ -52,7 +52,7 @@ pub struct RuntimeConfiguration {
         env = "HANKO_ALLOWED_SIGNERS",
         default_value = git_allowed_signers()
     )]
-    pub allowed_signers: Option<PathBuf>,
+    pub file: Option<PathBuf>,
 
     /// Increase verbosity.
     #[arg(short, long, action = clap::ArgAction::Count)]
@@ -108,7 +108,7 @@ pub fn entrypoint() -> Result<()> {
 
     match &args.command {
         Commands::Update => {
-            let path = config.allowed_signers();
+            let path = config.allowed_signers_file();
             let sources = config.sources();
             debug!(?sources, "Initialized sources");
             if let Some(users) = config.users(&sources) {
