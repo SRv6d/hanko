@@ -26,7 +26,7 @@ pub struct Configuration {
 type SourceMap = HashMap<String, Box<dyn Source>>;
 
 impl Configuration {
-    /// The default GitHub and GitLab sources.
+    /// Generate the default GitHub and GitLab sources.
     fn default_sources() -> SourceMap {
         [
             SourceConfiguration {
@@ -45,13 +45,7 @@ impl Configuration {
         .collect()
     }
 
-    /// The configured path to write the allowed signers file to.
-    #[must_use]
-    pub fn allowed_signers_file(&self) -> &Path {
-        self.file.as_ref()
-    }
-
-    /// The configured and default sources.
+    /// Generate sources from their configuration extended by the default sources.
     #[must_use]
     pub fn sources(&self) -> SourceMap {
         let mut sources = Self::default_sources();
@@ -65,7 +59,7 @@ impl Configuration {
         sources
     }
 
-    /// The configured signers.
+    /// Generate signers from their configuration.
     #[must_use]
     pub fn signers<'b>(&self, sources: &'b SourceMap) -> Option<Vec<()>> {
         // let configs = &self.users;
@@ -87,6 +81,12 @@ impl Configuration {
         //     .collect();
         // Some(users)
         Some(vec![()])
+    }
+
+    /// The configured allowed signers file path.
+    #[must_use]
+    pub fn allowed_signers_file(&self) -> &Path {
+        self.file.as_ref()
     }
 
     /// Load the configuration from a TOML file optionally merged with runtime configuration.
