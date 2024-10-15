@@ -1,4 +1,4 @@
-use crate::Configuration;
+use crate::{allowed_signers::update, Configuration};
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
@@ -97,7 +97,8 @@ fn git_allowed_signers() -> Resettable<OsStr> {
 }
 
 /// The main CLI entrypoint.
-pub fn entrypoint() -> Result<()> {
+#[tokio::main]
+pub async fn entrypoint() -> Result<()> {
     let start = Instant::now();
     let args = Args::parse();
 
@@ -111,16 +112,19 @@ pub fn entrypoint() -> Result<()> {
             let path = config.allowed_signers_file();
             let sources = config.sources();
             debug!(?sources, "Initialized sources");
-            if let Some(signers) = config.signers(&sources) {
-                // update(path, &signers).context("Failed to update the allowed signers file")?;
+            let signers = config.signers(&sources);
+            debug!(?signers, "Initialized signers");
 
-                let duration = start.elapsed();
-                info!(
-                    "Updated allowed signers file {} in {:?}",
-                    path.display(),
-                    duration
-                );
-            }
+            update(path, signers)
+                .await
+                .context("Failed to update the allowed signers file")?;
+
+            let duration = start.elapsed();
+            info!(
+                "Updated allowed signers file {} in {:?}",
+                path.display(),
+                duration
+            );
         }
     }
     Ok(())

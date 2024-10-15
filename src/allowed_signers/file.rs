@@ -4,9 +4,10 @@
 use std::{
     fmt, fs,
     io::{self, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
+use anyhow::Context;
 use chrono::{DateTime, Local};
 use tracing::trace;
 
@@ -53,12 +54,6 @@ impl File {
             entries: entries.into_iter().collect(),
         }
     }
-
-    /// Create an instance from a collection of allowed signers.
-    pub async fn from_signers(path: PathBuf, signers: Vec<Signer>) -> Result<Self, ()> {
-        let entries = get_entries(signers).await;
-        Ok(Self { path, entries })
-    }
 }
 
 /// An entry in the allowed signers file.
@@ -101,6 +96,20 @@ impl fmt::Display for Entry {
 
         write!(f, " {}", self.key)
     }
+}
+
+/// Update the allowed signers file.
+pub async fn update<S>(path: &Path, signers: S) -> anyhow::Result<()>
+where
+    S: IntoIterator<Item = Signer>,
+{
+    let entries = get_entries(signers).await;
+
+    let file = File::from_entries(path.to_path_buf(), entries);
+    file.write().context(format!(
+        "Failed to write allowed signers file to {}",
+        path.display()
+    ))
 }
 
 #[cfg(test)]
