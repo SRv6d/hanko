@@ -1,4 +1,4 @@
-use crate::{cli::RuntimeConfiguration, Github, Gitlab, Source};
+use crate::{allowed_signers::Signer, cli::RuntimeConfiguration, Github, Gitlab, Source};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -10,6 +10,7 @@ use std::{
     fmt,
     ops::Deref,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 use tracing::{debug, info, trace};
 
@@ -23,10 +24,12 @@ pub struct Configuration {
 }
 
 /// A `HashMap` containing sources by name.
-type NamedSources = HashMap<String, Box<dyn Source>>;
+/// Since signers need to contain references to sources and can move between threads,
+/// an Arc is used for sources.
+type NamedSources = HashMap<String, Arc<Box<dyn Source>>>;
 
 impl Configuration {
-    /// Generate the default GitHub and GitLab sources.
+    /// Returns the default GitHub and GitLab sources.
     fn default_sources() -> NamedSources {
         [
             SourceConfiguration {
@@ -41,42 +44,51 @@ impl Configuration {
             },
         ]
         .iter()
-        .map(|config| (config.name.clone(), config.build_source()))
+        .map(|config| (config.name.clone(), Arc::new(config.build_source())))
         .collect()
     }
 
-    /// Generate sources from their configuration extended by the default sources.
+    /// Returns sources generated from their configuration extended by the default sources.
     #[must_use]
     pub fn sources(&self) -> NamedSources {
         let mut sources = Self::default_sources();
         if let Some(configs) = &self.sources {
-            sources.extend(configs.iter().map(|c| (c.name.clone(), c.build_source())));
+            sources.extend(
+                configs
+                    .iter()
+                    .map(|c| (c.name.clone(), Arc::new(c.build_source()))),
+            );
         }
         sources
     }
 
-    /// Generate signers from their configuration.
+    /// Returns signers generated from their configuration.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the given sources are missing a source configured within a signer.
     #[must_use]
-    pub fn signers<'b>(&self, sources: &'b NamedSources) -> Option<Vec<()>> {
-        // let configs = &self.users;
-        // let users = configs
-        //     .iter()
-        //     .map(|config| {
-        //         let sources = config
-        //             .sources
-        //             .iter()
-        //             .map(|name| sources.get(name).unwrap().as_ref())
-        //             .collect();
-        //         User {
-        //             // TODO: Use references instead of cloning.
-        //             name: config.name.clone(),
-        //             principals: config.principals.clone(),
-        //             sources,
-        //         }
-        //     })
-        //     .collect();
-        // Some(users)
-        Some(vec![()])
+    pub fn signers(&self, sources: &NamedSources) -> Vec<Signer> {
+        let configs = &self.signers;
+        configs
+            .iter()
+            .map(|c| {
+                Signer {
+                    name: c.name.clone(),
+                    principals: c.principals.clone(),
+                    sources: c
+                        .source_names
+                        .iter()
+                        .map(|name| {
+                            sources
+                                .get(name)
+                                .expect("signer references source that does not exist, config not validated correctly")
+                                .clone()
+                        })
+                        .collect(),
+                }
+            })
+            .collect()
     }
 
     /// The configured allowed signers file path.
