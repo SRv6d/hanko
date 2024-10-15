@@ -11,7 +11,7 @@ use crate::{source::Source, SourceError};
 pub struct Signer {
     pub name: String,
     pub principals: Vec<String>,
-    pub sources: Vec<Arc<dyn Source>>,
+    pub sources: Vec<Arc<Box<dyn Source>>>,
 }
 
 impl Signer {
