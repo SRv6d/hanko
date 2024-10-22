@@ -104,7 +104,7 @@ pub async fn entrypoint() -> Result<()> {
 
     setup_tracing(args.runtime_config.verbose);
 
-    let config = Configuration::load(&args.config, Some(args.runtime_config))
+    let config = Configuration::load_and_validate(&args.config, Some(args.runtime_config))
         .context("Failed to load configuration")?;
 
     match &args.command {

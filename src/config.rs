@@ -30,9 +30,9 @@ pub struct Configuration {
 type NamedSources = HashMap<String, Arc<Box<dyn Source>>>;
 
 impl Configuration {
-    /// Returns the default GitHub and GitLab sources.
-    fn default_sources() -> NamedSources {
-        [
+    /// Returns configuration for the default GitHub and GitLab sources.
+    fn default_sources() -> Vec<SourceConfiguration> {
+        vec![
             SourceConfiguration {
                 name: "github".to_string(),
                 provider: SourceType::Github,
@@ -44,22 +44,15 @@ impl Configuration {
                 url: "https://gitlab.com".parse().unwrap(),
             },
         ]
-        .iter()
-        .map(|config| (config.name.clone(), Arc::new(config.build_source())))
-        .collect()
     }
 
-    /// Returns sources generated from their configuration extended by the default sources.
+    /// Returns sources generated from their configuration.
     #[must_use]
     pub fn sources(&self) -> NamedSources {
-        let mut sources = Self::default_sources();
-        sources.extend(
-            self.sources
-                .iter()
-                .map(|c| (c.name.clone(), Arc::new(c.build_source()))),
-        );
-
-        sources
+        self.sources
+            .iter()
+            .map(|c| (c.name.clone(), Arc::new(c.build_source())))
+            .collect()
     }
 
     /// Returns signers generated from their configuration.
@@ -97,9 +90,8 @@ impl Configuration {
         self.file.as_ref()
     }
 
-    /// Load the configuration from a TOML file optionally merged with runtime configuration.
-    #[tracing::instrument(skip(runtime_config))]
-    pub fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
+    /// Load the configuration from a TOML file merged with default sources and optionally runtime configuration.
+    fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
         info!("Loading configuration file");
         let figment = {
             let toml = Figment::from(Toml::file_exact(path));
@@ -113,13 +105,33 @@ impl Configuration {
                 toml
             }
         };
-        let config: Self = figment.extract()?;
+
+        let mut config: Self = figment.extract()?;
+        let default_sources = Self::default_sources();
+        debug!(
+            ?default_sources,
+            "Extending configuration with default sources."
+        );
+        config.sources.extend(default_sources);
+
+        Ok(config)
+    }
+
+    /// Load and validate the configuration from a TOML file merged with runtime configuration and default sources.
+    #[tracing::instrument(skip(runtime_config))]
+    pub fn load_and_validate(
+        path: &Path,
+        runtime_config: Option<RuntimeConfiguration>,
+    ) -> Result<Self, Error> {
+        let config = Self::load(path, runtime_config)?;
         config.validate()?;
         Ok(config)
     }
 
     /// Validate the configuration.
     fn validate(&self) -> Result<(), Error> {
+        trace!(?self, "Validating configuration");
+
         let configured_sources = self.sources();
         let used_source_names: HashSet<&String> =
             self.signers.iter().flat_map(|c| &c.source_names).collect();
@@ -241,23 +253,28 @@ mod tests {
         PathBuf::from("config.toml")
     }
 
-    /// A configuration without any explicitly configured sources contains the default sources.
-    #[test]
-    fn configuration_has_default_sources() {
-        let config = Configuration {
-            signers: vec![SignerConfiguration {
-                name: "torvalds".to_string(),
-                principals: vec!["torvalds@linux-foundation.org".to_string()],
-                source_names: vec!["github".to_string()],
-            }],
-            sources: vec![],
-            file: "~/allowed_signers".into(),
-        };
+    /// When loading a configuration, the returned instance always contains the default sources.
+    #[rstest]
+    #[case(
+        indoc!{r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+            ]
+            file = "~/allowed_signers"
+        "#}
+    )]
+    fn loaded_configuration_has_default_sources(config_path: PathBuf, #[case] config: &str) {
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, config)?;
 
-        let sources = config.sources();
+            let config = Configuration::load(&config_path, None).unwrap();
 
-        assert!(sources.contains_key("github"));
-        assert!(sources.contains_key("gitlab"));
+            for default_source in Configuration::default_sources() {
+                assert!(config.sources.contains(&default_source));
+            }
+
+            Ok(())
+        });
     }
 
     /// Loading configuration missing sources returns an appropriate error.
@@ -296,7 +313,7 @@ mod tests {
         figment::Jail::expect_with(|jail| {
             jail.create_file(&config_path, config)?;
 
-            let err = Configuration::load(&config_path, None).unwrap_err();
+            let err = Configuration::load_and_validate(&config_path, None).unwrap_err();
             if let Error::MissingSources(err_missing) = err {
                 expected_missing.sort();
                 let err_missing = {
@@ -312,9 +329,9 @@ mod tests {
         });
     }
 
-    /// Runtime options override those specified in the configuration.
+    /// Runtime options take precedence over values loaded from the configuration file.
     #[rstest]
-    fn runtime_option_overrides_config(config_path: PathBuf) {
+    fn runtime_options_take_precedence_over_file_options(config_path: PathBuf) {
         let config = indoc! {r#"
             signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
