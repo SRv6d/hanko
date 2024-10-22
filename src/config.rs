@@ -18,7 +18,8 @@ use tracing::{debug, info, trace};
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
     signers: Vec<SignerConfiguration>,
-    sources: Option<Vec<SourceConfiguration>>,
+    #[serde(default)]
+    sources: Vec<SourceConfiguration>,
     /// The path of the allowed signers file.
     file: PathBuf,
 }
@@ -52,13 +53,12 @@ impl Configuration {
     #[must_use]
     pub fn sources(&self) -> NamedSources {
         let mut sources = Self::default_sources();
-        if let Some(configs) = &self.sources {
-            sources.extend(
-                configs
-                    .iter()
-                    .map(|c| (c.name.clone(), Arc::new(c.build_source()))),
-            );
-        }
+        sources.extend(
+            self.sources
+                .iter()
+                .map(|c| (c.name.clone(), Arc::new(c.build_source()))),
+        );
+
         sources
     }
 
@@ -250,7 +250,7 @@ mod tests {
                 principals: vec!["torvalds@linux-foundation.org".to_string()],
                 source_names: vec!["github".to_string()],
             }],
-            sources: None,
+            sources: vec![],
             file: "~/allowed_signers".into(),
         };
 
