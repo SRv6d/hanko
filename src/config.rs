@@ -142,9 +142,7 @@ impl Configuration {
             .map(ToString::to_string)
             .collect();
         if !missing_source_names.is_empty() {
-            return Err(Error::MissingSources(MissingSourcesError(
-                missing_source_names,
-            )));
+            return Err(MissingSourcesError::new(missing_source_names).into());
         }
         trace!(?self, "Validated configuration");
         Ok(())
@@ -162,7 +160,7 @@ pub enum Error {
     #[error("{0}")]
     SyntaxError(figment::Error),
     #[error("missing sources {0}")]
-    MissingSources(MissingSourcesError),
+    MissingSources(#[from] MissingSourcesError),
 }
 
 impl From<figment::Error> for Error {
@@ -171,6 +169,8 @@ impl From<figment::Error> for Error {
     }
 }
 
+/// An error that occurs when sources are used that are not present in the configuration.
+/// Contains names of the missing sources and displays them as a comma separated string.
 #[derive(Debug, PartialEq, thiserror::Error)]
 pub struct MissingSourcesError(Vec<String>);
 impl fmt::Display for MissingSourcesError {
@@ -178,6 +178,15 @@ impl fmt::Display for MissingSourcesError {
         write!(f, "{}", self.0.join(", "))
     }
 }
+
+impl MissingSourcesError {
+    fn new(names: impl IntoIterator<Item = String>) -> Self {
+        let mut v: Vec<_> = names.into_iter().collect();
+        v.sort();
+        Self(v)
+    }
+}
+
 impl Deref for MissingSourcesError {
     type Target = Vec<String>;
 
