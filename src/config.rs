@@ -132,18 +132,22 @@ impl Configuration {
     fn validate(&self) -> Result<(), Error> {
         trace!(?self, "Validating configuration");
 
-        let configured_sources = self.sources();
-        let used_source_names: HashSet<&String> =
-            self.signers.iter().flat_map(|c| &c.source_names).collect();
-        let configured_source_names: HashSet<&String> = configured_sources.keys().collect();
-
-        let missing_source_names: Vec<String> = used_source_names
-            .difference(&configured_source_names)
+        let used_sources: HashSet<&str> = self
+            .signers
+            .iter()
+            .flat_map(|c| c.source_names.iter())
+            .map(String::as_str)
+            .collect();
+        let existing_sources: HashSet<&str> =
+            self.sources.iter().map(|c| c.name.as_str()).collect();
+        let missing_sources: Vec<String> = used_sources
+            .difference(&existing_sources)
             .map(ToString::to_string)
             .collect();
-        if !missing_source_names.is_empty() {
-            return Err(MissingSourcesError::new(missing_source_names).into());
+        if !missing_sources.is_empty() {
+            return Err(MissingSourcesError::new(missing_sources).into());
         }
+
         Ok(())
     }
 
