@@ -5,7 +5,7 @@
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 pub use config::Configuration;
-pub use source::{Github, Gitlab, Source, SourceError};
+pub use source::{Github, Gitlab, Source, Error};
 
 pub mod allowed_signers;
 pub mod cli;

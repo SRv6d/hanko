@@ -3,7 +3,7 @@ use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::main::{base_client, Result, Source, SourceError};
+use super::main::{base_client, Result, Source, Error};
 use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 
 #[derive(Debug)]
@@ -70,11 +70,11 @@ fn handle_gitlab_errors(request_result: reqwest::Result<Response>) -> Result<Res
             .expect("Status code error must contain status code");
 
         match status {
-            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::NOT_FOUND => return Err(Error::UserNotFound),
             StatusCode::UNAUTHORIZED => {
-                return Err(SourceError::BadCredentials);
+                return Err(Error::BadCredentials);
             }
-            _ => return Err(SourceError::from(error)),
+            _ => return Err(Error::from(error)),
         }
     }
 
@@ -225,7 +225,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::UserNotFound));
+        assert!(matches!(error_result, Error::UserNotFound));
     }
 
     /// A HTTP unauthorized status code returns a `SourceError::BadCredentials`.
@@ -246,6 +246,6 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::BadCredentials));
+        assert!(matches!(error_result, Error::BadCredentials));
     }
 }

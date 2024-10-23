@@ -4,7 +4,7 @@ use tokio::task::JoinSet;
 use tracing::debug;
 
 use super::{file::Entry, ssh::PublicKey};
-use crate::{source::Source, SourceError};
+use crate::{source::Source, Error};
 
 /// An allowed signer.
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub struct Signer {
 impl Signer {
     /// Get the signers public keys from all of it's sources.
     #[tracing::instrument(skip_all, fields(username=self.name), level = "debug")]
-    async fn get_keys(&self) -> Result<Vec<PublicKey>, SourceError> {
+    async fn get_keys(&self) -> Result<Vec<PublicKey>, Error> {
         debug!("Getting keys from users configured sources");
         // TODO: Join futures
         let mut keys = Vec::new();
@@ -29,7 +29,7 @@ impl Signer {
     }
 
     /// Get the allowed signers file entries corresponding to this signer.
-    pub(super) async fn get_entries(&self) -> Result<Vec<Entry>, SourceError> {
+    pub(super) async fn get_entries(&self) -> Result<Vec<Entry>, Error> {
         let keys = self.get_keys().await?;
 
         Ok(keys

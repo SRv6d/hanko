@@ -5,7 +5,7 @@ use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::main::{base_client, Result, Source, SourceError};
+use super::main::{base_client, Error, Result, Source};
 use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 
 #[derive(Debug)]
@@ -83,22 +83,22 @@ async fn handle_github_errors(request_result: reqwest::Result<Response>) -> Resu
         let message = response.json::<Message>().await.ok();
 
         match status {
-            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::NOT_FOUND => return Err(Error::UserNotFound),
             StatusCode::FORBIDDEN
                 if message
                     .as_ref()
                     .is_some_and(|m| m.to_lowercase().contains("rate limit exceeded")) =>
             {
-                return Err(SourceError::RatelimitExceeded);
+                return Err(Error::RatelimitExceeded);
             }
             StatusCode::UNAUTHORIZED
                 if message
                     .as_ref()
                     .is_some_and(|m| m.to_lowercase().contains("bad credentials")) =>
             {
-                return Err(SourceError::BadCredentials);
+                return Err(Error::BadCredentials);
             }
-            _ => return Err(SourceError::from(error)),
+            _ => return Err(Error::from(error)),
         }
     }
 
@@ -222,7 +222,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::UserNotFound));
+        assert!(matches!(error_result, Error::UserNotFound));
     }
 
     /// A HTTP unauthorized status code along with a body containing a bad credentials message
@@ -245,7 +245,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::BadCredentials));
+        assert!(matches!(error_result, Error::BadCredentials));
     }
 
     /// A HTTP unauthorized status code without a known error message in the body returns a `SourceError::Other`.
@@ -266,7 +266,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::ClientError(..)));
+        assert!(matches!(error_result, Error::ClientError(..)));
     }
 
     /// A HTTP forbidden status code along with a body containing a rate limit exceeded message
@@ -289,7 +289,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::RatelimitExceeded));
+        assert!(matches!(error_result, Error::RatelimitExceeded));
     }
 
     /// A HTTP forbidden status code without a known error message in the body returns a `SourceError::ClientError`.
@@ -310,6 +310,6 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::ClientError(..)));
+        assert!(matches!(error_result, Error::ClientError(..)));
     }
 }
