@@ -17,6 +17,7 @@ impl Gitlab {
     const VERSION: &'static str = "v4";
     const ACCEPT_HEADER: &'static str = "application/json";
 
+    #[must_use]
     pub fn new(base_url: Url) -> Self {
         Self {
             base_url,

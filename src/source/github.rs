@@ -19,6 +19,7 @@ impl Github {
     const VERSION: &'static str = "2022-11-28";
     const ACCEPT_HEADER: &'static str = "application/vnd.github+json";
 
+    #[must_use]
     pub fn new(base_url: Url) -> Self {
         Self {
             base_url,
