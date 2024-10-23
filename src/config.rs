@@ -144,7 +144,6 @@ impl Configuration {
         if !missing_source_names.is_empty() {
             return Err(MissingSourcesError::new(missing_source_names).into());
         }
-        trace!(?self, "Validated configuration");
         Ok(())
     }
 
