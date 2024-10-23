@@ -5,7 +5,7 @@ use std::{io::Write, path::Path};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let toml = indoc! {r#"
-        users = [
+        signers = [
             { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
             { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
             { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },
@@ -13,7 +13,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
             { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
         ]
-        allowed_signers = "~/allowed_signers"
+        file = "~/allowed_signers"
         
         [[sources]]
         name = "acme-corp"
@@ -25,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let path: &Path = &file.into_temp_path();
 
     c.bench_function("load the example configuration", |b| {
-        b.iter(|| Configuration::load(path, None).unwrap());
+        b.iter(|| Configuration::load_and_validate(path, None).unwrap());
     });
 }
 

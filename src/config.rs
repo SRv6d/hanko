@@ -1,4 +1,4 @@
-use crate::{cli::RuntimeConfiguration, user::User, Github, Gitlab, Source, SourceMap};
+use crate::{allowed_signers::Signer, cli::RuntimeConfiguration, Github, Gitlab, Source};
 use figment::{
     providers::{Format, Serialized, Toml},
     Figment,
@@ -6,25 +6,33 @@ use figment::{
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fmt,
     ops::Deref,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 use tracing::{debug, info, trace};
 
 /// The main configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Configuration {
-    users: Vec<UserConfiguration>,
-    sources: Option<Vec<SourceConfiguration>>,
-    allowed_signers: PathBuf,
+    signers: Vec<SignerConfiguration>,
+    #[serde(default)]
+    sources: Vec<SourceConfiguration>,
+    /// The path of the allowed signers file.
+    file: PathBuf,
 }
 
+/// A `HashMap` containing sources by name.
+/// Since signers need to contain references to sources and can move between threads,
+/// an Arc is used for sources.
+type NamedSources = HashMap<String, Arc<Box<dyn Source>>>;
+
 impl Configuration {
-    /// The default GitHub and GitLab sources.
-    fn default_sources() -> SourceMap {
-        [
+    /// Returns configuration for the default GitHub and GitLab sources.
+    fn default_sources() -> Vec<SourceConfiguration> {
+        vec![
             SourceConfiguration {
                 name: "github".to_string(),
                 provider: SourceType::Github,
@@ -36,57 +44,54 @@ impl Configuration {
                 url: "https://gitlab.com".parse().unwrap(),
             },
         ]
-        .iter()
-        .map(|config| (config.name.clone(), config.build_source()))
-        .collect()
     }
 
-    /// The configured path to write the allowed signers file to.
+    /// Returns sources generated from their configuration.
     #[must_use]
-    pub fn allowed_signers(&self) -> &Path {
-        self.allowed_signers.as_ref()
-    }
-
-    /// The configured and default sources.
-    #[must_use]
-    pub fn sources(&self) -> SourceMap {
-        let mut sources = Self::default_sources();
-        if let Some(configs) = &self.sources {
-            sources.extend(
-                configs
-                    .iter()
-                    .map(|config| (config.name.clone(), config.build_source())),
-            );
-        }
-        sources
-    }
-
-    /// The configured users.
-    #[must_use]
-    pub fn users<'b>(&self, sources: &'b SourceMap) -> Option<Vec<User<'b>>> {
-        let configs = &self.users;
-        let users = configs
+    pub fn sources(&self) -> NamedSources {
+        self.sources
             .iter()
-            .map(|config| {
-                let sources = config
-                    .sources
-                    .iter()
-                    .map(|name| sources.get(name).unwrap().as_ref())
-                    .collect();
-                User {
-                    // TODO: Use references instead of cloning.
-                    name: config.name.clone(),
-                    principals: config.principals.clone(),
-                    sources,
+            .map(|c| (c.name.clone(), Arc::new(c.build_source())))
+            .collect()
+    }
+
+    /// Returns signers generated from their configuration.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the given sources are missing a source configured within a signer.
+    #[must_use]
+    pub fn signers(&self, sources: &NamedSources) -> Vec<Signer> {
+        let configs = &self.signers;
+        configs
+            .iter()
+            .map(|c| {
+                Signer {
+                    name: c.name.clone(),
+                    principals: c.principals.clone(),
+                    sources: c
+                        .source_names
+                        .iter()
+                        .map(|name| {
+                            sources
+                                .get(name)
+                                .expect("signer references source that does not exist, config not validated correctly")
+                                .clone()
+                        })
+                        .collect(),
                 }
             })
-            .collect();
-        Some(users)
+            .collect()
     }
 
-    /// Load the configuration from a TOML file optionally merged with runtime configuration.
-    #[tracing::instrument(skip(runtime_config))]
-    pub fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
+    /// The configured allowed signers file path.
+    #[must_use]
+    pub fn allowed_signers_file(&self) -> &Path {
+        self.file.as_ref()
+    }
+
+    /// Load the configuration from a TOML file merged with default sources and optionally runtime configuration.
+    fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
         info!("Loading configuration file");
         let figment = {
             let toml = Figment::from(Toml::file_exact(path));
@@ -100,28 +105,49 @@ impl Configuration {
                 toml
             }
         };
-        let config: Self = figment.extract()?;
+
+        let mut config: Self = figment.extract()?;
+        let default_sources = Self::default_sources();
+        debug!(
+            ?default_sources,
+            "Extending configuration with default sources."
+        );
+        config.sources.extend(default_sources);
+
+        Ok(config)
+    }
+
+    /// Load and validate the configuration from a TOML file merged with runtime configuration and default sources.
+    #[tracing::instrument(skip(runtime_config))]
+    pub fn load_and_validate(
+        path: &Path,
+        runtime_config: Option<RuntimeConfiguration>,
+    ) -> Result<Self, Error> {
+        let config = Self::load(path, runtime_config)?;
         config.validate()?;
         Ok(config)
     }
 
     /// Validate the configuration.
     fn validate(&self) -> Result<(), Error> {
-        let configured_sources = self.sources();
-        let used_source_names: HashSet<&String> =
-            self.users.iter().flat_map(|u| &u.sources).collect();
-        let configured_source_names: HashSet<&String> = configured_sources.keys().collect();
+        trace!(?self, "Validating configuration");
 
-        let missing_source_names: Vec<String> = used_source_names
-            .difference(&configured_source_names)
+        let used_sources: HashSet<&str> = self
+            .signers
+            .iter()
+            .flat_map(|c| c.source_names.iter())
+            .map(String::as_str)
+            .collect();
+        let existing_sources: HashSet<&str> =
+            self.sources.iter().map(|c| c.name.as_str()).collect();
+        let missing_sources: Vec<String> = used_sources
+            .difference(&existing_sources)
             .map(ToString::to_string)
             .collect();
-        if !missing_source_names.is_empty() {
-            return Err(Error::MissingSources(MissingSourcesError(
-                missing_source_names,
-            )));
+        if !missing_sources.is_empty() {
+            return Err(MissingSourcesError::new(missing_sources).into());
         }
-        trace!(?self, "Validated configuration");
+
         Ok(())
     }
 
@@ -137,7 +163,7 @@ pub enum Error {
     #[error("{0}")]
     SyntaxError(figment::Error),
     #[error("missing sources {0}")]
-    MissingSources(MissingSourcesError),
+    MissingSources(#[from] MissingSourcesError),
 }
 
 impl From<figment::Error> for Error {
@@ -146,6 +172,8 @@ impl From<figment::Error> for Error {
     }
 }
 
+/// An error that occurs when sources are used that are not present in the configuration.
+/// Contains names of the missing sources and displays them as a comma separated string.
 #[derive(Debug, PartialEq, thiserror::Error)]
 pub struct MissingSourcesError(Vec<String>);
 impl fmt::Display for MissingSourcesError {
@@ -153,6 +181,15 @@ impl fmt::Display for MissingSourcesError {
         write!(f, "{}", self.0.join(", "))
     }
 }
+
+impl MissingSourcesError {
+    fn new(names: impl IntoIterator<Item = String>) -> Self {
+        let mut v: Vec<_> = names.into_iter().collect();
+        v.sort();
+        Self(v)
+    }
+}
+
 impl Deref for MissingSourcesError {
     type Target = Vec<String>;
 
@@ -174,11 +211,11 @@ fn default_user_source() -> Vec<String> {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct UserConfiguration {
+pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
-    #[serde(default = "default_user_source")]
-    pub sources: Vec<String>,
+    #[serde(rename = "sources", default = "default_user_source")]
+    pub source_names: Vec<String>,
 }
 
 /// The representation of a [`Source`] in configuration.
@@ -228,34 +265,39 @@ mod tests {
         PathBuf::from("config.toml")
     }
 
-    /// A configuration without any explicitly configured sources contains the default sources.
-    #[test]
-    fn configuration_has_default_sources() {
-        let config = Configuration {
-            users: vec![UserConfiguration {
-                name: "torvalds".to_string(),
-                principals: vec!["torvalds@linux-foundation.org".to_string()],
-                sources: vec!["github".to_string()],
-            }],
-            sources: None,
-            allowed_signers: "~/allowed_signers".into(),
-        };
+    /// When loading a configuration, the returned instance always contains the default sources.
+    #[rstest]
+    #[case(
+        indoc!{r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+            ]
+            file = "~/allowed_signers"
+        "#}
+    )]
+    fn loaded_configuration_has_default_sources(config_path: PathBuf, #[case] config: &str) {
+        figment::Jail::expect_with(|jail| {
+            jail.create_file(&config_path, config)?;
 
-        let sources = config.sources();
+            let config = Configuration::load(&config_path, None).unwrap();
 
-        assert!(sources.contains_key("github"));
-        assert!(sources.contains_key("gitlab"));
+            for default_source in Configuration::default_sources() {
+                assert!(config.sources.contains(&default_source));
+            }
+
+            Ok(())
+        });
     }
 
     /// Loading configuration missing sources returns an appropriate error.
     #[rstest]
     #[case(
         indoc!{r#"
-            users = [
+            signers = [
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
-            allowed_signers = "~/allowed_signers"
+            file = "~/allowed_signers"
 
             [[sources]]
             name = "acme-corp"
@@ -266,11 +308,11 @@ mod tests {
     )]
     #[case(
         indoc!{r#"
-            users = [
+            signers = [
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
-            allowed_signers = "~/allowed_signers"
+            file = "~/allowed_signers"
         "#},
         vec!["acme-corp".to_string(), "lumon-industries".to_string()]
     )]
@@ -283,7 +325,7 @@ mod tests {
         figment::Jail::expect_with(|jail| {
             jail.create_file(&config_path, config)?;
 
-            let err = Configuration::load(&config_path, None).unwrap_err();
+            let err = Configuration::load_and_validate(&config_path, None).unwrap_err();
             if let Error::MissingSources(err_missing) = err {
                 expected_missing.sort();
                 let err_missing = {
@@ -299,18 +341,18 @@ mod tests {
         });
     }
 
-    /// Runtime options override those specified in the configuration.
+    /// Runtime options take precedence over values loaded from the configuration file.
     #[rstest]
-    fn runtime_option_overrides_config(config_path: PathBuf) {
+    fn runtime_options_take_precedence_over_file_options(config_path: PathBuf) {
         let config = indoc! {r#"
-            users = [
+            signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
             ]
-            allowed_signers = "/value/in/config"
+            file = "/value/in/config"
         "#};
         let runtime_allowed_signers = PathBuf::from("/value/at/runtime");
         let runtime_config = RuntimeConfiguration {
-            allowed_signers: Some(runtime_allowed_signers.clone()),
+            file: Some(runtime_allowed_signers.clone()),
             verbose: 0,
         };
 
@@ -319,7 +361,7 @@ mod tests {
 
             let config = Configuration::load(&config_path, Some(runtime_config)).unwrap();
 
-            assert_eq!(config.allowed_signers, runtime_allowed_signers);
+            assert_eq!(config.file, runtime_allowed_signers);
             Ok(())
         });
     }
@@ -328,19 +370,19 @@ mod tests {
     #[rstest]
     fn users_have_default_github_source(config_path: PathBuf) {
         let config = indoc! {r#"
-            users = [
+            signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
             ]
-            allowed_signers = "~/allowed_signers"
+            file = "~/allowed_signers"
         "#};
 
         figment::Jail::expect_with(|jail| {
             jail.create_file(&config_path, config)?;
 
             let mut config = Configuration::load(&config_path, None).unwrap();
-            let user_sources = config.users.pop().unwrap().sources;
+            let signer_sources = config.signers.pop().unwrap().source_names;
 
-            assert_eq!(user_sources, vec!["github"]);
+            assert_eq!(signer_sources, vec!["github"]);
             Ok(())
         });
     }

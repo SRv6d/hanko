@@ -106,7 +106,7 @@ fn update_writes_expected_allowed_signers(
 ) {
     let config = {
         let toml = formatdoc! {r#"
-            users = [
+            signers = [
                 {{ name = "jsnow", principals = ["j.snow@wall.com"], sources = ["mock-github"]}},
                 {{ name = "imalcom", principals = ["ian.malcom@acme.corp"], sources = ["mock-github"]}},
                 {{ name = "cwoods", principals = ["cwoods@universal.exports"], sources = ["mock-gitlab"]}},
@@ -140,7 +140,7 @@ fn update_writes_expected_allowed_signers(
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.arg("--config")
         .arg(config.path())
-        .arg("--allowed-signers")
+        .arg("--file")
         .arg(allowed_signers.path())
         .arg("update")
         .assert()

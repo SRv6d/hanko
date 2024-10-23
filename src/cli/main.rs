@@ -1,5 +1,4 @@
-use super::update::update;
-use crate::Configuration;
+use crate::{allowed_signers::update, Configuration};
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
@@ -53,7 +52,7 @@ pub struct RuntimeConfiguration {
         env = "HANKO_ALLOWED_SIGNERS",
         default_value = git_allowed_signers()
     )]
-    pub allowed_signers: Option<PathBuf>,
+    pub file: Option<PathBuf>,
 
     /// Increase verbosity.
     #[arg(short, long, action = clap::ArgAction::Count)]
@@ -98,30 +97,34 @@ fn git_allowed_signers() -> Resettable<OsStr> {
 }
 
 /// The main CLI entrypoint.
-pub fn entrypoint() -> Result<()> {
+#[tokio::main]
+pub async fn entrypoint() -> Result<()> {
     let start = Instant::now();
     let args = Args::parse();
 
     setup_tracing(args.runtime_config.verbose);
 
-    let config = Configuration::load(&args.config, Some(args.runtime_config))
+    let config = Configuration::load_and_validate(&args.config, Some(args.runtime_config))
         .context("Failed to load configuration")?;
 
     match &args.command {
         Commands::Update => {
-            let path = config.allowed_signers();
+            let path = config.allowed_signers_file();
             let sources = config.sources();
             debug!(?sources, "Initialized sources");
-            if let Some(users) = config.users(&sources) {
-                update(path, &users).context("Failed to update the allowed signers file")?;
+            let signers = config.signers(&sources);
+            debug!(?signers, "Initialized signers");
 
-                let duration = start.elapsed();
-                info!(
-                    "Updated allowed signers file {} in {:?}",
-                    path.display(),
-                    duration
-                );
-            }
+            update(path, signers)
+                .await
+                .context("Failed to update the allowed signers file")?;
+
+            let duration = start.elapsed();
+            info!(
+                "Updated allowed signers file {} in {:?}",
+                path.display(),
+                duration
+            );
         }
     }
     Ok(())

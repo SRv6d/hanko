@@ -1,34 +1,36 @@
-use super::{Result, Source, SourceError};
-use crate::{SshPublicKey, USER_AGENT};
 use async_trait::async_trait;
 use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
+use super::main::{base_client, Error, Result, Source};
+use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
+
 #[derive(Debug)]
 pub struct Gitlab {
     /// The base URL of the API.
     base_url: Url,
+    client: Client,
 }
 
 impl Gitlab {
     const VERSION: &'static str = "v4";
     const ACCEPT_HEADER: &'static str = "application/json";
 
+    #[must_use]
     pub fn new(base_url: Url) -> Self {
-        Self { base_url }
+        Self {
+            base_url,
+            client: base_client(),
+        }
     }
 }
 
 #[async_trait]
 impl Source for Gitlab {
     // [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
-    #[tracing::instrument(skip(self, client), level = "trace")]
-    async fn get_keys_by_username(
-        &self,
-        username: &str,
-        client: &Client,
-    ) -> Result<Vec<SshPublicKey>> {
+    #[tracing::instrument(level = "trace")]
+    async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url
             .join(&format!(
@@ -36,7 +38,8 @@ impl Source for Gitlab {
                 version = Self::VERSION,
             ))
             .unwrap();
-        let request = client
+        let request = self
+            .client
             .get(url)
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER)
@@ -44,7 +47,7 @@ impl Source for Gitlab {
             .unwrap();
 
         trace!(?request, "Sending request to GitLab API");
-        let response = handle_gitlab_errors(client.execute(request).await)?;
+        let response = handle_gitlab_errors(self.client.execute(request).await)?;
         trace!(?response, "Received response from GitLab API.");
         // The API has no way to filter keys by usage type, so this contains all the user's keys.
         let all_keys: Vec<ApiSshKey> = response.json().await?;
@@ -53,7 +56,7 @@ impl Source for Gitlab {
             .into_iter()
             .filter(|key| key.usage_type.is_signing());
 
-        Ok(signing_keys.map(SshPublicKey::from).collect())
+        Ok(signing_keys.map(PublicKey::from).collect())
     }
 }
 
@@ -67,11 +70,11 @@ fn handle_gitlab_errors(request_result: reqwest::Result<Response>) -> Result<Res
             .expect("Status code error must contain status code");
 
         match status {
-            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::NOT_FOUND => return Err(Error::UserNotFound),
             StatusCode::UNAUTHORIZED => {
-                return Err(SourceError::BadCredentials);
+                return Err(Error::BadCredentials);
             }
-            _ => return Err(SourceError::from(error)),
+            _ => return Err(Error::from(error)),
         }
     }
 
@@ -107,7 +110,7 @@ pub struct ApiSshKey {
     pub usage_type: ApiSshKeyUsage,
 }
 
-impl From<ApiSshKey> for SshPublicKey {
+impl From<ApiSshKey> for PublicKey {
     fn from(api_key: ApiSshKey) -> Self {
         api_key.key.parse().unwrap()
     }
@@ -128,21 +131,14 @@ mod tests {
     #[fixture]
     fn api_w_mock_server() -> (Gitlab, MockServer) {
         let server = MockServer::start();
-        let api = Gitlab {
-            base_url: server.base_url().parse().unwrap(),
-        };
+        let api = Gitlab::new(server.base_url().parse().unwrap());
         (api, server)
-    }
-
-    #[fixture]
-    fn client() -> Client {
-        Client::new()
     }
 
     /// The API request made to get a users signing keys is correct.
     #[rstest]
     #[tokio::test]
-    async fn api_request_is_correct(api_w_mock_server: (Gitlab, MockServer), client: Client) {
+    async fn api_request_is_correct(api_w_mock_server: (Gitlab, MockServer)) {
         let (api, server) = api_w_mock_server;
         let mock = server.mock(|when, _| {
             when.method(GET)
@@ -151,7 +147,7 @@ mod tests {
                 .header("user-agent", USER_AGENT);
         });
 
-        let _ = api.get_keys_by_username(EXAMPLE_USERNAME, &client).await;
+        let _ = api.get_keys_by_username(EXAMPLE_USERNAME).await;
 
         mock.assert();
     }
@@ -194,9 +190,8 @@ mod tests {
     #[tokio::test]
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: &str,
-        #[case] expected: Vec<SshPublicKey>,
+        #[case] expected: Vec<PublicKey>,
         api_w_mock_server: (Gitlab, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -207,10 +202,7 @@ mod tests {
                 .body(body);
         });
 
-        let keys = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
-            .await
-            .unwrap();
+        let keys = api.get_keys_by_username(EXAMPLE_USERNAME).await.unwrap();
 
         assert_eq!(keys, expected);
     }
@@ -220,7 +212,6 @@ mod tests {
     #[tokio::test]
     async fn get_keys_by_username_http_not_found_returns_user_not_found_error(
         api_w_mock_server: (Gitlab, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -230,11 +221,11 @@ mod tests {
         });
 
         let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME)
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::UserNotFound));
+        assert!(matches!(error_result, Error::UserNotFound));
     }
 
     /// A HTTP unauthorized status code returns a `SourceError::BadCredentials`.
@@ -242,7 +233,6 @@ mod tests {
     #[tokio::test]
     async fn get_keys_by_username_http_unauthorized_returns_bad_credentials(
         api_w_mock_server: (Gitlab, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -252,10 +242,10 @@ mod tests {
         });
 
         let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME)
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::BadCredentials));
+        assert!(matches!(error_result, Error::BadCredentials));
     }
 }

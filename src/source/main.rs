@@ -1,28 +1,20 @@
-use crate::SshPublicKey;
+use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 use async_trait::async_trait;
-use std::{collections::HashMap, fmt::Debug};
-use thiserror::Error;
+use std::{fmt::Debug, time::Duration};
 
-/// A `Result` alias where the `Err` case is a `SourceError`.
-pub type Result<T> = std::result::Result<T, SourceError>;
+/// A `Result` alias where the `Err` case is a source [`Error`].
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// A source implements a way to get public keys from a Git provider.
 #[async_trait]
-pub trait Source: Debug {
+pub trait Source: Debug + Send + Sync {
     /// Get a users public keys by their username.
-    async fn get_keys_by_username(
-        &self,
-        username: &str,
-        client: &reqwest::Client,
-    ) -> Result<Vec<SshPublicKey>>;
+    async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>>;
 }
 
-/// A `HashMap` containing named sources.
-pub type SourceMap = HashMap<String, Box<dyn Source>>;
-
 /// An error that can occur when interacting with a source.
-#[derive(Error, Debug, PartialEq, Eq)]
-pub enum SourceError {
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum Error {
     #[error("used credentials are invalid")]
     BadCredentials,
     #[error("rate limit has been exceeded")]
@@ -43,11 +35,11 @@ pub enum SourceError {
 ///
 /// Since the error type is not and enum and cannot be matched exhaustively, this conversion panics
 /// as a last resort if an unexpected error is encountered.
-impl From<reqwest::Error> for SourceError {
+impl From<reqwest::Error> for Error {
     #[allow(clippy::panic)]
     fn from(error: reqwest::Error) -> Self {
         if error.is_connect() || error.is_timeout() {
-            SourceError::ConnectionError
+            Error::ConnectionError
         } else if error.is_status()
             && error
                 .status()
@@ -61,7 +53,7 @@ impl From<reqwest::Error> for SourceError {
                 .expect("missing error status code")
                 .is_client_error()
         {
-            SourceError::ClientError(error.status().unwrap())
+            Error::ClientError(error.status().unwrap())
         } else if error.is_body() || error.is_decode() {
             ServerError::InvalidResponseBody.into()
         } else {
@@ -70,12 +62,23 @@ impl From<reqwest::Error> for SourceError {
     }
 }
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum ServerError {
     #[error("invalid response body")]
     InvalidResponseBody,
     #[error("{0}")]
     StatusCode(reqwest::StatusCode),
+}
+
+/// The base reqwest Client to be used by sources.
+pub(super) fn base_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .user_agent(USER_AGENT)
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(10))
+        .use_rustls_tls()
+        .build()
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -177,15 +180,15 @@ mod tests {
         #[test]
         fn source_error_from_reqwest_400_error_is_client_error(status_code in status_code_400()) {
             let error = reqwest_status_code_error(status_code);
-            let expected_conversion = SourceError::ClientError(status_code);
-            assert_eq!(SourceError::from(error), expected_conversion);
+            let expected_conversion = Error::ClientError(status_code);
+            assert_eq!(Error::from(error), expected_conversion);
         }
 
         #[test]
         fn source_error_from_reqwest_500_error_is_server_error(status_code in status_code_500()) {
             let error = reqwest_status_code_error(status_code);
-            let expected_conversion = SourceError::from(ServerError::StatusCode(status_code));
-            assert_eq!(SourceError::from(error), expected_conversion);
+            let expected_conversion = Error::from(ServerError::StatusCode(status_code));
+            assert_eq!(Error::from(error), expected_conversion);
         }
 
     }
@@ -196,10 +199,10 @@ mod tests {
             reqwest::Error,
         >,
     ) {
-        let expected_conversion = SourceError::ConnectionError;
+        let expected_conversion = Error::ConnectionError;
         // The assertion is skipped if the used fixture failed to create an error.
         if let Some(error) = error {
-            assert_eq!(SourceError::from(error), expected_conversion);
+            assert_eq!(Error::from(error), expected_conversion);
         }
     }
 
@@ -207,7 +210,7 @@ mod tests {
     fn source_error_from_reqwest_decode_error_is_server_error_invalid_response_body(
         reqwest_decode_error: reqwest::Error,
     ) {
-        let expected_conversion = SourceError::from(ServerError::InvalidResponseBody);
-        assert_eq!(SourceError::from(reqwest_decode_error), expected_conversion);
+        let expected_conversion = Error::from(ServerError::InvalidResponseBody);
+        assert_eq!(Error::from(reqwest_decode_error), expected_conversion);
     }
 }

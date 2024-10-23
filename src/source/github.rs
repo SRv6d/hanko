@@ -1,40 +1,44 @@
-use super::{Result, Source, SourceError};
-use crate::{SshPublicKey, USER_AGENT};
+use std::ops::Deref;
+
 use async_trait::async_trait;
 use reqwest::{Client, Response, StatusCode, Url};
 use serde::Deserialize;
-use std::ops::Deref;
 use tracing::trace;
+
+use super::main::{base_client, Error, Result, Source};
+use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
 
 #[derive(Debug)]
 pub struct Github {
     /// The base URL of the API.
     base_url: Url,
+    client: Client,
 }
 
 impl Github {
     const VERSION: &'static str = "2022-11-28";
     const ACCEPT_HEADER: &'static str = "application/vnd.github+json";
 
+    #[must_use]
     pub fn new(base_url: Url) -> Self {
-        Self { base_url }
+        Self {
+            base_url,
+            client: base_client(),
+        }
     }
 }
 
 #[async_trait]
 impl Source for Github {
     // [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
-    #[tracing::instrument(skip(self, client), level = "trace")]
-    async fn get_keys_by_username(
-        &self,
-        username: &str,
-        client: &Client,
-    ) -> Result<Vec<SshPublicKey>> {
+    #[tracing::instrument(level = "trace")]
+    async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url
             .join(&format!("/users/{username}/ssh_signing_keys"))
             .unwrap();
-        let request = client
+        let request = self
+            .client
             .get(url)
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER)
@@ -43,7 +47,7 @@ impl Source for Github {
             .unwrap();
 
         trace!(?request, "Sending request to GitHub API");
-        let response = handle_github_errors(client.execute(request).await).await?;
+        let response = handle_github_errors(self.client.execute(request).await).await?;
         trace!(?response, "Received response from GitHub API.");
         Ok(response.json().await?)
     }
@@ -79,22 +83,22 @@ async fn handle_github_errors(request_result: reqwest::Result<Response>) -> Resu
         let message = response.json::<Message>().await.ok();
 
         match status {
-            StatusCode::NOT_FOUND => return Err(SourceError::UserNotFound),
+            StatusCode::NOT_FOUND => return Err(Error::UserNotFound),
             StatusCode::FORBIDDEN
                 if message
                     .as_ref()
                     .is_some_and(|m| m.to_lowercase().contains("rate limit exceeded")) =>
             {
-                return Err(SourceError::RatelimitExceeded);
+                return Err(Error::RatelimitExceeded);
             }
             StatusCode::UNAUTHORIZED
                 if message
                     .as_ref()
                     .is_some_and(|m| m.to_lowercase().contains("bad credentials")) =>
             {
-                return Err(SourceError::BadCredentials);
+                return Err(Error::BadCredentials);
             }
-            _ => return Err(SourceError::from(error)),
+            _ => return Err(Error::from(error)),
         }
     }
 
@@ -118,21 +122,14 @@ mod tests {
     #[fixture]
     fn api_w_mock_server() -> (Github, MockServer) {
         let server = MockServer::start();
-        let api = Github {
-            base_url: server.base_url().parse().unwrap(),
-        };
+        let api = Github::new(server.base_url().parse().unwrap());
         (api, server)
-    }
-
-    #[fixture]
-    fn client() -> Client {
-        Client::new()
     }
 
     /// The API request made to get a users signing keys is correct.
     #[rstest]
     #[tokio::test]
-    async fn api_request_is_correct(api_w_mock_server: (Github, MockServer), client: Client) {
+    async fn api_request_is_correct(api_w_mock_server: (Github, MockServer)) {
         let (api, server) = api_w_mock_server;
         let mock = server.mock(|when, _| {
             when.method(GET)
@@ -142,7 +139,7 @@ mod tests {
                 .header("user-agent", USER_AGENT);
         });
 
-        let _ = api.get_keys_by_username(EXAMPLE_USERNAME, &client).await;
+        let _ = api.get_keys_by_username(EXAMPLE_USERNAME).await;
 
         mock.assert();
     }
@@ -153,19 +150,19 @@ mod tests {
     #[case(json!(
         [
             {
-                "id": 773452,
+                "id": 773_452,
                 "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS",
                 "title": "key-1",
                 "created_at": "2023-05-23T09:35:15.638Z"
             },
               {
-                "id": 773453,
+                "id": 773_453,
                 "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=",
                 "title": "key-2",
                 "created_at": "2023-07-22T23:04:29.415Z"
               },
               {
-                "id": 773454,
+                "id": 773_454,
                 "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDTdEeUFjUX76aMptdG63itqcINvu/tnV5l9RXy/1TS25Ui2r+C2pRjG0vr9lzfz8TGncQt1yKmaZDAAe6mYGFiQlrkh9RJ/MPssRw4uS4slvMTDWhNufO1M3QGkek81lGaZq55uazCcaM5xSOhLBdrWIMROeLgKZ9YkHNqJXTt9V+xNE5ZkB/65i2tCkGdXnQsGJbYFbkuUTvYBuMW9lwmryLTeWwFLWGBP1moZI9etk3snh2hCLTV8+gvmhCTE8sAGBMcJq+TGxnfFoCtnA9Bdy7t+ZMLh1kV7oneUA9YT7qNeUFy55D287DAltB02ntT7CtuG6SBAQ4CQMcCoAX3Os4aVfdILOEC8ghrAj3uTEQuE3nYta0SmqqXcVAxmXUQCawf8n5CJ7QN5aIhCH73MKr6k5puk9dnkAcAFLRM6stvQhnpIqrI3YEbjqs1FGHfbc4+nfEWorxRrd7ur1ckEhuvmAXRKrLzYp9gYWU6TxfRqSxsXh3he0G6i+kC6k=",
                 "title": "key-3",
                 "created_at": "2023-12-04T19:32:23.794Z"
@@ -180,9 +177,8 @@ mod tests {
     #[tokio::test]
     async fn keys_returned_by_api_deserialized_correctly(
         #[case] body: JsonValue,
-        #[case] expected: Vec<SshPublicKey>,
+        #[case] expected: Vec<PublicKey>,
         api_w_mock_server: (Github, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -193,10 +189,7 @@ mod tests {
                 .json_body(body);
         });
 
-        let keys = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
-            .await
-            .unwrap();
+        let keys = api.get_keys_by_username(EXAMPLE_USERNAME).await.unwrap();
 
         assert_eq!(keys, expected);
     }
@@ -216,7 +209,6 @@ mod tests {
     #[tokio::test]
     async fn get_keys_by_username_http_not_found_returns_user_not_found_error(
         api_w_mock_server: (Github, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -226,11 +218,11 @@ mod tests {
         });
 
         let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME)
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::UserNotFound));
+        assert!(matches!(error_result, Error::UserNotFound));
     }
 
     /// A HTTP unauthorized status code along with a body containing a bad credentials message
@@ -239,7 +231,6 @@ mod tests {
     #[tokio::test]
     async fn get_keys_by_username_http_unauthorized_bad_credentials_returns_bad_credentials(
         api_w_mock_server: (Github, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -250,11 +241,11 @@ mod tests {
         });
 
         let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME)
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::BadCredentials));
+        assert!(matches!(error_result, Error::BadCredentials));
     }
 
     /// A HTTP unauthorized status code without a known error message in the body returns a `SourceError::Other`.
@@ -262,7 +253,6 @@ mod tests {
     #[tokio::test]
     async fn get_keys_by_username_http_unauthorized_other_returns_client_error(
         api_w_mock_server: (Github, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -272,11 +262,11 @@ mod tests {
         });
 
         let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME)
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::ClientError(..)));
+        assert!(matches!(error_result, Error::ClientError(..)));
     }
 
     /// A HTTP forbidden status code along with a body containing a rate limit exceeded message
@@ -285,7 +275,6 @@ mod tests {
     #[tokio::test]
     async fn get_keys_by_username_http_forbidden_rate_limit_exceeded_returns_rate_limit_exceeded(
         api_w_mock_server: (Github, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -296,11 +285,11 @@ mod tests {
         });
 
         let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME)
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::RatelimitExceeded));
+        assert!(matches!(error_result, Error::RatelimitExceeded));
     }
 
     /// A HTTP forbidden status code without a known error message in the body returns a `SourceError::ClientError`.
@@ -308,7 +297,6 @@ mod tests {
     #[tokio::test]
     async fn get_keys_by_username_http_forbidden_other_returns_client_error(
         api_w_mock_server: (Github, MockServer),
-        client: Client,
     ) {
         let (api, server) = api_w_mock_server;
         server.mock(|when, then| {
@@ -318,10 +306,10 @@ mod tests {
         });
 
         let error_result = api
-            .get_keys_by_username(EXAMPLE_USERNAME, &client)
+            .get_keys_by_username(EXAMPLE_USERNAME)
             .await
             .unwrap_err();
 
-        assert!(matches!(error_result, SourceError::ClientError(..)));
+        assert!(matches!(error_result, Error::ClientError(..)));
     }
 }
