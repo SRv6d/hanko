@@ -1,6 +1,6 @@
 pub use github::Github;
 pub use gitlab::Gitlab;
-pub use main::{Source, Error};
+pub use main::{Error, Source};
 
 mod github;
 mod gitlab;
