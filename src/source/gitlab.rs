@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use reqwest::{Client, Response, StatusCode, Url};
+use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
@@ -46,9 +46,7 @@ impl Source for Gitlab {
             .build()
             .unwrap();
 
-        trace!(?request, "Sending request to GitLab API");
-        let response = handle_gitlab_errors(self.client.execute(request).await)?;
-        trace!(?response, "Received response from GitLab API.");
+        let response = make_api_request(request, &self.client).await?;
         // The API has no way to filter keys by usage type, so this contains all the user's keys.
         let all_keys: Vec<ApiSshKey> = response.json().await?;
         // Filter out the keys that are not used for signing.
@@ -58,6 +56,15 @@ impl Source for Gitlab {
 
         Ok(signing_keys.map(PublicKey::from).collect())
     }
+}
+
+/// Make an HTTP request to the GitLab API.
+async fn make_api_request(request: Request, client: &Client) -> Result<Response> {
+    trace!(?request, "Sending request to GitLab API");
+    let response = handle_gitlab_errors(client.execute(request).await)?;
+    trace!(?response, "Received response from GitLab API.");
+
+    Ok(response)
 }
 
 /// Handle GitLab specific HTTP errors.
