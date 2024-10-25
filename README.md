@@ -23,11 +23,51 @@
 </div>
 <br />
 
-`hanko` manages your local Git allowed signers file for you using signing keys
-configured on platforms like GitHub and GitLab.
+`hanko` keeps your allowed signers file up to date with signing keys configured on platforms like GitHub and GitLab.
 
-> [!WARNING]  
-> This project is a work in progress and not (yet) ready for production usage.
+# Usage
+
+```
+Keeps your allowed signers file up to date with signing keys configured on platforms like GitHub and GitLab.
+
+Usage: hanko [OPTIONS] <COMMAND>
+
+Commands:
+  update  Update the allowed signers file
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+  -c, --config <PATH>  The configuration file [env: HANKO_CONFIG=]
+      --file <PATH>    The allowed signers file [env: HANKO_ALLOWED_SIGNERS=]
+  -v, --verbose...     Increase verbosity
+  -h, --help           Print help
+  -V, --version        Print version
+```
+
+## Configuring Signers
+
+To use `hanko`, a set of signers to track need to be configured first. As an example,
+we'll create a configuration file in the default location `~/.config/hanko/config.toml`
+containing a single signer using the default GitHub source.
+
+```toml
+[[signers]]
+name = "octocat"
+principals = ["octocat@github.com"]
+```
+
+## Updating the allowed signers file
+
+Once we've configured our signers, we can run the `update` command.
+
+If an allowed signers file is configured in Git, `hanko` will write to that file.
+Should no allowed signers file be configured within Git, or you want to specify a different path, the `--file` runtime option may be used.
+
+```sh
+$ hanko -v update
+2024-10-25T14:01:49.140028Z  INFO load_and_validate: hanko::config: Loading configuration file path="/home/vscode/.config/hanko/config.toml"
+2024-10-25T14:01:49.243660Z  INFO hanko::cli::main: Updated allowed signers file /home/vscode/.config/git/allowed_signers in 105.315473ms
+```
 
 # Example Configuration
 
@@ -46,3 +86,20 @@ name = "acme-corp"
 provider = "gitlab"
 url = "https://git.acme.corp"
 ```
+
+## Optional Features
+
+The following cargo features can be used to enable additional functionality.
+
+- **detect-allowed-signers** _(enabled by default)_: Enables use of the [gix-config] crate to detect the location of the allowed signers file from Git configuration.
+
+## Contributing
+
+Contributions of all sizes that improve `hanko` in any way, be it DX/UX, documentation, performance or other are highly appreciated.
+To get started, please read the [contribution guidelines](.github/CONTRIBUTING.md). Before starting work on a new feature you would like to contribute that may impact simplicity, reliability or performance, please open an issue first.
+
+## License
+
+The source code of this project is licensed under the MIT License. For more information, see [LICENSE](LICENSE).
+
+[gix-config]: https://crates.io/crates/gix-config
