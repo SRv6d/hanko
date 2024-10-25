@@ -1,7 +1,8 @@
-use std::ops::Deref;
+use std::{fmt::Debug, ops::Deref, str::FromStr};
 
 use async_trait::async_trait;
-use reqwest::{Client, Response, StatusCode, Url};
+use chrono::{Local, TimeZone};
+use reqwest::{header::HeaderValue, Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
@@ -46,9 +47,7 @@ impl Source for Github {
             .build()
             .unwrap();
 
-        trace!(?request, "Sending request to GitHub API");
-        let response = handle_github_errors(self.client.execute(request).await).await?;
-        trace!(?response, "Received response from GitHub API.");
+        let response = make_api_request(request, &self.client).await?;
         Ok(response.json().await?)
     }
 }
@@ -65,6 +64,42 @@ impl Deref for Message {
     fn deref(&self) -> &Self::Target {
         &self.message
     }
+}
+
+/// Make an HTTP request to the GitHub API.
+async fn make_api_request(request: Request, client: &Client) -> Result<Response> {
+    trace!(?request, "Sending request to GitHub API");
+    let response = handle_github_errors(client.execute(request).await).await?;
+    trace!(?response, "Received response from GitHub API.");
+
+    let headers = response.headers();
+    if let (Some(ratelimit_remaining), Some(ratelimit_reset)) = (
+        headers.get("x-ratelimit-remaining"),
+        headers.get("x-ratelimit-reset"),
+    ) {
+        let ratelimit_remaining: usize = unwrap_header_value(ratelimit_remaining);
+        let ratelimit_reset = Local
+            .timestamp_opt(unwrap_header_value(ratelimit_reset), 0)
+            .unwrap();
+        trace!(
+            ?ratelimit_remaining,
+            ?ratelimit_reset,
+            "{ratelimit_remaining} requests remaining until ratelimit is hit. Counter resets at {ratelimit_reset}.",
+        );
+    }
+    Ok(response)
+}
+
+/// Unwrap a reqwest header value, panicking if it contains an invalid value.
+/// TODO: Handle this by returning and error instead of panicking.
+fn unwrap_header_value<T>(value: &HeaderValue) -> T
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    let expect_msg = "response contains invalid header";
+    let s = value.to_str().expect(expect_msg);
+    s.parse().expect(expect_msg)
 }
 
 /// Handle GitHub specific HTTP errors.
