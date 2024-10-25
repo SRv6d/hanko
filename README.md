@@ -25,9 +25,6 @@
 
 `hanko` keeps your allowed signers file up to date with signing keys configured on platforms like GitHub and GitLab.
 
-> [!WARNING]  
-> This project is a work in progress and not (yet) ready for production usage.
-
 # Usage
 
 ```
