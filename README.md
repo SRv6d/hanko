@@ -94,3 +94,8 @@ name = "acme-corp"
 provider = "gitlab"
 url = "https://git.acme.corp"
 ```
+
+## Contributing
+
+Contributions of all sizes that improve `hanko` in any way, be it DX/UX, documentation, performance or other are highly appreciated.
+To get started, please read the [contribution guidelines](.github/CONTRIBUTING.md). Before starting work on a new feature you would like to contribute that may impact simplicity, reliability or performance, please open an issue first.
