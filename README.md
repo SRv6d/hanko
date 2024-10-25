@@ -47,20 +47,13 @@ Options:
 ## Configuring Signers
 
 To use `hanko`, a set of signers to track need to be configured first. As an example,
-we'll create a configuration file in the default location `~/.config/hanko/config.toml`.
+we'll create a configuration file in the default location `~/.config/hanko/config.toml`
+containing a single signer using the default GitHub source.
 
 ```toml
 [[signers]]
-name = "hynek"
-principals = ["hs@example.com"]
-
-[[signers]]
-name = "fasterthanlime"
-principals = ["amos@example.com"]
-
-[[signers]]
-name = "adriangb"
-principals = ["adriangb@example.com"]
+name = "octocat"
+principals = ["octocat@github.com"]
 ```
 
 ## Updating the allowed signers file
@@ -72,8 +65,8 @@ Should no allowed signers file be configured within Git, or you want to specify 
 
 ```sh
 $ hanko -v update
-2024-10-25T10:56:22.020055Z  INFO load_and_validate: hanko::config: Loading configuration file path="/home/vscode/.config/hanko/config.toml"
-2024-10-25T10:56:22.292566Z  INFO hanko::cli::main: Updated allowed signers file /home/vscode/.config/git/allowed_signers in 298.375673ms
+2024-10-25T14:01:49.140028Z  INFO load_and_validate: hanko::config: Loading configuration file path="/home/vscode/.config/hanko/config.toml"
+2024-10-25T14:01:49.243660Z  INFO hanko::cli::main: Updated allowed signers file /home/vscode/.config/git/allowed_signers in 105.315473ms
 ```
 
 # Example Configuration
