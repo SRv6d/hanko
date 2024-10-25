@@ -37,11 +37,11 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-  -c, --config <PATH>           The configuration file [env: HANKO_CONFIG=]
-      --allowed-signers <PATH>  The allowed signers file [env: HANKO_ALLOWED_SIGNERS=]
-  -v, --verbose...              Increase verbosity
-  -h, --help                    Print help
-  -V, --version                 Print version
+  -c, --config <PATH>  The configuration file [env: HANKO_CONFIG=]
+      --file <PATH>    The allowed signers file [env: HANKO_ALLOWED_SIGNERS=]
+  -v, --verbose...     Increase verbosity
+  -h, --help           Print help
+  -V, --version        Print version
 ```
 
 ## Configuring Users
