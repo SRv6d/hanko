@@ -44,28 +44,28 @@ Options:
   -V, --version        Print version
 ```
 
-## Configuring Users
+## Configuring Signers
 
-To use `hanko`, a set of users to track need to be configured first. As an example,
+To use `hanko`, a set of signers to track need to be configured first. As an example,
 we'll create a configuration file in the default location `~/.config/hanko/config.toml`.
 
 ```toml
-[[users]]
+[[signers]]
 name = "hynek"
 principals = ["hs@example.com"]
 
-[[users]]
+[[signers]]
 name = "fasterthanlime"
 principals = ["amos@example.com"]
 
-[[users]]
+[[signers]]
 name = "adriangb"
 principals = ["adriangb@example.com"]
 ```
 
 ## Updating the allowed signers file
 
-Once we've configured our users, we can run the `update` command.
+Once we've configured our signers, we can run the `update` command.
 If it exists, `hanko` will write it's output to the path of the allowed signers file configured within git. If no allowed signers file is configured within git,
 or you want `hanko` to write to a different path, the `--allowed-signers` runtime option may be used.
 
