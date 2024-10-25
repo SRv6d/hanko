@@ -18,12 +18,12 @@ readme = "README.md"
 exclude = [".devcontainer", ".github", "doc/benchmark/**", "tests/**"]
 
 [dependencies]
-anyhow = "1.0.89"
-async-trait = "0.1.82"
-chrono = "0.4.37"
-clap = { version = "4.5.19", features = ["derive", "env", "string"] }
-figment = { version = "0.10.16", features = ["toml", "test"] }
-gix-config = { version = "0.38.0", optional = true }
+anyhow = "1.0.91"
+async-trait = "0.1.83"
+chrono = "0.4.38"
+clap = { version = "4.5.20", features = ["derive", "env", "string"] }
+figment = { version = "0.10.19", features = ["toml", "test"] }
+gix-config = { version = "0.41.0", optional = true }
 reqwest = { version = "0.12.8", default-features = false, features = [
     "json",
     "rustls-tls-native-roots",
@@ -32,21 +32,21 @@ reqwest = { version = "0.12.8", default-features = false, features = [
     "http2",
     "macos-system-configuration", # use macOS proxy configuration automatically
 ] }
-serde = { version = "1.0.210", features = ["derive"] }
-thiserror = "1.0.64"
-tokio = { version = "1.40.0", features = ["full"] }
+serde = { version = "1.0.213", features = ["derive"] }
+thiserror = "1.0.65"
+tokio = { version = "1.41.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dev-dependencies]
 assert_cmd = "=2.0.16"
-codspeed-criterion-compat = "=2.7.1"
+codspeed-criterion-compat = "=2.7.2"
 criterion = "=0.5.1"
 httpmock = "=0.7.0"
 indoc = "=2.0.5"
-proptest = "1.5.0"
-rstest = "=0.22.0"
-serde_json = "=1.0.128"
+proptest = "=1.5.0"
+rstest = "=0.23.0"
+serde_json = "=1.0.132"
 tempfile = "=3.13.0"
 reqwest = { version = "=0.12.8", default-features = false, features = ["blocking"] }
 
