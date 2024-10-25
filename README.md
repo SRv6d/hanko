@@ -94,6 +94,12 @@ provider = "gitlab"
 url = "https://git.acme.corp"
 ```
 
+## Optional Features
+
+The following cargo features can be used to enable additional functionality.
+
+- **detect-allowed-signers** _(enabled by default)_: Enables use of the [gix-config] crate to detect the location of the allowed signers file from Git configuration.
+
 ## Contributing
 
 Contributions of all sizes that improve `hanko` in any way, be it DX/UX, documentation, performance or other are highly appreciated.
@@ -102,3 +108,5 @@ To get started, please read the [contribution guidelines](.github/CONTRIBUTING.m
 ## License
 
 The source code of this project is licensed under the MIT License. For more information, see [LICENSE](LICENSE).
+
+[gix-config]: https://crates.io/crates/gix-config
