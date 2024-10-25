@@ -66,12 +66,14 @@ principals = ["adriangb@example.com"]
 ## Updating the allowed signers file
 
 Once we've configured our signers, we can run the `update` command.
-If it exists, `hanko` will write it's output to the path of the allowed signers file configured within git. If no allowed signers file is configured within git,
-or you want `hanko` to write to a different path, the `--allowed-signers` runtime option may be used.
+
+If an allowed signers file is configured in Git, `hanko` will write to that file.
+Should no allowed signers file be configured within Git, or you want to specify a different path, the `--file` runtime option may be used.
 
 ```sh
 $ hanko -v update
-...
+2024-10-25T10:56:22.020055Z  INFO load_and_validate: hanko::config: Loading configuration file path="/home/vscode/.config/hanko/config.toml"
+2024-10-25T10:56:22.292566Z  INFO hanko::cli::main: Updated allowed signers file /home/vscode/.config/git/allowed_signers in 298.375673ms
 ```
 
 # Example Configuration
