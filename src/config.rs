@@ -1,6 +1,6 @@
-use crate::{allowed_signers::Signer, cli::RuntimeConfiguration, Github, Gitlab, Source};
+use crate::{allowed_signers::Signer, Github, Gitlab, Source};
 use figment::{
-    providers::{Format, Serialized, Toml},
+    providers::{Format, Toml},
     Figment,
 };
 use reqwest::Url;
@@ -9,7 +9,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt,
     ops::Deref,
-    path::{Path, PathBuf},
+    path::Path,
     sync::Arc,
 };
 use tracing::{debug, info, trace};
@@ -20,8 +20,6 @@ pub struct Configuration {
     signers: Vec<SignerConfiguration>,
     #[serde(default)]
     sources: Vec<SourceConfiguration>,
-    /// The path of the allowed signers file.
-    file: PathBuf,
 }
 
 /// A `HashMap` containing sources by name.
@@ -84,29 +82,10 @@ impl Configuration {
             .collect()
     }
 
-    /// The configured allowed signers file path.
-    #[must_use]
-    pub fn allowed_signers_file(&self) -> &Path {
-        self.file.as_ref()
-    }
-
-    /// Load the configuration from a TOML file merged with default sources and optionally runtime configuration.
-    fn load(path: &Path, runtime_config: Option<RuntimeConfiguration>) -> Result<Self, Error> {
+    /// Load the configuration from a TOML file merged with default sources.
+    fn load(path: &Path) -> Result<Self, Error> {
         info!("Loading configuration file");
-        let figment = {
-            let toml = Figment::from(Toml::file_exact(path));
-            if let Some(runtime_config) = runtime_config {
-                debug!(
-                    ?runtime_config,
-                    "Merging configuration file with runtime configuration"
-                );
-                toml.merge(Serialized::defaults(runtime_config))
-            } else {
-                toml
-            }
-        };
-
-        let mut config: Self = figment.extract()?;
+        let mut config: Self = Figment::from(Toml::file_exact(path)).extract()?;
         let default_sources = Self::default_sources();
         debug!(
             ?default_sources,
@@ -117,13 +96,10 @@ impl Configuration {
         Ok(config)
     }
 
-    /// Load and validate the configuration from a TOML file merged with runtime configuration and default sources.
-    #[tracing::instrument(skip(runtime_config))]
-    pub fn load_and_validate(
-        path: &Path,
-        runtime_config: Option<RuntimeConfiguration>,
-    ) -> Result<Self, Error> {
-        let config = Self::load(path, runtime_config)?;
+    /// Load and validate the configuration from a TOML file merged with default sources.
+    #[tracing::instrument]
+    pub fn load_and_validate(path: &Path) -> Result<Self, Error> {
+        let config = Self::load(path)?;
         config.validate()?;
         Ok(config)
     }
@@ -256,6 +232,8 @@ impl SourceConfiguration {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
     use indoc::indoc;
     use rstest::*;
@@ -279,7 +257,7 @@ mod tests {
         figment::Jail::expect_with(|jail| {
             jail.create_file(&config_path, config)?;
 
-            let config = Configuration::load(&config_path, None).unwrap();
+            let config = Configuration::load(&config_path).unwrap();
 
             for default_source in Configuration::default_sources() {
                 assert!(config.sources.contains(&default_source));
@@ -325,7 +303,7 @@ mod tests {
         figment::Jail::expect_with(|jail| {
             jail.create_file(&config_path, config)?;
 
-            let err = Configuration::load_and_validate(&config_path, None).unwrap_err();
+            let err = Configuration::load_and_validate(&config_path).unwrap_err();
             if let Error::MissingSources(err_missing) = err {
                 expected_missing.sort();
                 let err_missing = {
@@ -338,31 +316,6 @@ mod tests {
             } else {
                 Err("Did not return expected error".into())
             }
-        });
-    }
-
-    /// Runtime options take precedence over values loaded from the configuration file.
-    #[rstest]
-    fn runtime_options_take_precedence_over_file_options(config_path: PathBuf) {
-        let config = indoc! {r#"
-            signers = [
-                { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
-            ]
-            file = "/value/in/config"
-        "#};
-        let runtime_allowed_signers = PathBuf::from("/value/at/runtime");
-        let runtime_config = RuntimeConfiguration {
-            file: Some(runtime_allowed_signers.clone()),
-            verbose: 0,
-        };
-
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, config)?;
-
-            let config = Configuration::load(&config_path, Some(runtime_config)).unwrap();
-
-            assert_eq!(config.file, runtime_allowed_signers);
-            Ok(())
         });
     }
 
@@ -379,7 +332,7 @@ mod tests {
         figment::Jail::expect_with(|jail| {
             jail.create_file(&config_path, config)?;
 
-            let mut config = Configuration::load(&config_path, None).unwrap();
+            let mut config = Configuration::load(&config_path).unwrap();
             let signer_sources = config.signers.pop().unwrap().source_names;
 
             assert_eq!(signer_sources, vec!["github"]);

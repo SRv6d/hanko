@@ -10,23 +10,12 @@ use tracing::{debug, info, Level};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
-pub struct Args {
-    /// The configuration file.
-    #[arg(
-        short,
-        long,
-        value_name = "PATH",
-        env = "HANKO_CONFIG",
-        default_value = default_config_path()
-    )]
-    pub config: PathBuf,
-
-    // The runtime configuration.
-    #[command(flatten)]
-    runtime_config: RuntimeConfiguration,
-
+pub struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    #[command(flatten)]
+    global_args: GlobalArgs,
 }
 
 #[derive(Debug, Subcommand)]
@@ -42,9 +31,18 @@ enum Commands {
     // Source(ManageSources),
 }
 
-/// Runtime configuration that overrides the configuration file.
 #[derive(Debug, Serialize, Deserialize, clap::Args)]
-pub struct RuntimeConfiguration {
+struct GlobalArgs {
+    /// The configuration file.
+    #[arg(
+        short,
+        long,
+        value_name = "PATH",
+        env = "HANKO_CONFIG",
+        default_value = default_config_path()
+    )]
+    pub config: PathBuf,
+
     /// The allowed signers file.
     #[arg(
         long,
@@ -52,9 +50,9 @@ pub struct RuntimeConfiguration {
         env = "HANKO_ALLOWED_SIGNERS",
         default_value = git_allowed_signers()
     )]
-    pub file: Option<PathBuf>,
+    pub file: PathBuf,
 
-    /// Increase verbosity.
+    /// Use verbose output.
     #[arg(short, long, action = clap::ArgAction::Count)]
     pub verbose: u8,
 }
@@ -100,29 +98,30 @@ fn git_allowed_signers() -> Resettable<OsStr> {
 #[tokio::main]
 pub async fn entrypoint() -> Result<()> {
     let start = Instant::now();
-    let args = Args::parse();
+    let cli = Cli::parse();
+    let args = cli.global_args;
 
-    setup_tracing(args.runtime_config.verbose);
+    setup_tracing(args.verbose);
 
-    let config = Configuration::load_and_validate(&args.config, Some(args.runtime_config))
-        .context("Failed to load configuration")?;
+    let config =
+        Configuration::load_and_validate(&args.config).context("Failed to load configuration")?;
+    let signers_file = &args.file;
 
-    match &args.command {
+    match &cli.command {
         Commands::Update => {
-            let path = config.allowed_signers_file();
             let sources = config.sources();
             debug!(?sources, "Initialized sources");
             let signers = config.signers(&sources);
             debug!(?signers, "Initialized signers");
 
-            update(path, signers)
+            update(signers_file, signers)
                 .await
                 .context("Failed to update the allowed signers file")?;
 
             let duration = start.elapsed();
             info!(
                 "Updated allowed signers file {} in {:?}",
-                path.display(),
+                signers_file.display(),
                 duration
             );
         }
@@ -162,6 +161,6 @@ mod tests {
     #[test]
     fn verify_cli() {
         use clap::CommandFactory;
-        Args::command().debug_assert();
+        Cli::command().debug_assert();
     }
 }

@@ -2,6 +2,8 @@
 use assert_cmd::Command;
 use httpmock::prelude::*;
 use indoc::{formatdoc, indoc};
+#[cfg(not(feature = "detect-allowed-signers"))]
+use predicates::prelude::*;
 use rstest::*;
 use serde_json::json;
 use std::io::Write;
@@ -148,4 +150,36 @@ fn update_writes_expected_allowed_signers(
     let content = std::fs::read_to_string(allowed_signers.path()).unwrap();
 
     assert_eq!(content, expected_content);
+}
+
+/// When running the update command with the `detect-allowed-signers` feature enabled and
+/// an allowed signers file configured within git, the file argument is not required.
+#[test]
+#[ignore]
+#[cfg(feature = "detect-allowed-signers")]
+fn file_arg_not_required_with_detect_feature_and_git_allowed_signers_config() {
+    todo!()
+}
+
+/// When running the update command with the `detect-allowed-signers` feature enabled but
+/// without an allowed signers file configured within git, the file argument is required.
+#[test]
+#[ignore]
+#[cfg(feature = "detect-allowed-signers")]
+fn file_arg_required_with_detect_feature_but_without_git_allowed_signers_config() {
+    todo!()
+}
+
+/// When running the update command without the `detect-allowed-signers` feature enabled,
+/// the file argument is required.
+#[test]
+#[cfg(not(feature = "detect-allowed-signers"))]
+fn file_arg_required_without_detect_feature() {
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.arg("update")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "error: The following required argument was not provided: file",
+        ));
 }

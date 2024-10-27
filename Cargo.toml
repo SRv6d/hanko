@@ -40,6 +40,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dev-dependencies]
 assert_cmd = "=2.0.16"
+predicates = "=3.1.2"
 codspeed-criterion-compat = "=2.7.2"
 criterion = "=0.5.1"
 httpmock = "=0.7.0"
