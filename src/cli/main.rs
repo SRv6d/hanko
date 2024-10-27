@@ -50,7 +50,7 @@ struct GlobalArgs {
         env = "HANKO_ALLOWED_SIGNERS",
         default_value = git_allowed_signers()
     )]
-    pub file: Option<PathBuf>,
+    pub file: PathBuf,
 
     /// Use verbose output.
     #[arg(short, long, action = clap::ArgAction::Count)]
@@ -105,7 +105,7 @@ pub async fn entrypoint() -> Result<()> {
 
     let config =
         Configuration::load_and_validate(&args.config).context("Failed to load configuration")?;
-    let signers_file = &args.file.as_deref().unwrap();
+    let signers_file = &args.file;
 
     match &cli.command {
         Commands::Update => {
