@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2024-10-29
+
 ### Security
 
 - Update yanked [futures-rs](https://github.com/rust-lang/futures-rs) version containing use after free.
@@ -58,7 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - aarch64 builds.
 
-[unreleased]: https://github.com/SRv6d/hanko/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/SRv6d/hanko/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/SRv6d/hanko/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/SRv6d/hanko/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/SRv6d/hanko/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/SRv6d/hanko/compare/v0.2.0...v0.2.1
