@@ -15,8 +15,6 @@ concurrency:
 jobs:
   cargo-build:
     permissions:
-      id-token: write
-      attestations: write
       contents: write
     strategy:
       fail-fast: false
@@ -83,16 +81,40 @@ jobs:
         shell: bash
         if: ${{ startsWith(matrix.os, 'windows') }}
 
-      - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
-        with:
-          subject-path: ${{ env.ARCHIVE_FILENAME }}
-
       - name: Upload Release Archive
         run: >-
           gh release upload "${GITHUB_REF_NAME}"
           "${ARCHIVE_FILENAME}"
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  attest-build-provenance:
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+    needs: cargo-build
+    runs-on: ubuntu-latest
+    env:
+      ARCHIVE_DIR: release-archives
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - name: Download Release Archives
+        run: >-
+          gh release download ${GITHUB_REF_NAME} --dir ${ARCHIVE_DIR} --pattern "hanko-*"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Attest Build Provenance of Release Archives
+        id: provenance
+        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
+        with:
+          subject-path: ${ARCHIVE_DIR}/*
+
+      - name: Upload Provenance of Release Archives
+        run: >-
+          gh release upload ${GITHUB_REF_NAME}
+          ${{ steps.provenance.outputs.bundle-path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build-container-image:
