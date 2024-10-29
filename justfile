@@ -21,11 +21,9 @@ test $COV=CI: (_install_llvm_cov COV)
     {{ if COV == "true" { "cargo llvm-cov --all-features" + " " + cov_output } else { "cargo test --all-features" } }}
 
 # Bump our version
-bump-version $VERSION: (_validate_semver VERSION)
+bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION)
     #!/usr/bin/env bash
     set -euxo pipefail
-
-    test -z "$(git status --porcelain)" || (echo "The working directory is not clean"; exit 1)
 
     sed -i 's/^version = .*/version = "'$VERSION'"/g' Cargo.toml
     cargo update -w --offline
@@ -36,6 +34,10 @@ bump-version $VERSION: (_validate_semver VERSION)
 # Publish the crate
 publish: _validate_version_tag
     cargo publish --no-verify
+
+# Check that Git has a clean working directory
+_check_clean_working:
+    test -z "$(git status --porcelain)" || (echo "The working directory is not clean"; exit 1)
 
 # Validate that the crate version matches that of the git tag
 _validate_version_tag:
@@ -65,3 +67,16 @@ _install_llvm_cov $run:
     if [ $run == true ] && [ $CI = false ]; then
         cargo install cargo-llvm-cov --locked
     fi
+
+# Update the changelog with a new version
+_changelog_add_version version filename="CHANGELOG.md":
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    PREV_VERSION=$(sed -n "/^\[unreleased\]:/ { n; s/^\[\([^]]*\)\].*/\1/p }" {{ filename }})
+
+    sed -i "/^## \[Unreleased\]$/ { N; s/\n/\n\n## [{{ version }}] - {{ datetime('%Y-%m-%d') }}\n/ }" {{ filename }}
+    sed -i "/^\[unreleased\]:/ s/v[0-9.]\+\b/v{{ version }}.../; /^\[unreleased\]:/ a\
+    [{{ version }}]: https://github.com/SRv6d/hanko/compare/v$PREV_VERSION...v{{ version }}" {{ filename }}
+
+    git add {{ filename }}
+    git commit -m "Update {{ filename }}"
