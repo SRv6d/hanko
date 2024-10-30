@@ -50,3 +50,25 @@ $ just test
 To ensure that hanko does not regress in performance, benchmarks are run on every PR. To execute them locally, run `cargo bench`.
 
 [`just`]: https://github.com/casey/just
+
+## Releasing a new version
+
+To release a new version of `hanko`, perform the following steps.
+
+- Ensure the unreleased section of the [CHANGELOG](../CHANGELOG.md) contains all relevant changes.
+
+- Checkout a new branch.
+
+  ```sh
+  $ git switch -c bump-version-1-0-0
+  ```
+
+- Use the just recipe to bump the version.
+
+  ```sh
+  $ just bump-version 1.0.0
+  ```
+
+- Push the branch and create a pull request.
+
+- Once the branch ist merged, a release containing the recent changes can be created using the GitHub UI.
