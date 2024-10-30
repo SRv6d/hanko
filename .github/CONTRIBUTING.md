@@ -63,12 +63,10 @@ To release a new version of `hanko`, perform the following steps.
   $ git switch -c bump-version-1-0-0
   ```
 
-- Use the just recipe to bump the version.
+- Use the just recipe to bump the version. This will create the necessary commits as well as a pull request using the GitHub CLI.
 
   ```sh
   $ just bump-version 1.0.0
   ```
-
-- Push the branch and create a pull request.
 
 - Once the branch ist merged, a release containing the recent changes can be created using the GitHub UI.

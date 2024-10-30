@@ -1,4 +1,5 @@
 export CI := env("CI", "false")
+CHANGELOG_FILE := "CHANGELOG.md"
 
 default: check-lockfile lint test
 
@@ -21,7 +22,7 @@ test $COV=CI: (_install_llvm_cov COV)
     {{ if COV == "true" { "cargo llvm-cov --all-features" + " " + cov_output } else { "cargo test --all-features" } }}
 
 # Bump our version
-bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION)
+bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
     #!/usr/bin/env bash
     set -euxo pipefail
 
@@ -69,7 +70,7 @@ _install_llvm_cov $run:
     fi
 
 # Update the changelog with a new version
-_changelog_add_version version filename="CHANGELOG.md":
+_changelog_add_version version filename=CHANGELOG_FILE:
     #!/usr/bin/env bash
     set -euxo pipefail
     PREV_VERSION=$(sed -n "/^\[unreleased\]:/ { n; s/^\[\([^]]*\)\].*/\1/p }" {{ filename }})
@@ -80,3 +81,6 @@ _changelog_add_version version filename="CHANGELOG.md":
 
     git add {{ filename }}
     git commit -m "Update {{ filename }}"
+
+_bump_version_pr version:
+    gh pr create --title "Bump version to v{{ version }}" --body ""
