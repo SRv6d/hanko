@@ -69,4 +69,8 @@ To release a new version of `hanko`, perform the following steps.
   $ just bump-version 1.0.0
   ```
 
-- Once the branch ist merged, a release containing the recent changes can be created using the GitHub UI.
+- Once the branch is merged, a GitHub release for the new version containing the recent changes can be created automatically.
+
+  ```sh
+  $ just release-latest-version 1.0.0
+  ```

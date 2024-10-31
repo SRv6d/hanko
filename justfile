@@ -32,6 +32,23 @@ bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_chan
     git add Cargo.toml Cargo.lock
     git commit -m "Bump version to v{{ VERSION }}"
 
+# Create a GitHub release containing the latest changes
+release-latest-version version:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    PREVIOUS_RELEASE=$(gh release list --json name,isLatest --jq '.[] | select(.isLatest)|.name')
+    CURRENT_RELEASE="v{{ version }}"
+    CHANGES=$(sed -n "/^## \[{{ version }}]/,/^## \[[0-9].*\]/ {//!p}" {{ CHANGELOG_FILE }})
+    RELEASE_NOTES="
+    ## What's Changed
+
+    $CHANGES
+
+    **Full Changelog**: https://github.com/SRv6d/hanko/compare/$PREVIOUS_RELEASE...$CURRENT_RELEASE
+    "
+
+    gh release create $CURRENT_RELEASE --latest --title $CURRENT_RELEASE --notes-file - <<< "$RELEASE_NOTES"
+
 # Publish the crate
 publish: _validate_version_tag
     cargo publish --no-verify
