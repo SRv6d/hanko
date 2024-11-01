@@ -18,7 +18,7 @@ readme = "README.md"
 exclude = [".devcontainer", ".github", "doc/benchmark/**", "tests/**"]
 
 [dependencies]
-anyhow = "1.0.91"
+anyhow = "1.0.92"
 async-trait = "0.1.83"
 chrono = "0.4.38"
 clap = { version = "4.5.20", features = ["derive", "env", "string"] }
