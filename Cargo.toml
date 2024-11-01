@@ -24,7 +24,7 @@ chrono = "0.4.38"
 clap = { version = "4.5.20", features = ["derive", "env", "string"] }
 figment = { version = "0.10.19", features = ["toml", "test"] }
 gix-config = { version = "0.41.0", optional = true }
-reqwest = { version = "0.12.8", default-features = false, features = [
+reqwest = { version = "0.12.9", default-features = false, features = [
     "json",
     "rustls-tls-native-roots",
     "gzip",
@@ -33,7 +33,7 @@ reqwest = { version = "0.12.8", default-features = false, features = [
     "macos-system-configuration", # use macOS proxy configuration automatically
 ] }
 serde = { version = "1.0.213", features = ["derive"] }
-thiserror = "1.0.65"
+thiserror = "1.0.66"
 tokio = { version = "1.41.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
@@ -49,7 +49,7 @@ proptest = "=1.5.0"
 rstest = "=0.23.0"
 serde_json = "=1.0.132"
 tempfile = "=3.13.0"
-reqwest = { version = "=0.12.8", default-features = false, features = ["blocking"] }
+reqwest = { version = "=0.12.9", default-features = false, features = ["blocking"] }
 
 [features]
 default = ["detect-allowed-signers"]
