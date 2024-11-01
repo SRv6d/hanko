@@ -5,7 +5,8 @@ updates:
     schedule:
       interval: monthly
     groups:
-      update-types: [minor, patch]
+      minor-or-patch:
+        update-types: [minor, patch]
   - package-ecosystem: cargo
     directory: /
     groups:
