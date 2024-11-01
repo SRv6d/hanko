@@ -19,7 +19,7 @@ jobs:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         rust_version: ["stable"]
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: dtolnay/rust-toolchain@1482605bfc5719782e1267fd0c0cc350fe7646b8
         with:
           toolchain: ${{ matrix.rust_version }}
