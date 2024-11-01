@@ -33,7 +33,7 @@ reqwest = { version = "0.12.8", default-features = false, features = [
     "macos-system-configuration", # use macOS proxy configuration automatically
 ] }
 serde = { version = "1.0.213", features = ["derive"] }
-thiserror = "1.0.65"
+thiserror = "1.0.66"
 tokio = { version = "1.41.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
