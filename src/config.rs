@@ -1,25 +1,27 @@
 use crate::{allowed_signers::Signer, Github, Gitlab, Source};
-use figment::{
-    providers::{Format, Toml},
-    Figment,
-};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{HashMap, HashSet},
-    fmt,
+    fmt, fs, io,
     ops::Deref,
     path::Path,
     sync::Arc,
 };
+use toml_edit::{
+    de::{Deserializer as TomlDeserializer, Error as TomlDeserializationError},
+    DocumentMut, TomlError,
+};
 use tracing::{debug, info, trace};
 
 /// The main configuration.
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize)]
 pub struct Configuration {
     signers: Vec<SignerConfiguration>,
     #[serde(default)]
     sources: Vec<SourceConfiguration>,
+    #[serde(skip)]
+    document: DocumentMut,
 }
 
 /// A `HashMap` containing sources by name.
@@ -85,7 +87,13 @@ impl Configuration {
     /// Load the configuration from a TOML file merged with default sources.
     fn load(path: &Path) -> Result<Self, Error> {
         info!("Loading configuration file");
-        let mut config: Self = Figment::from(Toml::file_exact(path)).extract()?;
+        let content = fs::read_to_string(path)?;
+
+        let doc = content.parse::<DocumentMut>()?;
+        let deserializer = TomlDeserializer::from(doc.clone());
+        let mut config = Self::deserialize(deserializer)?;
+        config.document = doc;
+
         let default_sources = Self::default_sources();
         debug!(
             ?default_sources,
@@ -134,18 +142,16 @@ impl Configuration {
 }
 
 /// An error that can occur when interacting with a [`Configuration`].
-#[derive(Debug, PartialEq, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("{0}")]
-    SyntaxError(figment::Error),
+    Io(#[from] io::Error),
+    #[error("{0}")]
+    Toml(#[from] TomlError),
+    #[error("{0}")]
+    Syntax(#[from] TomlDeserializationError),
     #[error("missing sources {0}")]
     MissingSources(#[from] MissingSourcesError),
-}
-
-impl From<figment::Error> for Error {
-    fn from(error: figment::Error) -> Self {
-        Error::SyntaxError(error)
-    }
 }
 
 /// An error that occurs when sources are used that are not present in the configuration.
