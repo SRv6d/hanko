@@ -1,5 +1,6 @@
 export CI := env("CI", "false")
 CHANGELOG_FILE := "CHANGELOG.md"
+REPO_URL := "https://github.com/SRv6d/hanko"
 
 default: check-lockfile lint test
 
@@ -44,7 +45,7 @@ release-latest-version version:
 
     $CHANGES
 
-    **Full Changelog**: https://github.com/SRv6d/hanko/compare/$PREVIOUS_RELEASE...$CURRENT_RELEASE
+    **Full Changelog**: {{ REPO_URL }}/compare/$PREVIOUS_RELEASE...$CURRENT_RELEASE
     "
 
     gh release create $CURRENT_RELEASE --latest --title $CURRENT_RELEASE --notes-file - <<< "$RELEASE_NOTES"
@@ -94,7 +95,7 @@ _changelog_add_version version filename=CHANGELOG_FILE:
 
     sed -i "/^## \[Unreleased\]$/ { N; s/\n/\n\n## [{{ version }}] - {{ datetime('%Y-%m-%d') }}\n/ }" {{ filename }}
     sed -i "/^\[unreleased\]:/ s/v[0-9.]\+\b/v{{ version }}.../; /^\[unreleased\]:/ a\
-    [{{ version }}]: https://github.com/SRv6d/hanko/compare/v$PREV_VERSION...v{{ version }}" {{ filename }}
+    [{{ version }}]: {{ REPO_URL }}/compare/v$PREV_VERSION...v{{ version }}" {{ filename }}
 
     git add {{ filename }}
     git commit -m "Update {{ filename }}"
