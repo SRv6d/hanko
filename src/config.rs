@@ -20,6 +20,7 @@ pub struct Configuration {
     signers: Vec<SignerConfiguration>,
     #[serde(default)]
     sources: Vec<SourceConfiguration>,
+    /// A format preserving TOML representation of the configuration file.
     #[serde(skip)]
     document: DocumentMut,
 }
