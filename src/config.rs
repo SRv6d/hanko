@@ -375,4 +375,28 @@ mod tests {
 
         assert_eq!(signer_sources, vec!["github"]);
     }
+
+    /// When saving a configuration back to file, the TOML formatting matches that of the original file.
+    #[rstest]
+    #[case(
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+            ]
+            file = "~/allowed_signers"
+        "#}
+    )]
+    fn saving_configuration_preserves_formatting(
+        mut tmp_config_toml: NamedTempFile,
+        #[case] content: &str,
+    ) {
+        writeln!(tmp_config_toml, "{content}").unwrap();
+        let config = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap();
+        tmp_config_toml.as_file().set_len(0).unwrap();
+
+        config.save().unwrap();
+        let result = fs::read_to_string(tmp_config_toml.path()).unwrap();
+
+        assert_eq!(result, content);
+    }
 }
