@@ -353,4 +353,26 @@ mod tests {
 
         Err("Did not return expected error".to_string())
     }
+
+    /// Signers have a default GitHub source if no sources were configured explicitly.
+    #[rstest]
+    #[case(
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+            ]
+            file = "~/allowed_signers"
+        "#}
+    )]
+    fn signers_have_default_github_source(
+        mut tmp_config_toml: NamedTempFile,
+        #[case] config: &str,
+    ) {
+        writeln!(tmp_config_toml, "{config}").unwrap();
+
+        let mut config = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap();
+        let signer_sources = config.signers.pop().unwrap().source_names;
+
+        assert_eq!(signer_sources, vec!["github"]);
+    }
 }
