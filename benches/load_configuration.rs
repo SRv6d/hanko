@@ -1,5 +1,5 @@
 use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
-use hanko::Configuration;
+use hanko::config::Configuration;
 use indoc::indoc;
 use std::{io::Write, path::Path};
 
@@ -25,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let path: &Path = &file.into_temp_path();
 
     c.bench_function("load the example configuration", |b| {
-        b.iter(|| Configuration::load_and_validate(path).unwrap());
+        b.iter(|| Configuration::load(path.to_path_buf()).unwrap());
     });
 }
 

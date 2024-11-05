@@ -5,14 +5,37 @@ use std::{
     collections::{HashMap, HashSet},
     fmt, fs, io,
     ops::Deref,
-    path::Path,
+    path::PathBuf,
     sync::Arc,
 };
 use toml_edit::{
     de::{Deserializer as TomlDeserializer, Error as TomlDeserializationError},
     DocumentMut, TomlError,
 };
-use tracing::{debug, info, trace};
+use tracing::{info, trace};
+
+/// A mutable and format preserving representation of a TOML file.
+#[derive(Debug, Default)]
+struct TomlFile {
+    path: PathBuf,
+    document: DocumentMut,
+}
+
+impl TomlFile {
+    /// Load from a TOML file.
+    fn load(path: PathBuf) -> Result<Self, Error> {
+        info!("Loading TOML configuration file {}", path.display());
+        let content = fs::read_to_string(&path)?;
+        let document = content.parse()?;
+        Ok(Self { path, document })
+    }
+
+    /// Save back to TOML file.
+    fn save(&self) -> Result<(), io::Error> {
+        info!("Saving TOML configuration file {}", self.path.display());
+        fs::write(&self.path, self.document.to_string())
+    }
+}
 
 /// The main configuration.
 #[derive(Debug, Deserialize)]
@@ -20,9 +43,21 @@ pub struct Configuration {
     signers: Vec<SignerConfiguration>,
     #[serde(default)]
     sources: Vec<SourceConfiguration>,
-    /// A format preserving TOML representation of the configuration file.
     #[serde(skip)]
-    document: DocumentMut,
+    file: TomlFile,
+}
+
+impl TryFrom<TomlFile> for Configuration {
+    type Error = Error;
+
+    fn try_from(file: TomlFile) -> Result<Self, Self::Error> {
+        let deserializer = TomlDeserializer::from(file.document.clone());
+        let mut s = Self::deserialize(deserializer)?;
+        s.file = file;
+
+        s.validate()?;
+        Ok(s)
+    }
 }
 
 /// A `HashMap` containing sources by name.
@@ -85,32 +120,15 @@ impl Configuration {
             .collect()
     }
 
-    /// Load the configuration from a TOML file merged with default sources.
-    fn load(path: &Path) -> Result<Self, Error> {
-        info!("Loading configuration file");
-        let content = fs::read_to_string(path)?;
-
-        let doc = content.parse::<DocumentMut>()?;
-        let deserializer = TomlDeserializer::from(doc.clone());
-        let mut config = Self::deserialize(deserializer)?;
-        config.document = doc;
-
-        let default_sources = Self::default_sources();
-        debug!(
-            ?default_sources,
-            "Extending configuration with default sources."
-        );
-        config.sources.extend(default_sources);
-
-        Ok(config)
+    /// Load the configuration from a TOML file.
+    pub fn load(path: PathBuf) -> Result<Self, Error> {
+        let file = TomlFile::load(path)?;
+        Self::try_from(file)
     }
 
-    /// Load and validate the configuration from a TOML file merged with default sources.
-    #[tracing::instrument]
-    pub fn load_and_validate(path: &Path) -> Result<Self, Error> {
-        let config = Self::load(path)?;
-        config.validate()?;
-        Ok(config)
+    /// Save the configuration back to file.
+    pub fn save(&self) -> Result<(), io::Error> {
+        self.file.save()
     }
 
     /// Validate the configuration.
@@ -134,11 +152,6 @@ impl Configuration {
         }
 
         Ok(())
-    }
-
-    /// Save the configuration.
-    fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
-        todo!("Save the configuration while preserving formatting.");
     }
 }
 
@@ -239,39 +252,19 @@ impl SourceConfiguration {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
     use indoc::indoc;
     use rstest::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
     #[fixture]
-    fn config_path() -> PathBuf {
-        PathBuf::from("config.toml")
-    }
-
-    /// When loading a configuration, the returned instance always contains the default sources.
-    #[rstest]
-    #[case(
-        indoc!{r#"
-            signers = [
-                { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
-            ]
-            file = "~/allowed_signers"
-        "#}
-    )]
-    fn loaded_configuration_has_default_sources(config_path: PathBuf, #[case] config: &str) {
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, config)?;
-
-            let config = Configuration::load(&config_path).unwrap();
-
-            for default_source in Configuration::default_sources() {
-                assert!(config.sources.contains(&default_source));
-            }
-
-            Ok(())
-        });
+    fn tmp_config_toml() -> NamedTempFile {
+        tempfile::Builder::new()
+            .prefix("config")
+            .suffix(".toml")
+            .tempfile()
+            .unwrap()
     }
 
     /// Loading configuration missing sources returns an appropriate error.
@@ -303,47 +296,24 @@ mod tests {
     )]
     #[allow(clippy::panic)]
     fn loading_configuration_with_missing_source_returns_error(
-        config_path: PathBuf,
+        mut tmp_config_toml: NamedTempFile,
         #[case] config: &str,
         #[case] mut expected_missing: Vec<String>,
-    ) {
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, config)?;
+    ) -> Result<(), String> {
+        writeln!(tmp_config_toml, "{config}").unwrap();
 
-            let err = Configuration::load_and_validate(&config_path).unwrap_err();
-            if let Error::MissingSources(err_missing) = err {
-                expected_missing.sort();
-                let err_missing = {
-                    let mut m = err_missing.clone();
-                    m.sort();
-                    m
-                };
-                assert_eq!(expected_missing, *err_missing);
-                Ok(())
-            } else {
-                Err("Did not return expected error".into())
-            }
-        });
-    }
+        let err = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap_err();
+        if let Error::MissingSources(err_missing) = err {
+            expected_missing.sort();
+            let err_missing = {
+                let mut m = err_missing.clone();
+                m.sort();
+                m
+            };
+            assert_eq!(expected_missing, *err_missing);
+            return Ok(());
+        };
 
-    /// Users have a default GitHub source if no sources were configured explicitly.
-    #[rstest]
-    fn users_have_default_github_source(config_path: PathBuf) {
-        let config = indoc! {r#"
-            signers = [
-                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
-            ]
-            file = "~/allowed_signers"
-        "#};
-
-        figment::Jail::expect_with(|jail| {
-            jail.create_file(&config_path, config)?;
-
-            let mut config = Configuration::load(&config_path).unwrap();
-            let signer_sources = config.signers.pop().unwrap().source_names;
-
-            assert_eq!(signer_sources, vec!["github"]);
-            Ok(())
-        });
+        Err("Did not return expected error".to_string())
     }
 }
