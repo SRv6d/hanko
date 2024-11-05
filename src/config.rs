@@ -12,7 +12,7 @@ use toml_edit::{
     de::{Deserializer as TomlDeserializer, Error as TomlDeserializationError},
     DocumentMut, TomlError,
 };
-use tracing::{info, trace};
+use tracing::{debug, info, trace};
 
 /// A mutable and format preserving representation of a TOML file.
 #[derive(Debug, Default)]
@@ -50,12 +50,11 @@ pub struct Configuration {
 impl TryFrom<TomlFile> for Configuration {
     type Error = Error;
 
+    /// Create a configuration from a TOML file without performing any semantic validation.
     fn try_from(file: TomlFile) -> Result<Self, Self::Error> {
         let deserializer = TomlDeserializer::from(file.document.clone());
         let mut s = Self::deserialize(deserializer)?;
         s.file = file;
-
-        s.validate()?;
         Ok(s)
     }
 }
@@ -80,6 +79,16 @@ impl Configuration {
                 url: "https://gitlab.com".parse().unwrap(),
             },
         ]
+    }
+
+    /// Extend the configuration by the default sources.
+    fn add_default_sources(&mut self) {
+        let default_sources = Self::default_sources();
+        debug!(
+            ?default_sources,
+            "Extending configuration with default sources."
+        );
+        self.sources.extend(default_sources);
     }
 
     /// Returns sources generated from their configuration.
@@ -121,9 +130,15 @@ impl Configuration {
     }
 
     /// Load the configuration from a TOML file.
+    /// Extends the configuration by default sources and performs semantic validation before returning.
     pub fn load(path: PathBuf) -> Result<Self, Error> {
         let file = TomlFile::load(path)?;
-        Self::try_from(file)
+
+        let mut c = Self::try_from(file)?;
+        c.add_default_sources();
+        c.validate_semantics()?;
+
+        Ok(c)
     }
 
     /// Save the configuration back to file.
@@ -131,9 +146,9 @@ impl Configuration {
         self.file.save()
     }
 
-    /// Validate the configuration.
-    fn validate(&self) -> Result<(), Error> {
-        trace!(?self, "Validating configuration");
+    /// Perform semantic validation of the configuration.
+    fn validate_semantics(&self) -> Result<(), Error> {
+        trace!(?self, "Validating configuration semantics");
 
         let used_sources: HashSet<&str> = self
             .signers
@@ -265,6 +280,28 @@ mod tests {
             .suffix(".toml")
             .tempfile()
             .unwrap()
+    }
+
+    /// When loading a configuration, the returned instance always contains the default sources.
+    #[rstest]
+    #[case(
+        indoc!{r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
+            ]
+            file = "~/allowed_signers"
+        "#}
+    )]
+    fn loaded_configuration_has_default_sources(
+        mut tmp_config_toml: NamedTempFile,
+        #[case] config: &str,
+    ) {
+        writeln!(tmp_config_toml, "{config}").unwrap();
+
+        let config = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap();
+        for default_source in Configuration::default_sources() {
+            assert!(config.sources.contains(&default_source));
+        }
     }
 
     /// Loading configuration missing sources returns an appropriate error.
