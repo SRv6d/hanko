@@ -380,6 +380,13 @@ mod tests {
     #[rstest]
     #[case(
         indoc! {r#"
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+        "#}
+    )]
+    #[case(
+        indoc! {r#"
             signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
             ]
