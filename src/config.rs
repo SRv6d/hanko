@@ -328,7 +328,6 @@ mod tests {
         "#},
         vec!["acme-corp".to_string(), "lumon-industries".to_string()]
     )]
-    #[allow(clippy::panic)]
     fn loading_configuration_with_missing_source_returns_error(
         mut tmp_config_toml: NamedTempFile,
         #[case] config: &str,
