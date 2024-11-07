@@ -289,7 +289,6 @@ mod tests {
             signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
             ]
-            file = "~/allowed_signers"
         "#}
     )]
     fn loaded_configuration_has_default_sources(
@@ -312,7 +311,6 @@ mod tests {
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
-            file = "~/allowed_signers"
 
             [[sources]]
             name = "acme-corp"
@@ -327,7 +325,6 @@ mod tests {
                 { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
                 { name = "rdavis", principals = ["rdavis@lumon.industries"], sources = ["lumon-industries"] }
             ]
-            file = "~/allowed_signers"
         "#},
         vec!["acme-corp".to_string(), "lumon-industries".to_string()]
     )]
@@ -361,7 +358,6 @@ mod tests {
             signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
             ]
-            file = "~/allowed_signers"
         "#}
     )]
     fn signers_have_default_github_source(
@@ -390,7 +386,6 @@ mod tests {
             signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
             ]
-            file = "~/allowed_signers"
         "#}
     )]
     fn saving_configuration_preserves_formatting(
