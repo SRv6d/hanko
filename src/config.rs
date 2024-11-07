@@ -33,7 +33,7 @@ impl TomlFile {
     /// Save back to TOML file.
     fn save(&self) -> Result<(), io::Error> {
         info!("Saving TOML configuration file {}", self.path.display());
-        fs::write(&self.path, self.document.to_string())
+        fs::write(&self.path, dbg!(self.document.to_string()))
     }
 }
 
@@ -392,7 +392,7 @@ mod tests {
         mut tmp_config_toml: NamedTempFile,
         #[case] content: &str,
     ) {
-        writeln!(tmp_config_toml, "{content}").unwrap();
+        write!(tmp_config_toml, "{content}").unwrap();
         let config = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap();
         tmp_config_toml.as_file().set_len(0).unwrap();
 
