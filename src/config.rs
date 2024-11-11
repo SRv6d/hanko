@@ -33,7 +33,7 @@ impl TomlFile {
     /// Save back to TOML file.
     fn save(&self) -> Result<(), io::Error> {
         info!("Saving TOML configuration file");
-        fs::write(&self.path, dbg!(self.document.to_string()))
+        fs::write(&self.path, self.document.to_string())
     }
 }
 
