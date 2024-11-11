@@ -24,7 +24,7 @@ struct TomlFile {
 impl TomlFile {
     /// Load from a TOML file.
     fn load(path: PathBuf) -> Result<Self, Error> {
-        info!("Loading TOML configuration file {}", path.display());
+        info!("Loading TOML configuration file");
         let content = fs::read_to_string(&path)?;
         let document = content.parse()?;
         Ok(Self { path, document })
@@ -32,7 +32,7 @@ impl TomlFile {
 
     /// Save back to TOML file.
     fn save(&self) -> Result<(), io::Error> {
-        info!("Saving TOML configuration file {}", self.path.display());
+        info!("Saving TOML configuration file");
         fs::write(&self.path, dbg!(self.document.to_string()))
     }
 }
@@ -86,7 +86,7 @@ impl Configuration {
         let default_sources = Self::default_sources();
         debug!(
             ?default_sources,
-            "Extending configuration with default sources."
+            "Extending configuration with default sources"
         );
         self.sources.extend(default_sources);
     }
@@ -131,6 +131,7 @@ impl Configuration {
 
     /// Load the configuration from a TOML file.
     /// Extends the configuration by default sources and performs semantic validation before returning.
+    #[tracing::instrument]
     pub fn load(path: PathBuf) -> Result<Self, Error> {
         let file = TomlFile::load(path)?;
 
