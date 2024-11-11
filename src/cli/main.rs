@@ -1,4 +1,4 @@
-use crate::{allowed_signers::update, Configuration};
+use crate::{allowed_signers::update, config::Configuration};
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
@@ -103,8 +103,7 @@ pub async fn entrypoint() -> Result<()> {
 
     setup_tracing(args.verbose);
 
-    let config =
-        Configuration::load_and_validate(&args.config).context("Failed to load configuration")?;
+    let config = Configuration::load(args.config).context("Failed to load configuration")?;
     let signers_file = &args.file;
 
     match &cli.command {
