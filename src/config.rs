@@ -1,16 +1,12 @@
 use crate::{allowed_signers::Signer, Github, Gitlab, Source};
+use anyhow::{bail, Error, Result};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{HashMap, HashSet},
-    fmt, fs, io,
-    ops::Deref,
+    fs,
     path::PathBuf,
     sync::Arc,
-};
-use toml_edit::{
-    de::{Deserializer as TomlDeserializer, Error as TomlDeserializationError},
-    DocumentMut, TomlError,
 };
 use tracing::{debug, info, trace};
 
@@ -18,12 +14,12 @@ use tracing::{debug, info, trace};
 #[derive(Debug, Default)]
 struct TomlFile {
     path: PathBuf,
-    document: DocumentMut,
+    document: toml_edit::DocumentMut,
 }
 
 impl TomlFile {
     /// Load from a TOML file.
-    fn load(path: PathBuf) -> Result<Self, Error> {
+    fn load(path: PathBuf) -> Result<Self> {
         info!("Loading TOML configuration file");
         let content = fs::read_to_string(&path)?;
         let document = content.parse()?;
@@ -31,9 +27,9 @@ impl TomlFile {
     }
 
     /// Save back to TOML file.
-    fn save(&self) -> Result<(), io::Error> {
+    fn save(&self) -> Result<()> {
         info!("Saving TOML configuration file");
-        fs::write(&self.path, self.document.to_string())
+        fs::write(&self.path, self.document.to_string()).map_err(Into::into)
     }
 }
 
@@ -51,8 +47,8 @@ impl TryFrom<TomlFile> for Configuration {
     type Error = Error;
 
     /// Create a configuration from a TOML file without performing any semantic validation.
-    fn try_from(file: TomlFile) -> Result<Self, Self::Error> {
-        let deserializer = TomlDeserializer::from(file.document.clone());
+    fn try_from(file: TomlFile) -> Result<Self> {
+        let deserializer = toml_edit::de::Deserializer::from(file.document.clone());
         let mut s = Self::deserialize(deserializer)?;
         s.file = file;
         Ok(s)
@@ -132,7 +128,7 @@ impl Configuration {
     /// Load the configuration from a TOML file.
     /// Extends the configuration by default sources and performs semantic validation before returning.
     #[tracing::instrument]
-    pub fn load(path: PathBuf) -> Result<Self, Error> {
+    pub fn load(path: PathBuf) -> Result<Self> {
         let file = TomlFile::load(path)?;
 
         let mut c = Self::try_from(file)?;
@@ -143,12 +139,12 @@ impl Configuration {
     }
 
     /// Save the configuration back to file.
-    pub fn save(&self) -> Result<(), io::Error> {
+    pub fn save(&self) -> Result<()> {
         self.file.save()
     }
 
     /// Perform semantic validation of the configuration.
-    fn validate_semantics(&self) -> Result<(), Error> {
+    fn validate_semantics(&self) -> Result<()> {
         trace!(?self, "Validating configuration semantics");
 
         let used_sources: HashSet<&str> = self
@@ -159,54 +155,16 @@ impl Configuration {
             .collect();
         let existing_sources: HashSet<&str> =
             self.sources.iter().map(|c| c.name.as_str()).collect();
-        let missing_sources: Vec<String> = used_sources
+        let mut missing_sources: Vec<String> = used_sources
             .difference(&existing_sources)
             .map(ToString::to_string)
             .collect();
         if !missing_sources.is_empty() {
-            return Err(MissingSourcesError::new(missing_sources).into());
+            missing_sources.sort();
+            bail!("Missing sources: {}", missing_sources.join(", "))
         }
 
         Ok(())
-    }
-}
-
-/// An error that can occur when interacting with a [`Configuration`].
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("{0}")]
-    Io(#[from] io::Error),
-    #[error("{0}")]
-    Toml(#[from] TomlError),
-    #[error("{0}")]
-    Syntax(#[from] TomlDeserializationError),
-    #[error("missing sources {0}")]
-    MissingSources(#[from] MissingSourcesError),
-}
-
-/// An error that occurs when sources are used that are not present in the configuration.
-/// Contains names of the missing sources and displays them as a comma separated string.
-#[derive(Debug, PartialEq, thiserror::Error)]
-pub struct MissingSourcesError(Vec<String>);
-impl fmt::Display for MissingSourcesError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.join(", "))
-    }
-}
-
-impl MissingSourcesError {
-    fn new(names: impl IntoIterator<Item = String>) -> Self {
-        let mut v: Vec<_> = names.into_iter().collect();
-        v.sort();
-        Self(v)
-    }
-}
-
-impl Deref for MissingSourcesError {
-    type Target = Vec<String>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
@@ -333,22 +291,16 @@ mod tests {
         mut tmp_config_toml: NamedTempFile,
         #[case] config: &str,
         #[case] mut expected_missing: Vec<String>,
-    ) -> Result<(), String> {
+    ) {
+        expected_missing.sort();
         writeln!(tmp_config_toml, "{config}").unwrap();
 
         let err = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap_err();
-        if let Error::MissingSources(err_missing) = err {
-            expected_missing.sort();
-            let err_missing = {
-                let mut m = err_missing.clone();
-                m.sort();
-                m
-            };
-            assert_eq!(expected_missing, *err_missing);
-            return Ok(());
-        };
 
-        Err("Did not return expected error".to_string())
+        assert_eq!(
+            err.to_string(),
+            format!("Missing sources: {}", expected_missing.join(", "))
+        );
     }
 
     /// Signers have a default GitHub source if no sources were configured explicitly.
