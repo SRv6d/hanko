@@ -24,7 +24,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let path: &Path = &file.into_temp_path();
 
     c.bench_function("load the example configuration", |b| {
-        b.iter(|| Configuration::load(path.to_path_buf()).unwrap());
+        b.iter(|| Configuration::load(path).unwrap());
     });
 }
 

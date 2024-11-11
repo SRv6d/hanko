@@ -5,7 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 use tracing::{debug, info, trace};
@@ -128,8 +128,8 @@ impl Configuration {
     /// Load the configuration from a TOML file.
     /// Extends the configuration by default sources and performs semantic validation before returning.
     #[tracing::instrument]
-    pub fn load(path: PathBuf) -> Result<Self> {
-        let file = TomlFile::load(path)?;
+    pub fn load(path: &Path) -> Result<Self> {
+        let file = TomlFile::load(path.to_path_buf())?;
 
         let mut c = Self::try_from(file)?;
         c.add_default_sources();
@@ -256,7 +256,7 @@ mod tests {
     ) {
         writeln!(tmp_config_toml, "{config}").unwrap();
 
-        let config = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap();
+        let config = Configuration::load(tmp_config_toml.path()).unwrap();
         for default_source in Configuration::default_sources() {
             assert!(config.sources.contains(&default_source));
         }
@@ -295,7 +295,7 @@ mod tests {
         expected_missing.sort();
         writeln!(tmp_config_toml, "{config}").unwrap();
 
-        let err = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap_err();
+        let err = Configuration::load(tmp_config_toml.path()).unwrap_err();
 
         assert_eq!(
             err.to_string(),
@@ -318,7 +318,7 @@ mod tests {
     ) {
         writeln!(tmp_config_toml, "{config}").unwrap();
 
-        let mut config = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap();
+        let mut config = Configuration::load(tmp_config_toml.path()).unwrap();
         let signer_sources = config.signers.pop().unwrap().source_names;
 
         assert_eq!(signer_sources, vec!["github"]);
@@ -345,7 +345,7 @@ mod tests {
         #[case] content: &str,
     ) {
         write!(tmp_config_toml, "{content}").unwrap();
-        let config = Configuration::load(tmp_config_toml.path().to_path_buf()).unwrap();
+        let config = Configuration::load(tmp_config_toml.path()).unwrap();
         tmp_config_toml.as_file().set_len(0).unwrap();
 
         config.save().unwrap();
