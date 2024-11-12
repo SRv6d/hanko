@@ -1,29 +1,14 @@
-use clap::{Args, Subcommand};
+use crate::config::default_user_source;
+use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
 pub enum ManageSigners {
     /// Add allowed signers.
     Add {
-        #[command(flatten)]
-        signers: Signers,
-        /// The source(s) of the signer(s) to add.
-        #[arg(short, long)]
+        /// The name(s) of the signers(s) to add.
+        name: Vec<String>,
+        /// The source(s) of the given signer(s).
+        #[arg(short, long, default_values_t = default_user_source())]
         source: Vec<String>,
     },
-    /// Remove allowed signers.
-    Remove {
-        #[command(flatten)]
-        signers: Signers,
-    },
-}
-
-#[derive(Debug, Args)]
-#[group(multiple = true)]
-pub struct Signers {
-    /// By username.
-    #[arg(short, long)]
-    user: Vec<String>,
-    /// By organization.
-    #[arg(short, long, value_name = "ORGANIZATION")]
-    org: Vec<String>,
 }

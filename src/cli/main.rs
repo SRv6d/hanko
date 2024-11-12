@@ -1,3 +1,4 @@
+use super::manage_signers::ManageSigners;
 use crate::{allowed_signers::update, config::Configuration};
 use anyhow::{Context, Result};
 use clap::{
@@ -22,10 +23,9 @@ pub struct Cli {
 enum Commands {
     /// Update the allowed signers file.
     Update,
-    // /// Manage signers.
-    // #[command(subcommand)]
-    // Signer(ManageSigners),
-
+    /// Manage allowed signers.
+    #[command(subcommand)]
+    Signer(ManageSigners),
     // /// Manage sources.
     // #[command(subcommand)]
     // Source(ManageSources),
@@ -127,6 +127,7 @@ pub async fn entrypoint() -> Result<()> {
                 duration
             );
         }
+        Commands::Signer(_) => todo!(),
     }
     Ok(())
 }
