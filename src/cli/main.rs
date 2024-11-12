@@ -103,7 +103,10 @@ pub async fn entrypoint() -> Result<()> {
 
     setup_tracing(args.verbose);
 
-    let config = Configuration::load(args.config).context("Failed to load configuration")?;
+    let config = Configuration::load(&args.config).context(format!(
+        "Failed to load configuration from {}",
+        &args.config.display()
+    ))?;
     let signers_file = &args.file;
 
     match &cli.command {
