@@ -189,6 +189,7 @@ pub enum SourceType {
     Gitlab,
 }
 
+#[must_use]
 pub fn default_user_source() -> Vec<String> {
     vec!["github".to_string()]
 }
