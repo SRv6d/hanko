@@ -1,3 +1,8 @@
+//! Types used to configure hanko.
+//!
+//! Fallible functions in this module return an [`anyhow::Result`] since any errors that occur
+//! when interacting with configuration will be reported to the user without further processing.
+
 use crate::{allowed_signers::Signer, Github, Gitlab, Source};
 use anyhow::{bail, Error, Result};
 use reqwest::Url;
@@ -127,6 +132,10 @@ impl Configuration {
 
     /// Load the configuration from a TOML file.
     /// Extends the configuration by default sources and performs semantic validation before returning.
+    ///
+    /// # Errors
+    ///
+    /// When the file fails to load or it's content is invalid.
     #[tracing::instrument]
     pub fn load(path: &Path) -> Result<Self> {
         let file = TomlFile::load(path.to_path_buf())?;
@@ -139,6 +148,10 @@ impl Configuration {
     }
 
     /// Save the configuration back to file.
+    ///
+    /// # Errors
+    ///
+    /// When an IO error occurs while trying to write the underlying file to disk.
     pub fn save(&self) -> Result<()> {
         self.file.save()
     }
