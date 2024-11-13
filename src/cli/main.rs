@@ -26,9 +26,6 @@ enum Commands {
     /// Manage allowed signers.
     #[command(subcommand)]
     Signer(ManageSigners),
-    // /// Manage sources.
-    // #[command(subcommand)]
-    // Source(ManageSources),
 }
 
 #[derive(Debug, Serialize, Deserialize, clap::Args)]
