@@ -39,6 +39,7 @@ struct GlobalArgs {
         long,
         value_name = "PATH",
         env = "HANKO_CONFIG",
+        global = true,
         default_value = default_config_path()
     )]
     pub config: PathBuf,
@@ -48,12 +49,13 @@ struct GlobalArgs {
         long,
         value_name = "PATH",
         env = "HANKO_ALLOWED_SIGNERS",
+        global = true,
         default_value = git_allowed_signers()
     )]
     pub file: PathBuf,
 
     /// Use verbose output.
-    #[arg(short, long, action = clap::ArgAction::Count)]
+    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
 }
 
