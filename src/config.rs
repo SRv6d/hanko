@@ -92,6 +92,11 @@ impl Configuration {
         self.sources.extend(default_sources);
     }
 
+    /// Add an allowed signer to the configuration.
+    pub fn add_signer(&mut self, name: String, principals: Vec<String>, source_names: Vec<String>) {
+        todo!()
+    }
+
     /// Returns sources generated from their configuration.
     #[must_use]
     pub fn sources(&self) -> NamedSources {
