@@ -10,5 +10,8 @@ pub enum ManageSigners {
         /// The source(s) of the given signer(s).
         #[arg(short, long, default_values_t = default_user_source())]
         source: Vec<String>,
+        /// Don't update the allowed signers file with the added signer(s).
+        #[arg(long)]
+        no_update: bool,
     },
 }
