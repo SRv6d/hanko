@@ -1,5 +1,7 @@
-use super::manage_signers::ManageSigners;
-use crate::{allowed_signers::update, config::Configuration};
+use crate::{
+    allowed_signers::update,
+    config::{default_user_source, Configuration},
+};
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
@@ -54,6 +56,23 @@ struct GlobalArgs {
     /// Use verbose output.
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
+}
+
+#[derive(Debug, Subcommand)]
+enum ManageSigners {
+    /// Add an allowed signer.
+    Add {
+        /// The name of the signer to add.
+        name: String,
+        /// The principals of the signer to add.
+        principals: Vec<String>,
+        /// The source(s) of the signer to add.
+        #[arg(short, long, default_values_t = default_user_source())]
+        source: Vec<String>,
+        /// Don't update the allowed signers file with the added signer(s).
+        #[arg(long)]
+        no_update: bool,
+    },
 }
 
 /// The default configuration file path according to the XDG Base Directory Specification.
