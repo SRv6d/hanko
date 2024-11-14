@@ -9,7 +9,7 @@ use clap::{
 };
 use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf, time::Instant};
-use tracing::{debug, info, Level};
+use tracing::{info, Level};
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -115,38 +115,48 @@ fn git_allowed_signers() -> Resettable<OsStr> {
 /// The main CLI entrypoint.
 #[tokio::main]
 pub async fn entrypoint() -> Result<()> {
-    let start = Instant::now();
     let cli = Cli::parse();
     let args = cli.global_args;
+    let signers_file = &args.file;
 
     setup_tracing(args.verbose);
 
-    let config = Configuration::load(&args.config).context(format!(
+    let mut config = Configuration::load(&args.config).context(format!(
         "Failed to load configuration from {}",
         &args.config.display()
     ))?;
-    let signers_file = &args.file;
 
-    match &cli.command {
-        Commands::Update => {
-            let sources = config.sources();
-            debug!(?sources, "Initialized sources");
-            let signers = config.signers(&sources);
-            debug!(?signers, "Initialized signers");
-
-            update(signers_file, signers)
-                .await
-                .context("Failed to update the allowed signers file")?;
-
-            let duration = start.elapsed();
-            info!(
-                "Updated allowed signers file {} in {:?}",
-                signers_file.display(),
-                duration
-            );
-        }
-        Commands::Signer(_) => todo!(),
+    match cli.command {
+        Commands::Update => {}
+        Commands::Signer(action) => match action {
+            ManageSigners::Add {
+                name,
+                principals,
+                source,
+                no_update,
+            } => {
+                config.add_signer(name, principals, source);
+                if no_update {
+                    return Ok(());
+                }
+            }
+        },
     }
+
+    let sources = config.sources();
+    let signers = config.signers(&sources);
+
+    let start = Instant::now();
+    update(signers_file, signers)
+        .await
+        .context("Failed to update the allowed signers file")?;
+    let duration = start.elapsed();
+    info!(
+        "Updated allowed signers file {} in {:?}",
+        signers_file.display(),
+        duration
+    );
+
     Ok(())
 }
 
