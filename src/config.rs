@@ -39,7 +39,7 @@ impl TomlFile {
 }
 
 /// The main configuration.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Configuration {
     signers: Vec<SignerConfiguration>,
     #[serde(default)]
@@ -199,7 +199,7 @@ pub fn default_user_source() -> Vec<String> {
     vec!["github".to_string()]
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
 pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
@@ -371,5 +371,64 @@ mod tests {
         let result = fs::read_to_string(tmp_config_toml.path()).unwrap();
 
         assert_eq!(result, content);
+    }
+
+    /// When adding a signer to a configuration, it is added to the contained signers.
+    #[rstest]
+    #[case(
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        }
+    )]
+    fn adding_signer_adds_to_signers(#[case] signer: SignerConfiguration) {
+        let mut config = Configuration::default();
+
+        config.add_signer(
+            signer.name.clone().clone(),
+            signer.principals.clone(),
+            signer.source_names.clone(),
+        );
+
+        assert!(config.signers.contains(&signer));
+    }
+
+    /// When adding a signer to a configuration, it is added to the TOML configuration file contained within.
+    #[rstest]
+    #[case(
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+            ]
+        "#},
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        },
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+                { name = "octocat", principals = ["octocat@github.com"] },
+            ]
+        "#},
+    )]
+    fn adding_signer_adds_to_file(
+        #[case] toml: &str,
+        #[case] signer: SignerConfiguration,
+        #[case] expected: &str,
+    ) {
+        let mut config = Configuration {
+            file: TomlFile {
+                document: toml.parse().unwrap(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        config.add_signer(signer.name, signer.principals, signer.source_names);
+
+        assert_eq!(config.file.document.to_string(), expected);
     }
 }
