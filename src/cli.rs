@@ -1,5 +1,5 @@
 use crate::{
-    allowed_signers::update,
+    allowed_signers,
     config::{default_user_source, Configuration},
 };
 use anyhow::{Context, Result};
@@ -8,7 +8,11 @@ use clap::{
     Parser, Subcommand,
 };
 use serde::{Deserialize, Serialize};
-use std::{env, path::PathBuf, time::Instant};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    time::Instant,
+};
 use tracing::{info, Level};
 
 #[derive(Debug, Parser)]
@@ -76,7 +80,7 @@ enum ManageSigners {
 }
 
 /// The default configuration file path according to the XDG Base Directory Specification.
-/// If neither `$XDG_CONFIG_HOME` nor `$HOME` are set, `Resettable::Reset` is returned, forcing the user to specify the path.
+/// If neither `$XDG_CONFIG_HOME` nor `$HOME` are set, [`Resettable::Reset`] is returned, forcing the user to specify the path.
 fn default_config_path() -> Resettable<OsStr> {
     let dirname = env!("CARGO_PKG_NAME");
     let filename = "config.toml";
@@ -113,8 +117,7 @@ fn git_allowed_signers() -> Resettable<OsStr> {
 }
 
 /// The main CLI entrypoint.
-#[tokio::main]
-pub async fn entrypoint() -> Result<()> {
+pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
     let args = cli.global_args;
     let signers_file = &args.file;
@@ -136,6 +139,10 @@ pub async fn entrypoint() -> Result<()> {
                 no_update,
             } => {
                 config.add_signer(name, principals, source);
+                config.save().context(format!(
+                    "Failed to save configuration to {}",
+                    &args.config.display()
+                ))?;
                 if no_update {
                     return Ok(());
                 }
@@ -143,20 +150,26 @@ pub async fn entrypoint() -> Result<()> {
         },
     }
 
+    update_allowed_singers(signers_file, &config)
+}
+
+#[tokio::main]
+async fn update_allowed_singers(file: &Path, config: &Configuration) -> Result<()> {
+    let start = Instant::now();
+
     let sources = config.sources();
     let signers = config.signers(&sources);
 
-    let start = Instant::now();
-    update(signers_file, signers)
+    allowed_signers::update(file, signers)
         .await
         .context("Failed to update the allowed signers file")?;
+
     let duration = start.elapsed();
     info!(
         "Updated allowed signers file {} in {:?}",
-        signers_file.display(),
+        file.display(),
         duration
     );
-
     Ok(())
 }
 
