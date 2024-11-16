@@ -23,6 +23,15 @@ struct TomlFile {
 }
 
 impl TomlFile {
+    /// Add an allowed signer to the file.
+    fn add_signer(&mut self, name: &str, principals: Vec<&str>, source_names: Vec<&str>) {
+        let signers = self.document["signers"]
+            .as_array_mut()
+            .expect("missing required field");
+        let mut new_signer = toml_edit::InlineTable::new();
+        new_signer["name"] = name.into();
+    }
+
     /// Load from a TOML file.
     fn load(path: PathBuf) -> Result<Self> {
         info!("Loading TOML configuration file");
@@ -94,7 +103,17 @@ impl Configuration {
 
     /// Add an allowed signer to the configuration.
     pub fn add_signer(&mut self, name: String, principals: Vec<String>, source_names: Vec<String>) {
-        todo!()
+        let signer = SignerConfiguration {
+            name,
+            principals,
+            source_names,
+        };
+        self.file.add_signer(
+            &signer.name,
+            signer.principals.iter().map(AsRef::as_ref).collect(),
+            signer.source_names.iter().map(AsRef::as_ref).collect(),
+        );
+        self.signers.push(signer);
     }
 
     /// Returns sources generated from their configuration.
