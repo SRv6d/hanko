@@ -433,6 +433,27 @@ mod tests {
             ]
         "#},
     )]
+    #[case(
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+        "#},
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        },
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+        "#},
+    )]
     fn adding_signer_adds_to_file(
         #[case] toml: &str,
         #[case] signer: SignerConfiguration,
