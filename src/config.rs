@@ -472,6 +472,7 @@ mod tests {
         indoc! {r#"
             signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+                { name = "cwoods", principals = ["cwoods@acme.corp"] },
             ]
         "#},
         SignerConfiguration {
@@ -482,7 +483,7 @@ mod tests {
         indoc! {r#"
             signers = [
                 { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
-                { name = "octocat", principals = ["octocat@github.com"] },
+                { name = "cwoods", principals = ["cwoods@acme.corp"] }, { name = "octocat", principals = ["octocat@github.com"] },
             ]
         "#},
     )]
@@ -505,6 +506,28 @@ mod tests {
             [[signers]]
             name = "octocat"
             principals = ["octocat@github.com"]
+        "#},
+    )]
+    #[case(
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+        "#},
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            source_names: vec!["acme-corp".to_string()],
+        },
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+            sources = ["acme-corp"]
         "#},
     )]
     fn adding_signer_adds_to_file(
