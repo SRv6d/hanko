@@ -9,16 +9,19 @@ use tempfile::NamedTempFile;
 #[rstest]
 #[case(
     indoc!{r#"
-            signers = [
-                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
-            ]
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
     "#},
     vec!["octocat", "octocat@github.com"],
     indoc!{r#"
-            signers = [
-                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
-                { name = "octocat", principals = ["octocat@github.com"] },
-            ]
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
     "#}
 )]
 fn adding_signer_updates_configuration(
