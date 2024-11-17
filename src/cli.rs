@@ -138,7 +138,9 @@ pub fn entrypoint() -> Result<()> {
                 source,
                 no_update,
             } => {
-                config.add_signer(name, principals, source);
+                config
+                    .add_signer(name, principals, source)
+                    .context("Failed to add allowed signer")?;
                 config.save().context(format!(
                     "Failed to save configuration to {}",
                     &args.config.display()

@@ -133,7 +133,12 @@ impl Configuration {
     }
 
     /// Add an allowed signer to the configuration.
-    pub fn add_signer(&mut self, name: String, principals: Vec<String>, source_names: Vec<String>) {
+    pub fn add_signer(
+        &mut self,
+        name: String,
+        principals: Vec<String>,
+        source_names: Vec<String>,
+    ) -> Result<()> {
         let signer = SignerConfiguration {
             name,
             principals,
@@ -145,6 +150,7 @@ impl Configuration {
             signer.source_names.iter().map(AsRef::as_ref).collect(),
         );
         self.signers.push(signer);
+        Ok(())
     }
 
     /// Returns sources generated from their configuration.
@@ -446,11 +452,13 @@ mod tests {
     fn adding_signer_adds_to_signers(#[case] signer: SignerConfiguration) {
         let mut config = Configuration::default();
 
-        config.add_signer(
-            signer.name.clone().clone(),
-            signer.principals.clone(),
-            signer.source_names.clone(),
-        );
+        config
+            .add_signer(
+                signer.name.clone().clone(),
+                signer.principals.clone(),
+                signer.source_names.clone(),
+            )
+            .unwrap();
 
         assert!(config.signers.contains(&signer));
     }
@@ -532,8 +540,37 @@ mod tests {
             ..Default::default()
         };
 
-        config.add_signer(signer.name, signer.principals, signer.source_names);
+        config
+            .add_signer(signer.name, signer.principals, signer.source_names)
+            .unwrap();
 
         assert_eq!(config.file.document.to_string(), expected);
+    }
+
+    #[rstest]
+    #[case(
+        Configuration::default(),
+        SignerConfiguration {
+            name: "cwoods".to_string(),
+            principals: vec!["cwoods@acme.corp".to_string()],
+            source_names: vec!["acme-corp".to_string()],
+        },
+        vec!["acme-corp".to_string()]
+    )]
+    fn adding_signer_with_missing_source_returns_error(
+        #[case] mut config: Configuration,
+        #[case] signer: SignerConfiguration,
+        #[case] mut expected_missing: Vec<String>,
+    ) {
+        expected_missing.sort();
+
+        let err = config
+            .add_signer(signer.name, signer.principals, signer.source_names)
+            .unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            format!("Missing sources: {}", expected_missing.join(", "))
+        );
     }
 }
