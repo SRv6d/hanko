@@ -16,7 +16,7 @@ use std::{
 use tracing::{debug, info, trace};
 
 /// A mutable and format preserving representation of a TOML file.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct TomlFile {
     path: PathBuf,
     document: toml_edit::DocumentMut,
@@ -44,6 +44,16 @@ impl TomlFile {
     fn save(&self) -> Result<()> {
         info!("Saving TOML configuration file");
         fs::write(&self.path, self.document.to_string()).map_err(Into::into)
+    }
+}
+
+impl Default for TomlFile {
+    fn default() -> Self {
+        let doc = "signers = []".parse().unwrap();
+        Self {
+            path: PathBuf::default(),
+            document: doc,
+        }
     }
 }
 
