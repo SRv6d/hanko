@@ -260,12 +260,23 @@ pub fn default_user_source() -> Vec<String> {
     vec!["github".to_string()]
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Default)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(default)]
 pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
-    #[serde(rename = "sources", default = "default_user_source")]
+    #[serde(rename = "sources")]
     pub source_names: Vec<String>,
+}
+
+impl Default for SignerConfiguration {
+    fn default() -> Self {
+        Self {
+            name: String::default(),
+            principals: Vec::default(),
+            source_names: default_user_source(),
+        }
+    }
 }
 
 /// The representation of a [`Source`] in configuration.
