@@ -25,17 +25,20 @@ struct TomlFile {
 impl TomlFile {
     /// Add an allowed signer to the file.
     fn add_signer(&mut self, name: &str, principals: Vec<&str>, source_names: Vec<&str>) {
-        use toml_edit::{Array, InlineTable, Item, Table, Value};
+        use toml_edit::{Array, Item, Table, Value};
 
-        let name = name.into();
-        let principals = principals.into_iter().collect::<Array>().into();
-        let source_names = {
-            if source_names == default_user_source() {
-                None
-            } else {
-                Some(source_names.into_iter().collect::<Array>().into())
-            }
-        };
+        let mut table = Table::new();
+        table.insert("name", name.into());
+        table.insert(
+            "principals",
+            principals.into_iter().collect::<Array>().into(),
+        );
+        if source_names != default_user_source() {
+            table.insert(
+                "sources",
+                source_names.into_iter().collect::<Array>().into(),
+            );
+        }
 
         match self
             .document
@@ -43,23 +46,9 @@ impl TomlFile {
             .expect("signers key missing")
         {
             Item::Value(Value::Array(a)) if a.iter().all(Value::is_inline_table) => {
-                let mut table = InlineTable::new();
-                table.insert("name", name);
-                table.insert("principals", principals);
-                if let Some(names) = source_names {
-                    table.insert("sources", names);
-                }
-                a.push(table);
+                a.push(table.into_inline_table());
             }
-            Item::ArrayOfTables(aot) => {
-                let mut table = Table::new();
-                table.insert("name", name.into());
-                table.insert("principals", principals.into());
-                if let Some(names) = source_names {
-                    table.insert("sources", names.into());
-                }
-                aot.push(table);
-            }
+            Item::ArrayOfTables(a) => a.push(table),
             _ => unreachable!("signers key has invalid format"),
         }
     }
