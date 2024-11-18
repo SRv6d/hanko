@@ -79,10 +79,10 @@ impl Default for TomlFile {
 }
 
 /// The main configuration.
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize)]
+#[serde(default)]
 pub struct Configuration {
     signers: Vec<SignerConfiguration>,
-    #[serde(default)]
     sources: Vec<SourceConfiguration>,
     #[serde(skip)]
     file: TomlFile,
@@ -97,6 +97,16 @@ impl TryFrom<TomlFile> for Configuration {
         let mut s = Self::deserialize(deserializer)?;
         s.file = file;
         Ok(s)
+    }
+}
+
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            signers: Vec::default(),
+            sources: Self::default_sources(),
+            file: TomlFile::default(),
+        }
     }
 }
 
