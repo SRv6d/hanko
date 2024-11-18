@@ -143,12 +143,18 @@ impl Configuration {
     }
 
     /// Add an allowed signer to the configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any of the given sources don't exist.
     pub fn add_signer(
         &mut self,
         name: String,
         principals: Vec<String>,
         source_names: Vec<String>,
     ) -> Result<()> {
+        self.check_sources_exist(source_names.iter().map(String::as_str))?;
+
         let signer = SignerConfiguration {
             name,
             principals,
@@ -160,6 +166,7 @@ impl Configuration {
             signer.source_names.iter().map(AsRef::as_ref).collect(),
         );
         self.signers.push(signer);
+
         Ok(())
     }
 
@@ -231,12 +238,21 @@ impl Configuration {
     fn validate_semantics(&self) -> Result<()> {
         trace!(?self, "Validating configuration semantics");
 
-        let used_sources: HashSet<&str> = self
-            .signers
-            .iter()
-            .flat_map(|c| c.source_names.iter())
-            .map(String::as_str)
-            .collect();
+        self.check_sources_exist(
+            self.signers
+                .iter()
+                .flat_map(|c| c.source_names.iter().map(String::as_str)),
+        )?;
+
+        Ok(())
+    }
+
+    /// Check if the given sources exist, returning an error if not.
+    fn check_sources_exist<'a>(
+        &self,
+        source_names: impl IntoIterator<Item = &'a str>,
+    ) -> Result<()> {
+        let used_sources: HashSet<&str> = source_names.into_iter().collect();
         let existing_sources: HashSet<&str> =
             self.sources.iter().map(|c| c.name.as_str()).collect();
         let mut missing_sources: Vec<String> = used_sources
@@ -247,7 +263,6 @@ impl Configuration {
             missing_sources.sort();
             bail!("Missing sources: {}", missing_sources.join(", "))
         }
-
         Ok(())
     }
 }
@@ -520,6 +535,11 @@ mod tests {
             [[signers]]
             name = "torvalds"
             principals = ["torvalds@linux-foundation.org"]
+
+            [[sources]]
+            name = "acme-corp"
+            provider = "gitlab"
+            url = "https://git.acme.corp"
         "#},
         SignerConfiguration {
             name: "octocat".to_string(),
@@ -535,6 +555,11 @@ mod tests {
             name = "octocat"
             principals = ["octocat@github.com"]
             sources = ["acme-corp"]
+
+            [[sources]]
+            name = "acme-corp"
+            provider = "gitlab"
+            url = "https://git.acme.corp"
         "#},
     )]
     fn adding_signer_adds_to_file(
@@ -542,13 +567,11 @@ mod tests {
         #[case] signer: SignerConfiguration,
         #[case] expected: &str,
     ) {
-        let mut config = Configuration {
-            file: TomlFile {
-                document: toml.parse().unwrap(),
-                ..Default::default()
-            },
+        let mut config = Configuration::try_from(TomlFile {
+            document: toml.parse().unwrap(),
             ..Default::default()
-        };
+        })
+        .unwrap();
 
         config
             .add_signer(signer.name, signer.principals, signer.source_names)
