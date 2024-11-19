@@ -25,7 +25,7 @@ struct TomlFile {
 impl TomlFile {
     /// Add an allowed signer to the file.
     fn add_signer(&mut self, name: &str, principals: Vec<&str>, source_names: Vec<&str>) {
-        use toml_edit::{Array, Item, Table, Value};
+        use toml_edit::{Array, ArrayOfTables, Item, Table, Value};
 
         let mut table = Table::new();
         table.insert("name", name.into());
@@ -40,15 +40,16 @@ impl TomlFile {
             );
         }
 
-        match self
-            .document
-            .get_mut("signers")
-            .expect("signers key missing")
-        {
-            Item::Value(Value::Array(a)) if a.iter().all(Value::is_inline_table) => {
+        match self.document.get_mut("signers") {
+            None => {
+                let mut item = ArrayOfTables::new();
+                item.push(table);
+                self.document.insert("signers", Item::ArrayOfTables(item));
+            }
+            Some(Item::Value(Value::Array(a))) if a.iter().all(Value::is_inline_table) => {
                 a.push(table.into_inline_table());
             }
-            Item::ArrayOfTables(a) => a.push(table),
+            Some(Item::ArrayOfTables(a)) => a.push(table),
             _ => unreachable!("signers key has invalid format"),
         }
     }
@@ -491,22 +492,16 @@ mod tests {
     /// When adding a signer to a configuration, it is added to the TOML configuration file contained within.
     #[rstest]
     #[case(
-        indoc! {r#"
-            signers = [
-                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
-                { name = "cwoods", principals = ["cwoods@acme.corp"] },
-            ]
-        "#},
+        "",
         SignerConfiguration {
             name: "octocat".to_string(),
             principals: vec!["octocat@github.com".to_string()],
             ..Default::default()
         },
         indoc! {r#"
-            signers = [
-                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
-                { name = "cwoods", principals = ["cwoods@acme.corp"] }, { name = "octocat", principals = ["octocat@github.com"] },
-            ]
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
         "#},
     )]
     #[case(
@@ -560,6 +555,25 @@ mod tests {
             name = "acme-corp"
             provider = "gitlab"
             url = "https://git.acme.corp"
+        "#},
+    )]
+    #[case(
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+                { name = "cwoods", principals = ["cwoods@acme.corp"] },
+            ]
+        "#},
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        },
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+                { name = "cwoods", principals = ["cwoods@acme.corp"] }, { name = "octocat", principals = ["octocat@github.com"] },
+            ]
         "#},
     )]
     fn adding_signer_adds_to_file(
