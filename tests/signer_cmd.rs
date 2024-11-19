@@ -3,7 +3,7 @@ use assert_cmd::Command;
 use indoc::indoc;
 use rstest::*;
 use std::io::Write;
-use tempfile::NamedTempFile;
+use tempfile::{NamedTempFile, TempDir};
 
 /// When adding a signer, the configuration file is updated accordingly.
 #[rstest]
@@ -64,10 +64,11 @@ fn adding_signer_creates_configuration_if_none_exists(
     #[case] args: Vec<&str>,
     #[case] expected: &str,
 ) {
-    let config = NamedTempFile::new().unwrap();
+    let path = TempDir::new().unwrap().path().join("config.toml");
+    assert!(!path.exists());
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.arg("--config")
-        .arg(config.path())
+        .arg(&path)
         .arg("signer")
         .arg("add")
         .arg("--no-update");
@@ -76,7 +77,7 @@ fn adding_signer_creates_configuration_if_none_exists(
     }
 
     cmd.assert().success();
-    let result = std::fs::read_to_string(config.path()).unwrap();
+    let result = std::fs::read_to_string(path).unwrap();
 
     assert_eq!(result, expected);
 }
