@@ -37,6 +37,8 @@ fn adding_signer_updates_configuration(
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.arg("--config")
         .arg(config.path())
+        .arg("--file")
+        .arg(NamedTempFile::new().unwrap().path())
         .arg("signer")
         .arg("add")
         .arg("--no-update");
@@ -70,6 +72,8 @@ fn adding_signer_creates_configuration_if_none_exists(
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.arg("--config")
         .arg(&path)
+        .arg("--file")
+        .arg(NamedTempFile::new().unwrap().path())
         .arg("signer")
         .arg("add")
         .arg("--no-update");
