@@ -360,7 +360,7 @@ mod tests {
     use indoc::indoc;
     use rstest::*;
     use std::io::Write;
-    use tempfile::{NamedTempFile, TempDir};
+    use tempfile::NamedTempFile;
 
     #[fixture]
     fn tmp_config_toml() -> NamedTempFile {
