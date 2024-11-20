@@ -13,7 +13,7 @@ use std::{
     path::{Path, PathBuf},
     time::Instant,
 };
-use tracing::{info, Level};
+use tracing::Level;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -150,6 +150,7 @@ pub fn entrypoint() -> Result<()> {
                     "Failed to save configuration to {}",
                     &args.config.display()
                 ))?;
+                println!("Updated configuration file {}", &args.config.display());
                 if no_update {
                     return Ok(());
                 }
@@ -172,7 +173,7 @@ async fn update_allowed_singers(file: &Path, config: &Configuration) -> Result<(
         .context("Failed to update the allowed signers file")?;
 
     let duration = start.elapsed();
-    info!(
+    println!(
         "Updated allowed signers file {} in {:?}",
         file.display(),
         duration
