@@ -4,12 +4,12 @@
 //! when interacting with configuration will be reported to the user without further processing.
 
 use crate::{allowed_signers::Signer, Github, Gitlab, Source};
-use anyhow::{bail, Error, Result};
+use anyhow::{bail, Context, Error, Result};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{HashMap, HashSet},
-    fs,
+    fs, io,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -23,6 +23,37 @@ struct TomlFile {
 }
 
 impl TomlFile {
+    /// Add an allowed signer to the file.
+    fn add_signer(&mut self, name: &str, principals: Vec<&str>, source_names: Vec<&str>) {
+        use toml_edit::{Array, ArrayOfTables, Item, Table, Value};
+
+        let mut table = Table::new();
+        table.insert("name", name.into());
+        table.insert(
+            "principals",
+            principals.into_iter().collect::<Array>().into(),
+        );
+        if source_names != default_user_source() {
+            table.insert(
+                "sources",
+                source_names.into_iter().collect::<Array>().into(),
+            );
+        }
+
+        match self.document.get_mut("signers") {
+            None => {
+                let mut item = ArrayOfTables::new();
+                item.push(table);
+                self.document.insert("signers", Item::ArrayOfTables(item));
+            }
+            Some(Item::Value(Value::Array(a))) if a.iter().all(Value::is_inline_table) => {
+                a.push(table.into_inline_table());
+            }
+            Some(Item::ArrayOfTables(a)) => a.push(table),
+            _ => unreachable!("signers key has invalid format"),
+        }
+    }
+
     /// Load from a TOML file.
     fn load(path: PathBuf) -> Result<Self> {
         info!("Loading TOML configuration file");
@@ -40,9 +71,9 @@ impl TomlFile {
 
 /// The main configuration.
 #[derive(Debug, Deserialize)]
+#[serde(default)]
 pub struct Configuration {
     signers: Vec<SignerConfiguration>,
-    #[serde(default)]
     sources: Vec<SourceConfiguration>,
     #[serde(skip)]
     file: TomlFile,
@@ -57,6 +88,16 @@ impl TryFrom<TomlFile> for Configuration {
         let mut s = Self::deserialize(deserializer)?;
         s.file = file;
         Ok(s)
+    }
+}
+
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            signers: Vec::default(),
+            sources: Self::default_sources(),
+            file: TomlFile::default(),
+        }
     }
 }
 
@@ -90,6 +131,34 @@ impl Configuration {
             "Extending configuration with default sources"
         );
         self.sources.extend(default_sources);
+    }
+
+    /// Add an allowed signer to the configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any of the given sources don't exist.
+    pub fn add_signer(
+        &mut self,
+        name: String,
+        principals: Vec<String>,
+        source_names: Vec<String>,
+    ) -> Result<()> {
+        self.check_sources_exist(source_names.iter().map(String::as_str))?;
+
+        let signer = SignerConfiguration {
+            name,
+            principals,
+            source_names,
+        };
+        self.file.add_signer(
+            &signer.name,
+            signer.principals.iter().map(AsRef::as_ref).collect(),
+            signer.source_names.iter().map(AsRef::as_ref).collect(),
+        );
+        self.signers.push(signer);
+
+        Ok(())
     }
 
     /// Returns sources generated from their configuration.
@@ -147,6 +216,34 @@ impl Configuration {
         Ok(c)
     }
 
+    /// Load the configuration from a TOML file, returning a default instance if it doesn't exist.
+    ///
+    /// # Errors
+    ///
+    /// When the file at the given path has invalid content.
+    pub fn load_or_default(path: &Path) -> Result<Self> {
+        Self::load(path).or_else(|err| match err.downcast_ref::<io::Error>() {
+            Some(io_err) if io_err.kind() == io::ErrorKind::NotFound => {
+                info!("Configuration file does not exist yet and will be created");
+                let dir = path
+                    .parent()
+                    .context("Path does not contain parent directory")?;
+                fs::create_dir_all(dir).context(format!(
+                    "Failed to create configuration directory {}",
+                    dir.display()
+                ))?;
+                Ok(Configuration {
+                    file: TomlFile {
+                        path: path.to_path_buf(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+            }
+            _ => Err(err),
+        })
+    }
+
     /// Save the configuration back to file.
     ///
     /// # Errors
@@ -160,12 +257,21 @@ impl Configuration {
     fn validate_semantics(&self) -> Result<()> {
         trace!(?self, "Validating configuration semantics");
 
-        let used_sources: HashSet<&str> = self
-            .signers
-            .iter()
-            .flat_map(|c| c.source_names.iter())
-            .map(String::as_str)
-            .collect();
+        self.check_sources_exist(
+            self.signers
+                .iter()
+                .flat_map(|c| c.source_names.iter().map(String::as_str)),
+        )?;
+
+        Ok(())
+    }
+
+    /// Check if the given sources exist, returning an error if not.
+    fn check_sources_exist<'a>(
+        &self,
+        source_names: impl IntoIterator<Item = &'a str>,
+    ) -> Result<()> {
+        let used_sources: HashSet<&str> = source_names.into_iter().collect();
         let existing_sources: HashSet<&str> =
             self.sources.iter().map(|c| c.name.as_str()).collect();
         let mut missing_sources: Vec<String> = used_sources
@@ -176,7 +282,6 @@ impl Configuration {
             missing_sources.sort();
             bail!("Missing sources: {}", missing_sources.join(", "))
         }
-
         Ok(())
     }
 }
@@ -189,16 +294,28 @@ pub enum SourceType {
     Gitlab,
 }
 
-fn default_user_source() -> Vec<String> {
+#[must_use]
+pub fn default_user_source() -> Vec<String> {
     vec!["github".to_string()]
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(default)]
 pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
-    #[serde(rename = "sources", default = "default_user_source")]
+    #[serde(rename = "sources")]
     pub source_names: Vec<String>,
+}
+
+impl Default for SignerConfiguration {
+    fn default() -> Self {
+        Self {
+            name: String::default(),
+            principals: Vec::default(),
+            source_names: default_user_source(),
+        }
+    }
 }
 
 /// The representation of a [`Source`] in configuration.
@@ -365,5 +482,160 @@ mod tests {
         let result = fs::read_to_string(tmp_config_toml.path()).unwrap();
 
         assert_eq!(result, content);
+    }
+
+    /// When adding a signer to a configuration, it is added to the contained signers.
+    #[rstest]
+    #[case(
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        }
+    )]
+    fn adding_signer_adds_to_signers(#[case] signer: SignerConfiguration) {
+        let mut config = Configuration::default();
+
+        config
+            .add_signer(
+                signer.name.clone().clone(),
+                signer.principals.clone(),
+                signer.source_names.clone(),
+            )
+            .unwrap();
+
+        assert!(config.signers.contains(&signer));
+    }
+
+    /// When adding a signer to a configuration, it is added to the TOML configuration file contained within.
+    #[rstest]
+    #[case(
+        "",
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        },
+        indoc! {r#"
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+        "#},
+    )]
+    #[case(
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+        "#},
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        },
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+        "#},
+    )]
+    #[case(
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+
+            [[sources]]
+            name = "acme-corp"
+            provider = "gitlab"
+            url = "https://git.acme.corp"
+        "#},
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            source_names: vec!["acme-corp".to_string()],
+        },
+        indoc! {r#"
+            [[signers]]
+            name = "torvalds"
+            principals = ["torvalds@linux-foundation.org"]
+
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+            sources = ["acme-corp"]
+
+            [[sources]]
+            name = "acme-corp"
+            provider = "gitlab"
+            url = "https://git.acme.corp"
+        "#},
+    )]
+    #[case(
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+                { name = "cwoods", principals = ["cwoods@acme.corp"] },
+            ]
+        "#},
+        SignerConfiguration {
+            name: "octocat".to_string(),
+            principals: vec!["octocat@github.com".to_string()],
+            ..Default::default()
+        },
+        indoc! {r#"
+            signers = [
+                { name = "torvalds", principals = ["torvalds@linux-foundation.org"] },
+                { name = "cwoods", principals = ["cwoods@acme.corp"] }, { name = "octocat", principals = ["octocat@github.com"] },
+            ]
+        "#},
+    )]
+    fn adding_signer_adds_to_file(
+        #[case] toml: &str,
+        #[case] signer: SignerConfiguration,
+        #[case] expected: &str,
+    ) {
+        let mut config = Configuration::try_from(TomlFile {
+            document: toml.parse().unwrap(),
+            ..Default::default()
+        })
+        .unwrap();
+
+        config
+            .add_signer(signer.name, signer.principals, signer.source_names)
+            .unwrap();
+
+        assert_eq!(config.file.document.to_string(), expected);
+    }
+
+    #[rstest]
+    #[case(
+        Configuration::default(),
+        SignerConfiguration {
+            name: "cwoods".to_string(),
+            principals: vec!["cwoods@acme.corp".to_string()],
+            source_names: vec!["acme-corp".to_string()],
+        },
+        vec!["acme-corp".to_string()]
+    )]
+    fn adding_signer_with_missing_source_returns_error(
+        #[case] mut config: Configuration,
+        #[case] signer: SignerConfiguration,
+        #[case] mut expected_missing: Vec<String>,
+    ) {
+        expected_missing.sort();
+
+        let err = config
+            .add_signer(signer.name, signer.principals, signer.source_names)
+            .unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            format!("Missing sources: {}", expected_missing.join(", "))
+        );
     }
 }

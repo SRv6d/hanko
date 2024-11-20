@@ -1,12 +1,19 @@
-use crate::{allowed_signers::update, config::Configuration};
+use crate::{
+    allowed_signers,
+    config::{default_user_source, Configuration},
+};
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
     Parser, Subcommand,
 };
 use serde::{Deserialize, Serialize};
-use std::{env, path::PathBuf, time::Instant};
-use tracing::{debug, info, Level};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    time::Instant,
+};
+use tracing::Level;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -22,13 +29,9 @@ pub struct Cli {
 enum Commands {
     /// Update the allowed signers file.
     Update,
-    // /// Manage signers.
-    // #[command(subcommand)]
-    // Signer(ManageSigners),
-
-    // /// Manage sources.
-    // #[command(subcommand)]
-    // Source(ManageSources),
+    /// Manage allowed signers.
+    #[command(subcommand)]
+    Signer(ManageSigners),
 }
 
 #[derive(Debug, Serialize, Deserialize, clap::Args)]
@@ -39,6 +42,7 @@ struct GlobalArgs {
         long,
         value_name = "PATH",
         env = "HANKO_CONFIG",
+        global = true,
         default_value = default_config_path()
     )]
     pub config: PathBuf,
@@ -48,17 +52,35 @@ struct GlobalArgs {
         long,
         value_name = "PATH",
         env = "HANKO_ALLOWED_SIGNERS",
+        global = true,
         default_value = git_allowed_signers()
     )]
     pub file: PathBuf,
 
     /// Use verbose output.
-    #[arg(short, long, action = clap::ArgAction::Count)]
+    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     pub verbose: u8,
 }
 
+#[derive(Debug, Subcommand)]
+enum ManageSigners {
+    /// Add an allowed signer.
+    Add {
+        /// The name of the signer to add.
+        name: String,
+        /// The principals of the signer to add.
+        principals: Vec<String>,
+        /// The source(s) of the signer to add.
+        #[arg(short, long, default_values_t = default_user_source())]
+        source: Vec<String>,
+        /// Don't update the allowed signers file with the added signer(s).
+        #[arg(long)]
+        no_update: bool,
+    },
+}
+
 /// The default configuration file path according to the XDG Base Directory Specification.
-/// If neither `$XDG_CONFIG_HOME` nor `$HOME` are set, `Resettable::Reset` is returned, forcing the user to specify the path.
+/// If neither `$XDG_CONFIG_HOME` nor `$HOME` are set, [`Resettable::Reset`] is returned, forcing the user to specify the path.
 fn default_config_path() -> Resettable<OsStr> {
     let dirname = env!("CARGO_PKG_NAME");
     let filename = "config.toml";
@@ -95,39 +117,67 @@ fn git_allowed_signers() -> Resettable<OsStr> {
 }
 
 /// The main CLI entrypoint.
-#[tokio::main]
-pub async fn entrypoint() -> Result<()> {
-    let start = Instant::now();
+pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
     let args = cli.global_args;
+    let signers_file = &args.file;
 
     setup_tracing(args.verbose);
 
-    let config = Configuration::load(&args.config).context(format!(
-        "Failed to load configuration from {}",
-        &args.config.display()
-    ))?;
-    let signers_file = &args.file;
-
-    match &cli.command {
+    let mut config;
+    match cli.command {
         Commands::Update => {
-            let sources = config.sources();
-            debug!(?sources, "Initialized sources");
-            let signers = config.signers(&sources);
-            debug!(?signers, "Initialized signers");
-
-            update(signers_file, signers)
-                .await
-                .context("Failed to update the allowed signers file")?;
-
-            let duration = start.elapsed();
-            info!(
-                "Updated allowed signers file {} in {:?}",
-                signers_file.display(),
-                duration
-            );
+            config = Configuration::load(&args.config).context(format!(
+                "Failed to load configuration from {}",
+                &args.config.display()
+            ))?;
         }
+        Commands::Signer(action) => match action {
+            ManageSigners::Add {
+                name,
+                principals,
+                source,
+                no_update,
+            } => {
+                config = Configuration::load_or_default(&args.config).context(format!(
+                    "Failed to load configuration from {}",
+                    &args.config.display()
+                ))?;
+                config
+                    .add_signer(name, principals, source)
+                    .context("Failed to add allowed signer")?;
+                config.save().context(format!(
+                    "Failed to save configuration to {}",
+                    &args.config.display()
+                ))?;
+                println!("Updated configuration file {}", &args.config.display());
+                if no_update {
+                    return Ok(());
+                }
+            }
+        },
     }
+
+    update_allowed_singers(signers_file, &config)
+}
+
+#[tokio::main]
+async fn update_allowed_singers(file: &Path, config: &Configuration) -> Result<()> {
+    let start = Instant::now();
+
+    let sources = config.sources();
+    let signers = config.signers(&sources);
+
+    allowed_signers::update(file, signers)
+        .await
+        .context("Failed to update the allowed signers file")?;
+
+    let duration = start.elapsed();
+    println!(
+        "Updated allowed signers file {} in {:?}",
+        file.display(),
+        duration
+    );
     Ok(())
 }
 
