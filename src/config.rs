@@ -4,7 +4,7 @@
 //! when interacting with configuration will be reported to the user without further processing.
 
 use crate::{allowed_signers::Signer, Github, Gitlab, Source};
-use anyhow::{bail, Error, Result};
+use anyhow::{bail, Context, Error, Result};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -235,6 +235,13 @@ impl Configuration {
         Self::load(path).or_else(|err| match err.downcast_ref::<io::Error>() {
             Some(io_err) if io_err.kind() == io::ErrorKind::NotFound => {
                 info!("Configuration file does not exist yet and will be created");
+                let dir = path
+                    .parent()
+                    .context("Path does not contain parent directory")?;
+                fs::create_dir_all(dir).context(format!(
+                    "Failed to create configuration directory {}",
+                    dir.display()
+                ))?;
                 Ok(Configuration {
                     file: TomlFile {
                         path: path.to_path_buf(),
