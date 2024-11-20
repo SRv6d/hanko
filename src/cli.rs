@@ -124,13 +124,14 @@ pub fn entrypoint() -> Result<()> {
 
     setup_tracing(args.verbose);
 
-    let mut config = Configuration::load(&args.config).context(format!(
-        "Failed to load configuration from {}",
-        &args.config.display()
-    ))?;
-
+    let mut config;
     match cli.command {
-        Commands::Update => {}
+        Commands::Update => {
+            config = Configuration::load(&args.config).context(format!(
+                "Failed to load configuration from {}",
+                &args.config.display()
+            ))?;
+        }
         Commands::Signer(action) => match action {
             ManageSigners::Add {
                 name,
@@ -138,6 +139,10 @@ pub fn entrypoint() -> Result<()> {
                 source,
                 no_update,
             } => {
+                config = Configuration::load_or_default(&args.config).context(format!(
+                    "Failed to load configuration from {}",
+                    &args.config.display()
+                ))?;
                 config
                     .add_signer(name, principals, source)
                     .context("Failed to add allowed signer")?;

@@ -64,7 +64,8 @@ fn adding_signer_creates_configuration_if_none_exists(
     #[case] args: Vec<&str>,
     #[case] expected: &str,
 ) {
-    let path = TempDir::new().unwrap().path().join("config.toml");
+    let tmpdir = TempDir::new().unwrap();
+    let path = tmpdir.path().join("config.toml");
     assert!(!path.exists());
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
     cmd.arg("--config")

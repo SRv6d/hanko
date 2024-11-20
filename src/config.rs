@@ -9,7 +9,7 @@ use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{HashMap, HashSet},
-    fs,
+    fs, io,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -226,6 +226,27 @@ impl Configuration {
         Ok(c)
     }
 
+    /// Load the configuration from a TOML file, returning a default instance if it doesn't exist.
+    ///
+    /// # Errors
+    ///
+    /// When the file at the given path has invalid content.
+    pub fn load_or_default(path: &Path) -> Result<Self> {
+        Self::load(path).or_else(|err| match err.downcast_ref::<io::Error>() {
+            Some(io_err) if io_err.kind() == io::ErrorKind::NotFound => {
+                info!("Configuration file does not exist yet and will be created");
+                Ok(Configuration {
+                    file: TomlFile {
+                        path: path.to_path_buf(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+            }
+            _ => Err(err),
+        })
+    }
+
     /// Save the configuration back to file.
     ///
     /// # Errors
@@ -342,7 +363,7 @@ mod tests {
     use indoc::indoc;
     use rstest::*;
     use std::io::Write;
-    use tempfile::NamedTempFile;
+    use tempfile::{NamedTempFile, TempDir};
 
     #[fixture]
     fn tmp_config_toml() -> NamedTempFile {
