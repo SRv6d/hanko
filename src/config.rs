@@ -402,7 +402,10 @@ mod tests {
 
         let err = Configuration::load(&path).unwrap_err();
 
-        assert!(err.to_string().contains("No such file or directory"));
+        assert_eq!(
+            err.downcast_ref::<io::Error>().unwrap().kind(),
+            io::ErrorKind::NotFound
+        );
     }
 
     /// Loading configuration missing sources returns an appropriate error.
