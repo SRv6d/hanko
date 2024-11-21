@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Subcommand to add allowed signers.
+
+### Changed
+
+- Unknown fields in the configuration will now cause an error instead of being ignored.
+- Loading a configuration file that does not exist will cause an error.
+- All of a signers sources are now queried concurrently.
+
 ## [0.4.1] - 2024-10-29
 
 ### Security
