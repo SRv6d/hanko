@@ -32,7 +32,6 @@ impl Github {
 #[async_trait]
 impl Source for Github {
     // [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
-    #[tracing::instrument(level = "trace")]
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url
