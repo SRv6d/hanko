@@ -440,14 +440,14 @@ mod tests {
             [[signers]]
             name = "cwoods"
             principals = ["cwoods@acme.corp"]
-            souces = ["acme-corp"]
+            nonsense = ["acme-corp"]
 
             [[sources]]
             name = "acme-corp"
             provider = "gitlab"
             url = "https://git.acme.corp"
         "#},
-        "unknown field `souces`"
+        "unknown field `nonsense`"
     )]
     fn loading_configuration_with_unknown_field_returns_error(
         mut tmp_config_toml: NamedTempFile,
