@@ -71,7 +71,7 @@ impl TomlFile {
 
 /// The main configuration.
 #[derive(Debug, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct Configuration {
     signers: Vec<SignerConfiguration>,
     sources: Vec<SourceConfiguration>,
@@ -300,7 +300,7 @@ pub fn default_user_source() -> Vec<String> {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
@@ -320,6 +320,7 @@ impl Default for SignerConfiguration {
 
 /// The representation of a [`Source`] in configuration.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 struct SourceConfiguration {
     name: String,
     provider: SourceType,
@@ -431,6 +432,33 @@ mod tests {
             err.to_string(),
             format!("Missing sources: {}", expected_missing.join(", "))
         );
+    }
+
+    #[rstest]
+    #[case(
+        indoc!{r#"
+            [[signers]]
+            name = "cwoods"
+            principals = ["cwoods@acme.corp"]
+            nonsense = ["acme-corp"]
+
+            [[sources]]
+            name = "acme-corp"
+            provider = "gitlab"
+            url = "https://git.acme.corp"
+        "#},
+        "unknown field `nonsense`"
+    )]
+    fn loading_configuration_with_unknown_field_returns_error(
+        mut tmp_config_toml: NamedTempFile,
+        #[case] config: &str,
+        #[case] expected_msg: &str,
+    ) {
+        writeln!(tmp_config_toml, "{config}").unwrap();
+
+        let err = Configuration::load(tmp_config_toml.path()).unwrap_err();
+
+        assert!(err.to_string().contains(expected_msg));
     }
 
     /// Signers have a default GitHub source if no sources were configured explicitly.
