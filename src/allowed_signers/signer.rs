@@ -18,14 +18,19 @@ impl Signer {
     /// Get the signers public keys from all of it's sources.
     #[tracing::instrument(skip_all, fields(username=self.name), level = "debug")]
     async fn get_keys(&self) -> Result<Vec<PublicKey>, Error> {
-        debug!("Getting keys from users configured sources");
         let mut set: JoinSet<_> = self
             .sources
             .iter()
             .map(|source| {
                 let source = source.clone();
                 let username = self.name.clone();
-                async move { source.get_keys_by_username(&username).await }
+                async move {
+                    debug!(
+                        ?source,
+                        "Requesting keys from source for signer {}", &username
+                    );
+                    source.get_keys_by_username(&username).await
+                }
             })
             .collect();
         let mut keys = Vec::new();
