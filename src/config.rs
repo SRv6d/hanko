@@ -361,7 +361,7 @@ mod tests {
     use indoc::indoc;
     use rstest::*;
     use std::io::Write;
-    use tempfile::NamedTempFile;
+    use tempfile::{NamedTempFile, TempDir};
 
     #[fixture]
     fn tmp_config_toml() -> NamedTempFile {
@@ -391,6 +391,22 @@ mod tests {
         for default_source in Configuration::default_sources() {
             assert!(config.sources.contains(&default_source));
         }
+    }
+
+    /// When loading configuration from a path that doesn't exist without using the
+    /// explicit `load_or_default` constructor, an error is returned.
+    #[rstest]
+    fn loading_non_existent_configuration_returns_error() {
+        let tmpdir = TempDir::new().unwrap();
+        let path = tmpdir.path().join("config.toml");
+        assert!(!path.exists());
+
+        let err = Configuration::load(&path).unwrap_err();
+
+        assert_eq!(
+            err.downcast_ref::<io::Error>().unwrap().kind(),
+            io::ErrorKind::NotFound
+        );
     }
 
     /// Loading configuration missing sources returns an appropriate error.
