@@ -19,11 +19,19 @@ impl Signer {
     #[tracing::instrument(skip_all, fields(username=self.name), level = "debug")]
     async fn get_keys(&self) -> Result<Vec<PublicKey>, Error> {
         debug!("Getting keys from users configured sources");
-        // TODO: Join futures
+        let mut set: JoinSet<_> = self
+            .sources
+            .iter()
+            .map(|source| {
+                let source = source.clone();
+                let username = self.name.clone();
+                async move { source.get_keys_by_username(&username).await }
+            })
+            .collect();
         let mut keys = Vec::new();
-        for source in &self.sources {
+        while let Some(output) = set.join_next().await {
             // TODO: Handle some error cases gracefully, e.g if the user has no keys, while returning others.
-            keys.extend(source.get_keys_by_username(&self.name).await?);
+            keys.extend(output.unwrap()?);
         }
         Ok(keys)
     }
@@ -49,10 +57,10 @@ pub(super) async fn get_entries<S>(signers: S) -> Vec<Entry>
 where
     S: IntoIterator<Item = Signer>,
 {
-    let mut set = JoinSet::new();
-    for signer in signers {
-        set.spawn(async move { signer.get_entries().await });
-    }
+    let set: JoinSet<_> = signers
+        .into_iter()
+        .map(|signer| async move { signer.get_entries().await })
+        .collect();
     let results = set.join_all().await;
 
     results.into_iter().flat_map(|r| r.unwrap()).collect()
