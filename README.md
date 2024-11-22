@@ -34,12 +34,13 @@ Usage: hanko [OPTIONS] <COMMAND>
 
 Commands:
   update  Update the allowed signers file
+  signer  Manage allowed signers
   help    Print this message or the help of the given subcommand(s)
 
 Options:
   -c, --config <PATH>  The configuration file [env: HANKO_CONFIG=]
       --file <PATH>    The allowed signers file [env: HANKO_ALLOWED_SIGNERS=]
-  -v, --verbose...     Increase verbosity
+  -v, --verbose...     Use verbose output
   -h, --help           Print help
   -V, --version        Print version
 ```
