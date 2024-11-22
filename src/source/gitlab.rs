@@ -29,7 +29,6 @@ impl Gitlab {
 #[async_trait]
 impl Source for Gitlab {
     // [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
-    #[tracing::instrument(level = "trace")]
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url

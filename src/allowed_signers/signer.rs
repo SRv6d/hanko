@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tokio::task::JoinSet;
-use tracing::debug;
+use tracing::{debug, error, warn};
 
 use super::{file::Entry, ssh::PublicKey};
 use crate::{source::Source, Error};
@@ -18,14 +18,30 @@ impl Signer {
     /// Get the signers public keys from all of it's sources.
     #[tracing::instrument(skip_all, fields(username=self.name), level = "debug")]
     async fn get_keys(&self) -> Result<Vec<PublicKey>, Error> {
-        debug!("Getting keys from users configured sources");
         let mut set: JoinSet<_> = self
             .sources
             .iter()
             .map(|source| {
                 let source = source.clone();
                 let username = self.name.clone();
-                async move { source.get_keys_by_username(&username).await }
+                async move {
+                    debug!(
+                        ?source,
+                        "Requesting keys from source for signer {}", &username
+                    );
+                    match source.get_keys_by_username(&username).await {
+                        Ok(keys) => Ok(keys),
+                        Err(Error::UserNotFound) => {
+                            warn!(?source, "User {} does not exist on source", &username);
+                            Ok(vec![])
+                        }
+                        Err(Error::ConnectionError) => {
+                            error!(?source, "Failed to connect to source");
+                            Err(Error::ConnectionError)
+                        }
+                        Err(err) => Err(err),
+                    }
+                }
             })
             .collect();
         let mut keys = Vec::new();
@@ -53,15 +69,17 @@ impl Signer {
 }
 
 /// Get entries for multiple given signers concurrently.
-pub(super) async fn get_entries<S>(signers: S) -> Vec<Entry>
+pub(super) async fn get_entries<S>(signers: S) -> Result<Vec<Entry>, Error>
 where
     S: IntoIterator<Item = Signer>,
 {
-    let set: JoinSet<_> = signers
+    let mut set: JoinSet<_> = signers
         .into_iter()
         .map(|signer| async move { signer.get_entries().await })
         .collect();
-    let results = set.join_all().await;
-
-    results.into_iter().flat_map(|r| r.unwrap()).collect()
+    let mut entries = Vec::new();
+    while let Some(output) = set.join_next().await {
+        entries.extend(output.unwrap()?);
+    }
+    Ok(entries)
 }
