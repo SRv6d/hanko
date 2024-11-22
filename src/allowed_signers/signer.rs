@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tokio::task::JoinSet;
-use tracing::{debug, warn};
+use tracing::{debug, error, warn};
 
 use super::{file::Entry, ssh::PublicKey};
 use crate::{source::Source, Error};
@@ -35,6 +35,10 @@ impl Signer {
                             warn!(?source, "User {} does not exist on source", &username);
                             Ok(vec![])
                         }
+                        Err(Error::ConnectionError) => {
+                            error!(?source, "Failed to connect to source");
+                            Err(Error::ConnectionError)
+                        }
                         Err(err) => Err(err),
                     }
                 }
@@ -65,15 +69,17 @@ impl Signer {
 }
 
 /// Get entries for multiple given signers concurrently.
-pub(super) async fn get_entries<S>(signers: S) -> Vec<Entry>
+pub(super) async fn get_entries<S>(signers: S) -> Result<Vec<Entry>, Error>
 where
     S: IntoIterator<Item = Signer>,
 {
-    let set: JoinSet<_> = signers
+    let mut set: JoinSet<_> = signers
         .into_iter()
         .map(|signer| async move { signer.get_entries().await })
         .collect();
-    let results = set.join_all().await;
-
-    results.into_iter().flat_map(|r| r.unwrap()).collect()
+    let mut entries = Vec::new();
+    while let Some(output) = set.join_next().await {
+        entries.extend(output.unwrap()?);
+    }
+    Ok(entries)
 }
