@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tokio::task::JoinSet;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use super::{file::Entry, ssh::PublicKey};
 use crate::{source::Source, Error};
@@ -29,7 +29,14 @@ impl Signer {
                         ?source,
                         "Requesting keys from source for signer {}", &username
                     );
-                    source.get_keys_by_username(&username).await
+                    match source.get_keys_by_username(&username).await {
+                        Ok(keys) => Ok(keys),
+                        Err(Error::UserNotFound) => {
+                            warn!(?source, "User {} does not exist on source", &username);
+                            Ok(vec![])
+                        }
+                        Err(err) => Err(err),
+                    }
                 }
             })
             .collect();
