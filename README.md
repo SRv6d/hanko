@@ -23,12 +23,12 @@
 </div>
 <br />
 
-`hanko` keeps your allowed signers file up to date with signing keys configured on platforms like GitHub and GitLab.
+`hanko` keeps your Git allowed signers file up to date with signing keys configured on software development platforms like GitHub and GitLab.
 
 # Usage
 
 ```
-Keeps your allowed signers file up to date with signing keys configured on platforms like GitHub and GitLab.
+Keeps your Git allowed signers file up to date with signing keys configured on software development platforms like GitHub and GitLab.
 
 Usage: hanko [OPTIONS] <COMMAND>
 
