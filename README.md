@@ -136,6 +136,14 @@ nix-env -f channel:nixpkgs-unstable -iA hanko
 flox install hanko
 ```
 
+## Using Apt on Debian based Linux
+
+Add the [apt.cli.rs](https://apt.cli.rs/) repository, after which you can install hanko like any other system package.
+
+```
+sudo apt install hanko
+```
+
 ## Using Docker
 
 From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every release and are available through the GitHub container registry for this repository.
