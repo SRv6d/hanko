@@ -105,6 +105,14 @@ Any commits made by octocat with the email `octocat@github.com` and signed by on
 cargo install --locked hanko
 ```
 
+## Using the AUR on Arch Linux
+
+Use your preferred AUR helper to install `hanko`, e.g. using yay.
+
+```bash
+yay -S hanko
+```
+
 ## Using Docker
 
 From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every release and are available through the GitHub container registry for this repository.
