@@ -55,7 +55,6 @@ impl Signer {
             .collect();
         let mut keys = Vec::new();
         while let Some(output) = set.join_next().await {
-            // TODO: Handle some error cases gracefully, e.g if the user has no keys, while returning others.
             keys.extend(output.unwrap()?);
         }
         Ok(keys)
