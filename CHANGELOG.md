@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loading a configuration file that does not exist will cause an error.
 - All of a signers sources are now queried concurrently.
 - If a user does not exist on a source a warning will be logged instead of returning an error.
-- If a user does not have any keys configured on a source a warning will be logged.
+- If a user does not have any keys configured on a source, a warning will be logged.
 
 ## [0.4.1] - 2024-10-29
 
