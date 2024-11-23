@@ -103,7 +103,7 @@ pub async fn update<S>(path: &Path, signers: S) -> anyhow::Result<()>
 where
     S: IntoIterator<Item = Signer>,
 {
-    let entries = get_entries(signers).await;
+    let entries = get_entries(signers).await?;
 
     let file = File::from_entries(path.to_path_buf(), entries);
     file.write().context(format!(
