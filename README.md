@@ -45,6 +45,14 @@ Options:
   -V, --version        Print version
 ```
 
+## Quickstart
+
+```bash
+cargo install --locked hanko && hanko signer add octocat octocat@github.com
+```
+
+This will install `hanko` using cargo, create a configuration file containing a single allowed signer and update the allowed signers file accordingly. For other installation methods see [installation](#installation).
+
 ## Adding an allowed signer
 
 To use `hanko`, a set of signers to track need to be configured first.
