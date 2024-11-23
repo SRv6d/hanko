@@ -97,6 +97,26 @@ octocat@github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILSK47p5e3KlWAqe1yPkPZUSK
 
 Any commits made by octocat with the email `octocat@github.com` and signed by one of their signing keys will no be considered as valid by Git.
 
+# Installation
+
+## Using Cargo
+
+```
+cargo install --locked hanko
+```
+
+## Using Docker
+
+From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every release and are available through the GitHub container registry for this repository.
+
+```
+docker run -it ghcr.io/srv6d/hanko
+```
+
+## Using pre-built binaries
+
+Binaries for most platforms are built and attested in CI and are available for every [release](https://github.com/SRv6d/hanko/releases).
+
 # Configuration
 
 ## Example
