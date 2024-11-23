@@ -30,7 +30,16 @@ impl Signer {
                         "Requesting keys from source for signer {}", &username
                     );
                     match source.get_keys_by_username(&username).await {
-                        Ok(keys) => Ok(keys),
+                        Ok(keys) => {
+                            if keys.is_empty() {
+                                warn!(
+                                    ?source,
+                                    "User {} does not have any signing keys configured on source",
+                                    &username
+                                );
+                            }
+                            Ok(keys)
+                        }
                         Err(Error::UserNotFound) => {
                             warn!(?source, "User {} does not exist on source", &username);
                             Ok(vec![])
@@ -46,7 +55,6 @@ impl Signer {
             .collect();
         let mut keys = Vec::new();
         while let Some(output) = set.join_next().await {
-            // TODO: Handle some error cases gracefully, e.g if the user has no keys, while returning others.
             keys.extend(output.unwrap()?);
         }
         Ok(keys)
