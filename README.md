@@ -105,6 +105,12 @@ Any commits made by octocat with the email `octocat@github.com` and signed by on
 cargo install --locked hanko
 ```
 
+Or using [cargo binstall](https://github.com/cargo-bins/cargo-binstall) should you prefer not to build yourself.
+
+```bash
+cargo binstall hanko
+```
+
 ## Using Docker
 
 From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every release and are available through the GitHub container registry for this repository.
