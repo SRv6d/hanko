@@ -47,7 +47,7 @@ Options:
 
 ## Quickstart
 
-```bash
+```sh
 cargo install --locked hanko && hanko signer add octocat octocat@github.com
 ```
 
@@ -101,13 +101,13 @@ Any commits made by octocat with the email `octocat@github.com` and signed by on
 
 ## Using Cargo
 
-```
+```sh
 cargo install --locked hanko
 ```
 
 Or using [cargo binstall](https://github.com/cargo-bins/cargo-binstall) should you prefer not to build yourself.
 
-```bash
+```sh
 cargo binstall hanko
 ```
 
@@ -115,7 +115,7 @@ cargo binstall hanko
 
 From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every release and are available through the GitHub container registry for this repository.
 
-```
+```sh
 docker run -it ghcr.io/srv6d/hanko
 ```
 

@@ -32,17 +32,13 @@ Ensure a [recent version of rustup](https://www.rust-lang.org/tools/install) is 
 `hanko` uses [`rustfmt`](https://github.com/rust-lang/rustfmt) for uniform fomatting and [`clippy`](https://github.com/rust-lang/rust-clippy) for basic linting and enforcement of best practices. The [`just`] `lint` recipe can be used to run both.
 
 ```sh
-$ just lint
-cargo clippy --all-targets --all-features
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.34s
-cargo fmt --all --check
-...
+just lint
 ```
 
 In addition to basic formatting and linting, a high code coverage should be maintained.
 
 ```sh
-$ just test
+just test
 ```
 
 ## Performance
@@ -66,17 +62,17 @@ To release a new version of `hanko`, perform the following steps.
 - Checkout a new branch.
 
   ```sh
-  $ git switch -c bump-version-$NEW_VERSION
+  git switch -c bump-version-$NEW_VERSION
   ```
 
 - Use the just recipe to bump the version. This will create the necessary commits as well as a pull request using the GitHub CLI.
 
   ```sh
-  $ just bump-version $NEW_VERSION
+  just bump-version $NEW_VERSION
   ```
 
 - Once the branch is merged, a GitHub release for the new version containing the recent changes can be created automatically.
 
   ```sh
-  $ just release-latest-version $NEW_VERSION
+  just release-latest-version $NEW_VERSION
   ```
