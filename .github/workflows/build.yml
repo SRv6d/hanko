@@ -125,7 +125,7 @@ jobs:
 
       - name: Create Debian Package
         run: >-
-          cargo deb --no-build --target ${{ matrix.target }}
+          cargo deb --no-build --no-strip --target ${{ matrix.target }}
           --output ${TARGET_DIR}/debian/${DEB_FILENAME}
 
       - name: Upload Debian Package
