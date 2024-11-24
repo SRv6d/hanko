@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Debian Packages to releases.
 
+### Internal
+
+- Updated all dependencies.
+
 ## [0.5.0] - 2024-11-23
 
 ### Added
