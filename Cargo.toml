@@ -18,12 +18,12 @@ readme = "README.md"
 exclude = [".devcontainer", ".github", "doc/benchmark/**", "tests/**"]
 
 [dependencies]
-anyhow = "1.0.92"
+anyhow = "1.0.93"
 async-trait = "0.1.83"
 chrono = "0.4.38"
-clap = { version = "4.5.20", features = ["derive", "env", "string"] }
+clap = { version = "4.5.21", features = ["derive", "env", "string"] }
 toml_edit = { version = "0.22.22", features = ["serde"] }
-gix-config = { version = "0.41.0", optional = true }
+gix-config = { version = "0.42.0", optional = true }
 reqwest = { version = "0.12.9", default-features = false, features = [
     "json",
     "rustls-tls-native-roots",
@@ -32,9 +32,9 @@ reqwest = { version = "0.12.9", default-features = false, features = [
     "http2",
     "macos-system-configuration", # use macOS proxy configuration automatically
 ] }
-serde = { version = "1.0.213", features = ["derive"] }
-thiserror = "1.0.66"
-tokio = { version = "1.41.0", features = ["full"] }
+serde = { version = "1.0.215", features = ["derive"] }
+thiserror = "2.0.3"
+tokio = { version = "1.41.1", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
@@ -47,8 +47,8 @@ httpmock = "=0.7.0"
 indoc = "=2.0.5"
 proptest = "=1.5.0"
 rstest = "=0.23.0"
-serde_json = "=1.0.132"
-tempfile = "=3.13.0"
+serde_json = "=1.0.133"
+tempfile = "=3.14.0"
 reqwest = { version = "=0.12.9", default-features = false, features = ["blocking"] }
 
 [features]
