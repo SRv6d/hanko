@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2024-11-24
+
 ### Added
 
 - Debian Packages to releases.
@@ -82,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - aarch64 builds.
 
-[unreleased]: https://github.com/SRv6d/hanko/compare/v0.5.0...HEAD
+[unreleased]: https://github.com/SRv6d/hanko/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/SRv6d/hanko/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/SRv6d/hanko/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/SRv6d/hanko/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/SRv6d/hanko/compare/v0.3.0...v0.4.0
