@@ -139,25 +139,27 @@ jobs:
       id-token: write
       attestations: write
       contents: write
-    needs: cargo-build
+    needs:
+      - cargo-build
+      - cargo-deb
     runs-on: ubuntu-latest
     env:
-      ARCHIVE_DIR: release-archives
+      DOWNLOAD_DIR: release-files
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Download Release Archives
+      - name: Download Release Files
         run: >-
-          gh release download ${GITHUB_REF_NAME} --dir ${ARCHIVE_DIR} --pattern "hanko-*"
+          gh release download ${GITHUB_REF_NAME} --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Attest Build Provenance of Release Archives
+      - name: Attest Build Provenance of Release Files
         id: provenance
         uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
         with:
-          subject-path: ${{ env.ARCHIVE_DIR }}/*
+          subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
-      - name: Upload Provenance of Release Archives
+      - name: Upload Provenance of Release Files
         run: >-
           gh release upload ${GITHUB_REF_NAME}
           ${{ steps.provenance.outputs.bundle-path }}
@@ -201,7 +203,7 @@ jobs:
 
       - name: Download Release Binary
         run: >-
-          gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}*"
+          gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
           --output - | tar -xz
         env:
           GITHUB_TOKEN: ${{ github.token }}
