@@ -123,6 +123,34 @@ docker run -it ghcr.io/srv6d/hanko
 
 Binaries for most platforms are built and attested in CI and are available for every [release](https://github.com/SRv6d/hanko/releases).
 
+### Verifying Binaries and Release Assets
+
+All release assets are built in CI and utilize Build Provenance Attestation, providing a way to cryptographically verify the build instructions, environment and git revision used in the process.
+
+You can verify a release asset using the [`gh` CLI](https://cli.github.com).
+
+```sh
+$ gh at verify -R srv6d/hanko hanko-v0.5.1-aarch64-apple-darwin.tar.gz
+Loaded digest sha256:32b37a255ce6ff7a961ccd18d3e1e1207814a2f4410042919a48552ddaf254f9 for file://hanko-v0.5.1-aarch64-apple-darwin.tar.gz
+Loaded 1 attestation from GitHub API
+✓ Verification succeeded!
+
+sha256:32b37a255ce6ff7a961ccd18d3e1e1207814a2f4410042919a48552ddaf254f9 was attested by:
+REPO         PREDICATE_TYPE                  WORKFLOW
+SRv6d/hanko  https://slsa.dev/provenance/v1  .github/workflows/build.yml@refs/tags/v0.5.1
+```
+
+Alternatively, using the sigstore [`cosign` CLI](https://github.com/sigstore/cosign), after downloading the appropriate [attestation](https://github.com/srv6d/hanko/attestations).
+
+```sh
+$ cosign verify-blob-attestation --bundle SRv6d-hanko-attestation-3372432.sigstore.json \
+      --new-bundle-format \
+      --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+      --certificate-identity-regexp="^https://github.com/SRv6d/hanko/.github/workflows/build.yml@refs/tags/v.*$" \
+      hanko-v0.5.1-aarch64-apple-darwin.tar.gz
+Verified OK
+```
+
 # Configuration
 
 ## Example
