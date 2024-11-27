@@ -16,7 +16,7 @@ use std::{
 use tracing::Level;
 
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None)]
+#[command(long_version=long_version(), about, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -114,6 +114,16 @@ fn git_allowed_signers() -> Resettable<OsStr> {
     }
 
     Resettable::Reset
+}
+
+fn long_version() -> &'static str {
+    concat!(
+        env!("LONG_VERSION"),
+        "\n",
+        env!("LONG_VERSION_BUILD"),
+        "\n",
+        env!("LONG_VERSION_FEATURES")
+    )
 }
 
 /// The main CLI entrypoint.
