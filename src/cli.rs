@@ -118,9 +118,16 @@ fn git_allowed_signers() -> Resettable<OsStr> {
 
 fn long_version() -> &'static str {
     concat!(
-        env!("LONG_VERSION"),
+        concat!(env!("CARGO_PKG_VERSION"), " (", env!("VERGEN_GIT_SHA"), ")"),
         "\n",
-        env!("LONG_VERSION_BUILD"),
+        concat!(
+            "rustc ",
+            env!("VERGEN_RUSTC_SEMVER"),
+            ", ",
+            env!("LONG_VERSION_PROFILE"),
+            " profile, ",
+            env!("LONG_VERSION_ENV"),
+        ),
         "\n",
         env!("LONG_VERSION_FEATURES")
     )

@@ -1,39 +1,37 @@
-use std::{env, fmt::Write};
+use std::{env, error::Error};
 
-fn main() {
-    println!("cargo:rustc-env=LONG_VERSION={}", version());
-    println!("cargo:rustc-env=LONG_VERSION_BUILD={}", build_env());
+fn main() -> Result<(), Box<dyn Error>> {
+    let cargo = vergen_gix::CargoBuilder::all_cargo()?;
+    let rustc = vergen_gix::RustcBuilder::all_rustc()?;
+    let git = vergen_gix::GixBuilder::all_git()?;
+    vergen_gix::Emitter::default()
+        .add_instructions(&cargo)?
+        .add_instructions(&rustc)?
+        .add_instructions(&git)?
+        .emit()?;
+
+    println!(
+        "cargo:rustc-env=LONG_VERSION_PROFILE={}",
+        env::var("PROFILE").unwrap()
+    );
+    println!("cargo:rustc-env=LONG_VERSION_ENV={}", env());
     println!(
         "cargo:rustc-env=LONG_VERSION_FEATURES={}",
         enabled_features()
     );
+
+    Ok(())
 }
 
-fn version() -> String {
-    format!(
-        "{} ({})",
-        env!("CARGO_PKG_VERSION"),
-        env::var("GIT_COMMIT").unwrap_or("unknown commit".to_string())
-    )
-}
-
-fn build_env() -> String {
-    let mut build_env = format!(
-        "rustc {}, {} profile",
-        env!("RUST_VERSION"),
-        env::var("PROFILE").unwrap(),
-    );
+/// Build environment information.
+fn env() -> String {
     if env::var("GITHUB_ACTION").is_ok() {
         // The following variables are expected to exist when building within a GitHub workflow.
         // https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
-        write!(
-            build_env,
-            ", GitHub CI {}",
-            env::var("GITHUB_WORKFLOW_REF").unwrap()
-        )
-        .unwrap();
+        return format!("GitHub CI {}", env::var("GITHUB_WORKFLOW_REF").unwrap());
     }
-    build_env
+
+    "unknown environment".to_string()
 }
 
 fn enabled_features() -> String {
