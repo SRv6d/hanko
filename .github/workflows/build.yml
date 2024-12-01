@@ -110,7 +110,7 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaab
-      - uses: taiki-e/install-action@684122deb17127bf60d1d99224e12e8fc0012210
+      - uses: taiki-e/install-action@a22e1808bbd53573c0b897cc089c64643401af7d
         with:
           tool: cargo-deb
 
@@ -155,7 +155,7 @@ jobs:
 
       - name: Attest Build Provenance of Release Files
         id: provenance
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018
         with:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
@@ -197,7 +197,7 @@ jobs:
 
       - name: Extract Metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
@@ -210,7 +210,7 @@ jobs:
 
       - name: Build & Push Image
         id: push
-        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: .
           push: true
@@ -219,7 +219,7 @@ jobs:
           platforms: ${{ matrix.platform }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
