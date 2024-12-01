@@ -16,7 +16,7 @@ use std::{
 use tracing::Level;
 
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None)]
+#[command(long_version=long_version(), about, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -116,6 +116,23 @@ fn git_allowed_signers() -> Resettable<OsStr> {
     Resettable::Reset
 }
 
+fn long_version() -> &'static str {
+    concat!(
+        concat!(env!("CARGO_PKG_VERSION"), " (", env!("VERGEN_GIT_SHA"), ")"),
+        "\n",
+        concat!(
+            "rustc ",
+            env!("VERGEN_RUSTC_SEMVER"),
+            ", ",
+            env!("LONG_VERSION_PROFILE"),
+            " profile, ",
+            env!("LONG_VERSION_ENV"),
+        ),
+        "\n",
+        env!("LONG_VERSION_FEATURES")
+    )
+}
+
 /// The main CLI entrypoint.
 pub fn entrypoint() -> Result<()> {
     let cli = Cli::parse();
@@ -209,10 +226,23 @@ fn setup_tracing(vebosity_level: u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_cmd::Command;
+    use predicates::prelude::*;
 
     #[test]
     fn verify_cli() {
         use clap::CommandFactory;
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn version_contains_version() {
+        let version = format!("hanko {}", env!("CARGO_PKG_VERSION"));
+
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.arg("--version");
+
+        cmd.assert().success();
+        cmd.assert().stdout(predicate::str::starts_with(version));
     }
 }
