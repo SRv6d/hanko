@@ -7,7 +7,6 @@ use clap::{
     builder::{OsStr, Resettable},
     Parser, Subcommand,
 };
-use serde::{Deserialize, Serialize};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -34,7 +33,7 @@ enum Commands {
     Signer(ManageSigners),
 }
 
-#[derive(Debug, Serialize, Deserialize, clap::Args)]
+#[derive(Debug, clap::Args)]
 struct GlobalArgs {
     /// The configuration file.
     #[arg(
