@@ -1,6 +1,8 @@
 export CI := env("CI", "false")
 CHANGELOG_FILE := "CHANGELOG.md"
 REPO_URL := "https://github.com/SRv6d/hanko"
+COMPLETIONS_DIR := "assets/completions"
+MANPAGES_DIR := "assets/manpages"
 
 default: check-lockfile lint test
 
@@ -21,6 +23,14 @@ cov_output := if CI == "true" { "--lcov --output-path lcov.info" } else { "--sum
 # Run tests
 test $COV=CI: (_install_llvm_cov COV)
     {{ if COV == "true" { "cargo llvm-cov --all-features" + " " + cov_output } else { "cargo test --all-features" } }}
+
+# Generate up to date shell completions
+shell-completions $DIR=COMPLETIONS_DIR:
+    cargo xtask completions {{ DIR }}
+
+# Generate up to date manpages
+manpages $DIR=MANPAGES_DIR:
+    cargo xtask manpages {{ DIR }}
 
 # Bump our version
 bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
