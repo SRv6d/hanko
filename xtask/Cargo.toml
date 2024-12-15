@@ -7,3 +7,4 @@ edition = "2021"
 hanko = { path = "../" }
 clap = { version = "4.5.23", features = ["derive", "env", "string"] }
 clap_complete = "4.5.38"
+clap_mangen = "0.2.24"
