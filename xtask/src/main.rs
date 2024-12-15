@@ -37,7 +37,9 @@ fn create_manpages(dir: PathBuf) -> Result<(), Box<dyn Error>> {
         // Since manpages are static, but some default values are adjusted to the user environment at
         // runtime, we set appropriate static values here.
         .mut_arg("config", |a| a.default_value(MAN_DEFAULT_CONFIG))
-        .mut_arg("file", |a| a.default_value(None));
+        .mut_arg("file", |a| a.default_value(None))
+        // Don't include the full version string and build information.
+        .long_version(None);
 
     clap_mangen::generate_to(cmd, dir)?;
 
