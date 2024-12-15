@@ -1,0 +1,240 @@
+#compdef hanko
+
+autoload -U is-at-least
+
+_hanko() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-c+[The configuration file]:PATH:_files' \
+'--config=[The configuration file]:PATH:_files' \
+'--file=[The allowed signers file]:PATH:_files' \
+'*-v[Use verbose output]' \
+'*--verbose[Use verbose output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_hanko_commands" \
+"*::: :->hanko" \
+&& ret=0
+    case $state in
+    (hanko)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:hanko-command-$line[1]:"
+        case $line[1] in
+            (update)
+_arguments "${_arguments_options[@]}" : \
+'-c+[The configuration file]:PATH:_files' \
+'--config=[The configuration file]:PATH:_files' \
+'--file=[The allowed signers file]:PATH:_files' \
+'*-v[Use verbose output]' \
+'*--verbose[Use verbose output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(signer)
+_arguments "${_arguments_options[@]}" : \
+'-c+[The configuration file]:PATH:_files' \
+'--config=[The configuration file]:PATH:_files' \
+'--file=[The allowed signers file]:PATH:_files' \
+'*-v[Use verbose output]' \
+'*--verbose[Use verbose output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_hanko__signer_commands" \
+"*::: :->signer" \
+&& ret=0
+
+    case $state in
+    (signer)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:hanko-signer-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'*-s+[The source(s) of the signer to add]:SOURCE:_default' \
+'*--source=[The source(s) of the signer to add]:SOURCE:_default' \
+'-c+[The configuration file]:PATH:_files' \
+'--config=[The configuration file]:PATH:_files' \
+'--file=[The allowed signers file]:PATH:_files' \
+'--no-update[Don'\''t update the allowed signers file with the added signer(s)]' \
+'*-v[Use verbose output]' \
+'*--verbose[Use verbose output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- The name of the signer to add:_users' \
+'*::principals -- The principals of the signer to add:_email_addresses' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_hanko__signer__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:hanko-signer-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_hanko__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:hanko-help-command-$line[1]:"
+        case $line[1] in
+            (update)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(signer)
+_arguments "${_arguments_options[@]}" : \
+":: :_hanko__help__signer_commands" \
+"*::: :->signer" \
+&& ret=0
+
+    case $state in
+    (signer)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:hanko-help-signer-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_hanko_commands] )) ||
+_hanko_commands() {
+    local commands; commands=(
+'update:Update the allowed signers file' \
+'signer:Manage allowed signers' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'hanko commands' commands "$@"
+}
+(( $+functions[_hanko__help_commands] )) ||
+_hanko__help_commands() {
+    local commands; commands=(
+'update:Update the allowed signers file' \
+'signer:Manage allowed signers' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'hanko help commands' commands "$@"
+}
+(( $+functions[_hanko__help__help_commands] )) ||
+_hanko__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'hanko help help commands' commands "$@"
+}
+(( $+functions[_hanko__help__signer_commands] )) ||
+_hanko__help__signer_commands() {
+    local commands; commands=(
+'add:Add an allowed signer' \
+    )
+    _describe -t commands 'hanko help signer commands' commands "$@"
+}
+(( $+functions[_hanko__help__signer__add_commands] )) ||
+_hanko__help__signer__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'hanko help signer add commands' commands "$@"
+}
+(( $+functions[_hanko__help__update_commands] )) ||
+_hanko__help__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'hanko help update commands' commands "$@"
+}
+(( $+functions[_hanko__signer_commands] )) ||
+_hanko__signer_commands() {
+    local commands; commands=(
+'add:Add an allowed signer' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'hanko signer commands' commands "$@"
+}
+(( $+functions[_hanko__signer__add_commands] )) ||
+_hanko__signer__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'hanko signer add commands' commands "$@"
+}
+(( $+functions[_hanko__signer__help_commands] )) ||
+_hanko__signer__help_commands() {
+    local commands; commands=(
+'add:Add an allowed signer' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'hanko signer help commands' commands "$@"
+}
+(( $+functions[_hanko__signer__help__add_commands] )) ||
+_hanko__signer__help__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'hanko signer help add commands' commands "$@"
+}
+(( $+functions[_hanko__signer__help__help_commands] )) ||
+_hanko__signer__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'hanko signer help help commands' commands "$@"
+}
+(( $+functions[_hanko__update_commands] )) ||
+_hanko__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'hanko update commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_hanko" ]; then
+    _hanko "$@"
+else
+    compdef _hanko hanko
+fi
