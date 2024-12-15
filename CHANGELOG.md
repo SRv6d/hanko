@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2024-12-15
+
 ### Added
 
 - Shell completion files for bash, zsh, fish, elvish and powershell.
@@ -97,7 +99,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - aarch64 builds.
 
-[unreleased]: https://github.com/SRv6d/hanko/compare/v0.5.1...HEAD
+[unreleased]: https://github.com/SRv6d/hanko/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/SRv6d/hanko/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/SRv6d/hanko/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/SRv6d/hanko/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/SRv6d/hanko/compare/v0.4.0...v0.4.1
