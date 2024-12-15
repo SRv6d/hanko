@@ -54,6 +54,17 @@ reqwest = { version = "=0.12.9", default-features = false, features = ["blocking
 [build-dependencies]
 vergen-gix = { version = "1.0.3", features = ["cargo", "rustc"] }
 
+[package.metadata.deb]
+assets = [
+    { source = "target/release/hanko", dest = "/usr/bin/", mode = "755"},
+    { source = "README.md", dest = "/usr/share/doc/hanko/", mode = "644"},
+    { source = "assets/completions/hanko.bash", dest = "/usr/share/bash-completion/completions/hanko", mode = "644"},
+    { source = "assets/completions/_hanko", dest = "/usr/share/zsh/vendor-completions/", mode = "644"},
+    { source = "assets/completions/hanko.fish", dest = "/usr/share/fish/vendor_completions.d/", mode = "644"},
+    { source = "assets/completions/hanko.elv", dest = "/usr/share/elvish/lib/", mode = "644"},
+    { source = "assets/manpages/*", dest = "/usr/share/man/man1/", mode = "644"},
+]
+
 [features]
 default = ["detect-allowed-signers"]
 detect-allowed-signers = ["dep:gix-config"]
