@@ -76,3 +76,7 @@ harness = false
 [[bench]]
 name = "load_configuration"
 harness = false
+
+[profile.release]
+lto = true
+panic = "abort"
