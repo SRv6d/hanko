@@ -33,7 +33,7 @@ fn create_completions(dir: clap::builder::OsStr) -> Result<(), Box<dyn Error>> {
 
 /// Create manpages for all commands and subcommands.
 fn create_manpages(dir: PathBuf) -> Result<(), Box<dyn Error>> {
-    let mut cmd = Cli::command()
+    let cmd = Cli::command()
         // Since manpages are static, but some default values are adjusted to the user environment at
         // runtime, we set appropriate static values here.
         .mut_arg("config", |a| a.default_value(MAN_DEFAULT_CONFIG))

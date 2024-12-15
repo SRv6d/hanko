@@ -5,7 +5,7 @@ use crate::{
 use anyhow::{Context, Result};
 use clap::{
     builder::{OsStr, Resettable},
-    Parser, Subcommand,
+    Parser, Subcommand, ValueHint,
 };
 use std::{
     env,
@@ -40,6 +40,7 @@ struct GlobalArgs {
         short,
         long,
         value_name = "PATH",
+        value_hint = ValueHint::FilePath,
         env = "HANKO_CONFIG",
         global = true,
         default_value = default_config_path()
@@ -50,6 +51,7 @@ struct GlobalArgs {
     #[arg(
         long,
         value_name = "PATH",
+        value_hint = ValueHint::FilePath,
         env = "HANKO_ALLOWED_SIGNERS",
         global = true,
         default_value = git_allowed_signers()
@@ -66,8 +68,10 @@ enum ManageSigners {
     /// Add an allowed signer.
     Add {
         /// The name of the signer to add.
+        #[arg(value_hint = ValueHint::Username)]
         name: String,
         /// The principals of the signer to add.
+        #[arg(value_hint = ValueHint::EmailAddress)]
         principals: Vec<String>,
         /// The source(s) of the signer to add.
         #[arg(short, long, default_values_t = default_user_source())]
