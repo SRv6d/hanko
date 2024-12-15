@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Shell completion files for bash, zsh, fish, elvish and powershell.
+- Manpages.
+
 ### Changed
 
 - Version output now contains features and build time information.
+
+### Internal
+
+- Minimize enabled features for external dependencies and improve binary size.
 
 ## [0.5.1] - 2024-11-24
 
