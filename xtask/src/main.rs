@@ -2,6 +2,8 @@ use clap::{self, CommandFactory, ValueEnum};
 use hanko::cli::Cli;
 use std::{env, error::Error, path::PathBuf};
 
+const MAN_DEFAULT_CONFIG: &str = "~/.config/hanko/config.toml";
+
 fn main() -> Result<(), Box<dyn Error>> {
     let task = env::args().nth(1);
     match task.as_deref() {
@@ -31,7 +33,12 @@ fn create_completions(dir: clap::builder::OsStr) -> Result<(), Box<dyn Error>> {
 
 /// Create manpages for all commands and subcommands.
 fn create_manpages(dir: PathBuf) -> Result<(), Box<dyn Error>> {
-    let cmd = Cli::command();
+    let mut cmd = Cli::command()
+        // Since manpages are static, but some default values are adjusted to the user environment at
+        // runtime, we set appropriate static values here.
+        .mut_arg("config", |a| a.default_value(MAN_DEFAULT_CONFIG))
+        .mut_arg("file", |a| a.default_value(None));
+
     clap_mangen::generate_to(cmd, dir)?;
 
     Ok(())
