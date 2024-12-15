@@ -1,0 +1,28 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH hanko-update 1  "update " 
+.SH NAME
+hanko\-update \- Update the allowed signers file
+.SH SYNOPSIS
+\fBhanko update\fR [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-c\fR|\fB\-\-config\fR] [\fB\-\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] 
+.SH DESCRIPTION
+Update the allowed signers file
+.SH OPTIONS
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Use verbose output
+.TP
+\fB\-c\fR, \fB\-\-config\fR=\fIPATH\fR [default: ~/.config/hanko/config.toml]
+The configuration file
+.RS
+May also be specified with the \fBHANKO_CONFIG\fR environment variable. 
+.RE
+.TP
+\fB\-\-file\fR=\fIPATH\fR
+The allowed signers file
+.RS
+May also be specified with the \fBHANKO_ALLOWED_SIGNERS\fR environment variable. 
+.RE
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
