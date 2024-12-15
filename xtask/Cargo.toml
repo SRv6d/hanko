@@ -1,0 +1,9 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hanko = { path = "../" }
+clap = { version = "4.5.23", features = ["derive", "env", "string"] }
+clap_complete = "4.5.38"
