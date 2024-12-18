@@ -25,12 +25,40 @@ test $COV=CI: (_install_llvm_cov COV)
     {{ if COV == "true" { "cargo llvm-cov --all-features" + " " + cov_output } else { "cargo test --all-features" } }}
 
 # Generate up to date shell completions
-shell-completions $DIR=COMPLETIONS_DIR:
-    cargo xtask completions {{ DIR }}
+completions dir=COMPLETIONS_DIR:
+    cargo xtask completions {{ dir }}
 
 # Generate up to date manpages
-manpages $DIR=MANPAGES_DIR:
-    cargo xtask manpages {{ DIR }}
+manpages dir=MANPAGES_DIR:
+    cargo xtask manpages {{ dir }}
+
+# Create a release build for the specified target
+release-build target:
+    cargo build --release --locked --target {{ target }}
+
+# Create the release archive for the specified target
+release-archive target filename: (release-build target)
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    if [ "{{ os_family() }}" == "unix" ]; then
+        DIR=$(mktemp -d)
+    else
+        DIR="${TEMP}/hanko-{{ uuid() }}"
+        mkdir -p $DIR
+    fi
+
+    cp README.md LICENSE CHANGELOG.md {{ MANPAGES_DIR }}/* $DIR
+    mkdir $DIR/completions
+    cp {{ COMPLETIONS_DIR }}/* $DIR/completions
+    cp target/{{ target }}/release/hanko $DIR
+
+    if [ "{{ extension(filename) }}" == "gz" ]; then
+        tar -czvf {{ filename }} -C $DIR .
+    else
+        cd $DIR && 7z a {{ join(justfile_directory(), filename) }} *
+    fi
+
 
 # Bump our version
 bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
