@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cargo-build:
+  build-release-archive:
     permissions:
       contents: write
     strategy:
@@ -45,6 +45,7 @@ jobs:
           toolchain: stable
           targets: "${{ matrix.target }}"
       - uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaab
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
       - name: Install GCC for aarch64
         run: |
           sudo apt install -y gcc-aarch64-linux-gnu
@@ -64,22 +65,8 @@ jobs:
           cargo -V
           rustc -V
 
-      - name: Build
-        run: cargo build --release --locked --target ${{ matrix.target }}
-
-      - name: Create Release Tar Archive
-        run: >-
-          tar -czvf "${ARCHIVE_FILENAME}"
-          -C target/${{ matrix.target }}/release
-          hanko
-        shell: bash
-        if: ${{ !startsWith(matrix.os, 'windows') }}
-      - name: Create Release Zip Archive
-        run: >-
-          7z a "${ARCHIVE_FILENAME}"
-          ./target/${{ matrix.target }}/release/hanko.exe
-        shell: bash
-        if: ${{ startsWith(matrix.os, 'windows') }}
+      - name: Create Release Archive
+        run: just release-archive ${{ matrix.target }} ${{ env.ARCHIVE_FILENAME }}
 
       - name: Upload Release Archive
         run: >-
@@ -91,7 +78,7 @@ jobs:
   cargo-deb:
     permissions:
       contents: write
-    needs: cargo-build
+    needs: build-release-archive
     strategy:
       fail-fast: false
       matrix:
@@ -119,7 +106,7 @@ jobs:
       - name: Download Release Binary
         run: >-
           gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
-          --output - | tar -xz -C ${TARGET_DIR}/release
+          --output - | tar -xz ./hanko -C ${TARGET_DIR}/release
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -140,7 +127,7 @@ jobs:
       attestations: write
       contents: write
     needs:
-      - cargo-build
+      - build-release-archive
       - cargo-deb
     runs-on: ubuntu-latest
     env:
@@ -178,7 +165,7 @@ jobs:
             platform: linux/amd64
           - target: aarch64-unknown-linux-musl
             platform: linux/arm64
-    needs: cargo-build
+    needs: build-release-archive
     runs-on: ubuntu-latest
     env:
       REGISTRY: ghcr.io
@@ -204,7 +191,7 @@ jobs:
       - name: Download Release Binary
         run: >-
           gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
-          --output - | tar -xz
+          --output - | tar -xz ./hanko
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
