@@ -59,7 +59,6 @@ release-archive target filename: (release-build target)
         cd $DIR && 7z a {{ join(justfile_directory(), filename) }} *
     fi
 
-
 # Bump our version
 bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
     #!/usr/bin/env bash
