@@ -25,6 +25,13 @@
 
 `hanko` keeps your Git allowed signers file up to date with signing keys configured on software development platforms like GitHub and GitLab.
 
+- [Usage](#usage)
+  - [Quickstart](#quickstart)
+  - [Adding an allowed signer](#adding-an-allowed-signer)
+  - [Updating the allowed signers file](#updating-the-allowed-signers-file)
+- [Installation](#installation)
+- [Configuration](#configuration)
+
 # Usage
 
 ```
