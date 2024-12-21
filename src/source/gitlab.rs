@@ -42,6 +42,7 @@ impl Source for Gitlab {
             .get(url)
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER)
+            .version(reqwest::Version::HTTP_2)
             .build()
             .unwrap();
 
