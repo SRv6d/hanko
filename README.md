@@ -166,17 +166,59 @@ Verified OK
 
 # Configuration
 
-## Example
+## Signers
+
+Signers are the individuals or entities whose signing keys you want to track and include in your allowed signers file so they can be used to verify the authenticity and integrity of commits and tags. When a commit or tag is signed, Git uses the matching principal's public key to verify its authenticity.
+Each signer can have multiple principals (email addresses) and can be associated with multiple sources.
+
+#### Options
+
+- `name`: The username of the signer on the given sources.
+- `principals`: A list of email addresses associated with the signer. Used by Git to associate a commit with an allowed signer.
+- `sources`(optional): A list of sources exposing the signers public keys. Defaults to GitHub if not specified.
+
+#### Example
 
 ```toml
-signers = [
-    { name = "torvalds", principals = ["torvalds@linux-foundation.org"], sources = ["github"] },
-    { name = "gvanrossum", principals = ["guido@python.org"], sources = ["github", "gitlab"] },
-    { name = "graydon", principals = ["graydon@pobox.com"], sources = ["github"] },
-    { name = "cwoods", principals = ["cwoods@acme.corp"], sources = ["acme-corp"] },
-    { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
-    { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
-]
+[[signers]]
+name = "torvalds"
+principals = ["torvalds@linux-foundation.org"]
+sources = ["github"]
+```
+
+## Sources
+
+Sources provide the public keys of allowed signers. Currently any source that is API compatible to either GitHub or GitLab is supported. If you are missing a source, don't hesitate to open an issue or give it a try yourself, as they are fairly trivial to implement. To use a source other than [github.com](https://github.com) or [gitlab.com](https://gitlab.com/explore), e.g. a self-hosted GitLab instance, use the configuration options described below.
+
+#### Options
+
+- `name`: The name of the source.
+- `provider`: The type of the source. Either `github` or `gitlab`.
+- `url`: The URL of the source's API endpoint.
+
+#### Example
+
+```toml
+[[sources]]
+name = "acme-corp"
+provider = "gitlab"
+url = "https://git.acme.corp"
+```
+
+## Full Example
+
+Putting it all together, the following example configures two allowed signers, the first one using the default GitHub source, while the second uses a company specific GitLab instance.
+
+```toml
+[[signers]]
+name = "torvalds"
+principals = ["torvalds@linux-foundation.org"]
+
+[[signers]]
+name = "cwoods"
+principals = ["cwoods@acme.corp"]
+sources = ["acme-corp"]
+
 
 [[sources]]
 name = "acme-corp"
