@@ -59,10 +59,35 @@ impl File {
 /// An entry in the allowed signers file.
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Entry {
-    pub principals: Vec<String>,
-    pub valid_after: Option<DateTime<Local>>,
-    pub valid_before: Option<DateTime<Local>>,
-    pub key: PublicKey,
+    principals: Vec<String>,
+    valid_after: Option<DateTime<Local>>,
+    valid_before: Option<DateTime<Local>>,
+    key: PublicKey,
+}
+
+impl Entry {
+    #[must_use]
+    /// Create a new signer entry.
+    ///
+    /// # Panics
+    /// If the provided principals are empty.
+    pub fn new(
+        principals: Vec<String>,
+        valid_after: Option<DateTime<Local>>,
+        valid_before: Option<DateTime<Local>>,
+        key: PublicKey,
+    ) -> Self {
+        assert!(
+            !principals.is_empty(),
+            "signer entry requires at least one principal"
+        );
+        Entry {
+            principals,
+            valid_after,
+            valid_before,
+            key,
+        }
+    }
 }
 
 impl fmt::Display for Entry {
@@ -187,6 +212,12 @@ mod tests {
             ),
             path,
         )
+    }
+
+    #[test]
+    #[should_panic(expected = "signer entry requires at least one principal")]
+    fn new_entry_without_principal_panics() {
+        let _ = Entry::new(vec![], None, None, entry_jsnow().key);
     }
 
     #[rstest]

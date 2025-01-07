@@ -262,6 +262,7 @@ impl Configuration {
                 .iter()
                 .flat_map(|c| c.source_names.iter().map(String::as_str)),
         )?;
+        self.check_signers_have_one_or_more_principals()?;
 
         Ok(())
     }
@@ -281,6 +282,16 @@ impl Configuration {
         if !missing_sources.is_empty() {
             missing_sources.sort();
             bail!("Missing sources: {}", missing_sources.join(", "))
+        }
+        Ok(())
+    }
+
+    /// Check that all signers have at least one principal configured.
+    fn check_signers_have_one_or_more_principals(&self) -> Result<()> {
+        for config in &self.signers {
+            if config.principals.is_empty() {
+                bail!("Signer {} missing principals", config.name)
+            }
         }
         Ok(())
     }
@@ -448,6 +459,32 @@ mod tests {
             err.to_string(),
             format!("Missing sources: {}", expected_missing.join(", "))
         );
+    }
+
+    /// Loading configuration containing a signer without at least one principal returns an appropriate error.
+    #[rstest]
+    #[case(
+        indoc!{r#"
+            [[signers]]
+            name = "octocat"
+        "#},
+    )]
+    #[case(
+        indoc!{r#"
+            [[signers]]
+            name = "octocat"
+            principals = []
+        "#},
+    )]
+    fn loading_configuration_with_signer_missing_principal_returns_error(
+        mut tmp_config_toml: NamedTempFile,
+        #[case] config: &str,
+    ) {
+        writeln!(tmp_config_toml, "{config}").unwrap();
+
+        let err = Configuration::load(tmp_config_toml.path()).unwrap_err();
+
+        assert_eq!(err.to_string(), "Signer octocat missing principals");
     }
 
     #[rstest]
