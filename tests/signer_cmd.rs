@@ -1,6 +1,7 @@
 //! Ensure correct behavior of the signer management subcommand.
 use assert_cmd::Command;
 use indoc::indoc;
+use predicates::prelude::*;
 use rstest::*;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -85,4 +86,22 @@ fn adding_signer_creates_configuration_if_none_exists(
     let result = std::fs::read_to_string(path).unwrap();
 
     assert_eq!(result, expected);
+}
+
+/// Adding a signer requires specifying at least one principal.
+#[test]
+fn adding_signer_requires_principal() {
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.arg("--file")
+        .arg(NamedTempFile::new().unwrap().path())
+        .arg("signer")
+        .arg("add")
+        .arg("--no-update")
+        .arg("octocat");
+
+    cmd.assert().failure();
+    cmd.assert().stderr(predicate::str::contains(
+        "required arguments were not provided",
+    ));
+    cmd.assert().stderr(predicate::str::contains("PRINCIPALS"));
 }
