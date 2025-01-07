@@ -262,6 +262,7 @@ impl Configuration {
                 .iter()
                 .flat_map(|c| c.source_names.iter().map(String::as_str)),
         )?;
+        self.check_signers_have_one_or_more_principals()?;
 
         Ok(())
     }
@@ -281,6 +282,16 @@ impl Configuration {
         if !missing_sources.is_empty() {
             missing_sources.sort();
             bail!("Missing sources: {}", missing_sources.join(", "))
+        }
+        Ok(())
+    }
+
+    /// Check that all signers have at least one principal configured.
+    fn check_signers_have_one_or_more_principals(&self) -> Result<()> {
+        for config in &self.signers {
+            if config.principals.is_empty() {
+                bail!("Signer {} missing principals", config.name)
+            }
         }
         Ok(())
     }
