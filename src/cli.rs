@@ -71,7 +71,7 @@ enum ManageSigners {
         #[arg(value_hint = ValueHint::Username)]
         name: String,
         /// The principals of the signer to add.
-        #[arg(value_hint = ValueHint::EmailAddress)]
+        #[arg(required = true, value_hint = ValueHint::EmailAddress)]
         principals: Vec<String>,
         /// The source(s) of the signer to add.
         #[arg(short, long, default_values_t = default_user_source())]
