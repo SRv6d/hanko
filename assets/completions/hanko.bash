@@ -240,7 +240,7 @@ _hanko() {
             return 0
             ;;
         hanko__signer__add)
-            opts="-s -c -v -h --source --no-update --config --file --verbose --help <NAME> [PRINCIPALS]..."
+            opts="-s -c -v -h --source --no-update --config --file --verbose --help <NAME> <PRINCIPALS>..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
