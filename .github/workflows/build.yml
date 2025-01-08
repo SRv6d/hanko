@@ -106,7 +106,7 @@ jobs:
       - name: Download Release Binary
         run: >-
           gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
-          --output - | tar -xz ./hanko -C ${TARGET_DIR}/release
+          --output - | tar -xz -C ${TARGET_DIR}/release ./hanko
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
