@@ -56,7 +56,8 @@ release-archive target filename: (release-build target)
     if [ "{{ extension(filename) }}" == "gz" ]; then
         tar -czvf {{ filename }} -C $DIR .
     else
-        cd $DIR && 7z a {{ join(justfile_directory(), filename) }} *
+        (cd $DIR && 7z a {{ filename }} *)
+        cp $DIR/{{ filename }} .
     fi
 
 # Bump our version
