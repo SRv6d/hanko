@@ -178,11 +178,11 @@ pub fn entrypoint() -> Result<()> {
         },
     }
 
-    update_allowed_singers(signers_file, &config)
+    update_allowed_signers(signers_file, &config)
 }
 
 #[tokio::main]
-async fn update_allowed_singers(file: &Path, config: &Configuration) -> Result<()> {
+async fn update_allowed_signers(file: &Path, config: &Configuration) -> Result<()> {
     let start = Instant::now();
 
     let sources = config.sources();
@@ -201,8 +201,8 @@ async fn update_allowed_singers(file: &Path, config: &Configuration) -> Result<(
     Ok(())
 }
 
-fn setup_tracing(vebosity_level: u8) {
-    let level = match vebosity_level {
+fn setup_tracing(verbosity_level: u8) {
+    let level = match verbosity_level {
         0 => return, // The user did not specify a verbosity level, do not configure tracing.
         1 => Level::INFO,
         2 => Level::DEBUG,
@@ -210,7 +210,7 @@ fn setup_tracing(vebosity_level: u8) {
     };
     let filter = {
         // For verbosity levels of 3 and above, given a debug build, traces from external crates are included.
-        if vebosity_level > 3 && cfg!(debug_assertions) {
+        if verbosity_level > 3 && cfg!(debug_assertions) {
             tracing_subscriber::filter::EnvFilter::new(format!("{level}"))
         } else {
             // Otherwise, traces from external crates are filtered.
