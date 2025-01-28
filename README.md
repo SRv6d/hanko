@@ -144,11 +144,11 @@ Add the [apt.cli.rs](https://apt.cli.rs/) repository, after which you can instal
 sudo apt install hanko
 ```
 
-Alternatively, static deb packages are also available for every [release](https://github.com/SRv6d/hanko/releases).
+Alternatively, static deb packages are also available for every [release].
 
 ## Using Docker
 
-From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every release and are available through the GitHub container registry for this repository.
+From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every [release] and are available through the GitHub container registry for this repository.
 
 ```sh
 docker run -it ghcr.io/srv6d/hanko
@@ -156,7 +156,7 @@ docker run -it ghcr.io/srv6d/hanko
 
 ## Using pre-built binaries
 
-Binaries for most platforms are built and attested in CI and are available for every [release](https://github.com/SRv6d/hanko/releases).
+Binaries for most platforms are built and attested in CI and are available for every [release].
 
 ### Verifying Binaries and Release Assets
 
@@ -264,3 +264,4 @@ To get started, please read the [contribution guidelines](.github/CONTRIBUTING.m
 The source code of this project is licensed under the MIT License. For more information, see [LICENSE](LICENSE).
 
 [gix-config]: https://crates.io/crates/gix-config
+[release]: https://github.com/SRv6d/hanko/releases
