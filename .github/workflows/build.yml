@@ -142,7 +142,7 @@ jobs:
 
       - name: Attest Build Provenance of Release Files
         id: provenance
-        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4
         with:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
@@ -206,7 +206,7 @@ jobs:
           platforms: ${{ matrix.platform }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
