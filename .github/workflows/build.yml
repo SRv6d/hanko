@@ -40,7 +40,7 @@ jobs:
         hanko-${{ github.ref_name }}-${{ matrix.target }}.${{ startsWith(matrix.os, 'windows') && 'zip' || 'tar.gz' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a
+      - uses: dtolnay/rust-toolchain@c5a29ddb4d9d194e7c84ec8c3fba61b1c31fee8c
         with:
           toolchain: stable
           targets: "${{ matrix.target }}"
@@ -93,7 +93,7 @@ jobs:
       DEB_FILENAME: hanko-${{ github.ref_name }}-${{ matrix.arch }}.deb
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: dtolnay/rust-toolchain@1482605bfc5719782e1267fd0c0cc350fe7646b8
+      - uses: dtolnay/rust-toolchain@c5a29ddb4d9d194e7c84ec8c3fba61b1c31fee8c
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
@@ -142,7 +142,7 @@ jobs:
 
       - name: Attest Build Provenance of Release Files
         id: provenance
-        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4
         with:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
@@ -206,7 +206,7 @@ jobs:
           platforms: ${{ matrix.platform }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
