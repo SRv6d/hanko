@@ -102,7 +102,7 @@ octocat@github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN3ZSWa2S+RI/GdKi6WXl4k+F
 octocat@github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILSK47p5e3KlWAqe1yPkPZUSK3TJVJUzLqKdaPq/ClOa
 ```
 
-Any commits made by octocat with the email `octocat@github.com` and signed by one of their signing keys will no be considered as valid by Git.
+Any commits made by octocat with the email `octocat@github.com` and signed by one of their signing keys will now be considered as valid by Git.
 
 # Installation
 
