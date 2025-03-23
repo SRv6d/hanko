@@ -24,6 +24,10 @@ cov_output := if CI == "true" { "--lcov --output-path lcov.info" } else { "--sum
 test $COV=CI: (_install_llvm_cov COV)
     {{ if COV == "true" { "cargo llvm-cov --all-features" + " " + cov_output } else { "cargo test --all-features" } }}
 
+# Check feature combinations
+check-features:
+    cargo hack check --each-feature --no-dev-deps
+
 # Generate up to date shell completions
 completions dir=COMPLETIONS_DIR:
     cargo xtask completions {{ dir }}
