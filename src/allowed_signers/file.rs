@@ -59,10 +59,10 @@ impl File {
 /// An entry in the allowed signers file.
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Entry {
-    principals: Vec<String>,
-    valid_after: Option<DateTime<Local>>,
-    valid_before: Option<DateTime<Local>>,
-    key: PublicKey,
+    pub principals: Vec<String>,
+    pub valid_after: Option<DateTime<Local>>,
+    pub valid_before: Option<DateTime<Local>>,
+    pub key: PublicKey,
 }
 
 impl Entry {
