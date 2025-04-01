@@ -28,7 +28,7 @@ jobs:
       - uses: taiki-e/install-action@575f713d0233afba556737a7b85080563be14186
         with:
           tool: cargo-llvm-cov
-      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
+      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
 
       - name: Test
         run: just test
@@ -51,7 +51,7 @@ jobs:
       - uses: taiki-e/install-action@575f713d0233afba556737a7b85080563be14186
         with:
           tool: cargo-hack
-      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6
+      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
 
       - name: Test
         run: just check-features
