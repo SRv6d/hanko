@@ -52,7 +52,7 @@ tempfile = "=3.17.1"
 reqwest = { version = "=0.12.15", default-features = false, features = ["blocking"] }
 
 [build-dependencies]
-vergen-gix = { version = "1.0.3", features = ["cargo", "rustc"] }
+vergen-gix = { version = "1.0.6", features = ["cargo", "rustc"] }
 
 [package.metadata.deb]
 assets = [
