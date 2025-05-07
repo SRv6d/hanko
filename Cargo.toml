@@ -19,7 +19,7 @@ exclude = [".devcontainer", ".github", "doc/benchmark/**", "tests/**"]
 
 [dependencies]
 anyhow = "1.0.97"
-async-trait = "0.1.86"
+async-trait = "0.1.88"
 chrono = "0.4.39"
 clap = { version = "4.5.37", features = ["derive", "env", "string"] }
 toml_edit = { version = "0.22.24", features = ["serde"] }
