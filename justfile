@@ -1,4 +1,5 @@
 export CI := env("CI", "false")
+CRATE_NAME := "hanko"
 CHANGELOG_FILE := "CHANGELOG.md"
 REPO_URL := "https://github.com/SRv6d/hanko"
 COMPLETIONS_DIR := "assets/completions"
@@ -56,14 +57,14 @@ release-archive target filename: (release-build target)
     if [ "{{ os_family() }}" == "unix" ]; then
         DIR=$(mktemp -d)
     else
-        DIR="${TEMP}/hanko-{{ uuid() }}"
+        DIR="${TEMP}/{{ CRATE_NAME }}-{{ uuid() }}"
         mkdir -p $DIR
     fi
 
     cp README.md LICENSE CHANGELOG.md {{ MANPAGES_DIR }}/* $DIR
     mkdir $DIR/completions
     cp {{ COMPLETIONS_DIR }}/* $DIR/completions
-    cp target/{{ target }}/release/hanko $DIR
+    cp target/{{ target }}/release/{{ CRATE_NAME }} $DIR
 
     if [ "{{ extension(filename) }}" == "gz" ]; then
         tar -czvf {{ filename }} -C $DIR .
