@@ -647,9 +647,9 @@ checksum = "cbd0f76e066e64fdc5631e3bb46381254deab9ef1158292f27c8c57e3bf3fe59"
 
 [[package]]
 name = "codspeed"
-version = "2.8.1"
+version = "2.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de4b67ff8985f3993f06167d71cf4aec178b0a1580f91a987170c59d60021103"
+checksum = "93f4cce9c27c49c4f101fffeebb1826f41a9df2e7498b7cd4d95c0658b796c6c"
 dependencies = [
  "colored",
  "libc",
@@ -660,13 +660,40 @@ dependencies = [
 
 [[package]]
 name = "codspeed-criterion-compat"
-version = "2.8.1"
+version = "2.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68403d768ed1def18a87e2306676781314448393ecf0d3057c4527cabf524a3d"
+checksum = "c3c23d880a28a2aab52d38ca8481dd7a3187157d0a952196b6db1db3c8499725"
 dependencies = [
  "codspeed",
+ "codspeed-criterion-compat-walltime",
  "colored",
- "criterion",
+]
+
+[[package]]
+name = "codspeed-criterion-compat-walltime"
+version = "2.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b0a2f7365e347f4f22a67e9ea689bf7bc89900a354e22e26cf8a531a42c8fbb"
+dependencies = [
+ "anes",
+ "cast",
+ "ciborium",
+ "clap",
+ "codspeed",
+ "criterion-plot",
+ "is-terminal",
+ "itertools 0.10.5",
+ "num-traits",
+ "once_cell",
+ "oorandom",
+ "plotters",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tinytemplate",
+ "walkdir",
 ]
 
 [[package]]
