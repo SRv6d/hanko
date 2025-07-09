@@ -1,3 +1,5 @@
+//! Benchmark loading the configuration file.
+#![allow(clippy::missing_panics_doc)]
 use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
 use hanko::config::Configuration;
 use indoc::indoc;
