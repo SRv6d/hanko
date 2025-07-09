@@ -114,10 +114,10 @@ impl fmt::Display for Entry {
 
         if let Some(valid_after) = self.valid_after {
             write!(f, " valid-after={}", valid_after.format(TIMESTAMP_FMT))?;
-        };
+        }
         if let Some(valid_before) = self.valid_before {
             write!(f, " valid-before={}", valid_before.format(TIMESTAMP_FMT))?;
-        };
+        }
 
         write!(f, " {}", self.key)
     }

@@ -69,6 +69,15 @@ assets = [
 default = ["detect-allowed-signers"]
 detect-allowed-signers = ["dep:gix-config"]
 
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { priority = -1, level = "warn" }
+panic = "warn"
+# Allowed pedantic lints
+missing_errors_doc = "allow" # Crate is not intended to be used as a library
+
 [[bench]]
 name = "write_allowed_signers"
 harness = false
