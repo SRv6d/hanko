@@ -69,6 +69,13 @@ assets = [
 default = ["detect-allowed-signers"]
 detect-allowed-signers = ["dep:gix-config"]
 
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { priority = -1, level = "warn" }
+panic = "warn"
+
 [[bench]]
 name = "write_allowed_signers"
 harness = false
