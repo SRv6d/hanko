@@ -21,7 +21,7 @@ exclude = [".devcontainer", ".github", "doc/benchmark/**", "tests/**"]
 anyhow = "1.0.97"
 async-trait = "0.1.88"
 chrono = "0.4.39"
-clap = { version = "4.5.39", features = ["derive", "env", "string"] }
+clap = { version = "4.5.40", features = ["derive", "env", "string"] }
 toml_edit = { version = "0.22.26", features = ["serde"] }
 gix-config = { version = "0.44.0", optional = true }
 reqwest = { version = "0.12.15", default-features = false, features = [
@@ -34,7 +34,7 @@ reqwest = { version = "0.12.15", default-features = false, features = [
 ] }
 serde = { version = "1.0.219", features = ["derive"] }
 thiserror = "2.0.12"
-tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
@@ -45,8 +45,8 @@ codspeed-criterion-compat = "=2.10.1"
 criterion = "=0.6.0"
 httpmock = "=0.7.0"
 indoc = "=2.0.6"
-proptest = "=1.6.0"
-rstest = "=0.23.0"
+proptest = "=1.7.0"
+rstest = "=0.25.0"
 serde_json = "=1.0.140"
 tempfile = "=3.17.1"
 reqwest = { version = "=0.12.15", default-features = false, features = ["blocking"] }
@@ -68,6 +68,15 @@ assets = [
 [features]
 default = ["detect-allowed-signers"]
 detect-allowed-signers = ["dep:gix-config"]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { priority = -1, level = "warn" }
+panic = "warn"
+# Allowed pedantic lints
+missing_errors_doc = "allow" # Crate is not intended to be used as a library
 
 [[bench]]
 name = "write_allowed_signers"
