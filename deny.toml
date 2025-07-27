@@ -15,9 +15,6 @@ exclude-dev = true
 version = 2
 db-path = "$CARGO_HOME/advisory-dbs"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-ignore = [
-    "RUSTSEC-2025-0021", # Not applicable
-]
 
 [licenses]
 version = 2
