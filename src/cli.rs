@@ -1,11 +1,11 @@
 use crate::{
     allowed_signers,
-    config::{default_user_source, Configuration},
+    config::{Configuration, default_user_source},
 };
 use anyhow::{Context, Result};
 use clap::{
-    builder::{OsStr, Resettable},
     Parser, Subcommand, ValueHint,
+    builder::{OsStr, Resettable},
 };
 use std::{
     env,
@@ -102,18 +102,17 @@ fn default_config_path() -> Resettable<OsStr> {
 /// is configured within Git, the user will be forced to specify a path manually.
 fn git_allowed_signers() -> Resettable<OsStr> {
     #[cfg(feature = "detect-allowed-signers")]
-    if let Ok(file) = gix_config::File::from_globals() {
-        if let Some(path) = file.path("gpg.ssh.allowedsignersfile") {
-            if let Ok(interpolated) = path.interpolate(gix_config::path::interpolate::Context {
-                home_dir: env::var("HOME")
-                    .ok()
-                    .map(std::convert::Into::<PathBuf>::into)
-                    .as_deref(),
-                ..Default::default()
-            }) {
-                return Resettable::Value(OsStr::from(interpolated.to_string_lossy().to_string()));
-            }
-        }
+    if let Ok(file) = gix_config::File::from_globals()
+        && let Some(path) = file.path("gpg.ssh.allowedsignersfile")
+        && let Ok(interpolated) = path.interpolate(gix_config::path::interpolate::Context {
+            home_dir: env::var("HOME")
+                .ok()
+                .map(std::convert::Into::<PathBuf>::into)
+                .as_deref(),
+            ..Default::default()
+        })
+    {
+        return Resettable::Value(OsStr::from(interpolated.to_string_lossy().to_string()));
     }
 
     Resettable::Reset

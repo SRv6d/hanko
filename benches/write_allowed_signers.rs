@@ -1,7 +1,7 @@
 //! Benchmark writing allowed signers to file.
 #![allow(clippy::missing_panics_doc)]
 use chrono::{Local, TimeZone};
-use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
+use codspeed_criterion_compat::{Criterion, criterion_group, criterion_main};
 use hanko::allowed_signers::{Entry, File};
 
 pub fn criterion_benchmark(c: &mut Criterion) {

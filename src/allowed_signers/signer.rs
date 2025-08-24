@@ -4,7 +4,7 @@ use tokio::task::JoinSet;
 use tracing::{debug, error, warn};
 
 use super::{file::Entry, ssh::PublicKey};
-use crate::{source::Source, Error};
+use crate::{Error, source::Source};
 
 /// An allowed signer.
 #[derive(Debug)]

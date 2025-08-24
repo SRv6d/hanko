@@ -1,4 +1,4 @@
-use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
+use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 use async_trait::async_trait;
 use std::{fmt::Debug, time::Duration};
 

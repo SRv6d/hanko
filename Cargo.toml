@@ -9,7 +9,7 @@ categories = [
     "cryptography",
     "development-tools",
 ]
-edition = "2021"
+edition = "2024"
 authors = ["Marvin Vogt <m@rvinvogt.com>"]
 license = "MIT"
 homepage = "https://github.com/srv6d/hanko"

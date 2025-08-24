@@ -2,12 +2,12 @@ use std::{fmt::Debug, ops::Deref, str::FromStr};
 
 use async_trait::async_trait;
 use chrono::{Local, TimeZone};
-use reqwest::{header::HeaderValue, Client, Request, Response, StatusCode, Url};
+use reqwest::{Client, Request, Response, StatusCode, Url, header::HeaderValue};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::main::{base_client, Error, Result, Source};
-use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
+use super::main::{Error, Result, Source, base_client};
+use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
 pub struct Github {
@@ -145,7 +145,7 @@ mod tests {
     use httpmock::prelude::*;
     use reqwest::StatusCode;
     use rstest::*;
-    use serde_json::{json, Value as JsonValue};
+    use serde_json::{Value as JsonValue, json};
 
     const API_VERSION: &str = "2022-11-28";
     const API_ACCEPT_HEADER: &str = "application/vnd.github+json";

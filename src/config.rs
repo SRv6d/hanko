@@ -3,8 +3,8 @@
 //! Fallible functions in this module return an [`anyhow::Result`] since any errors that occur
 //! when interacting with configuration will be reported to the user without further processing.
 
-use crate::{allowed_signers::Signer, Github, Gitlab, Source};
-use anyhow::{bail, Context, Error, Result};
+use crate::{Github, Gitlab, Source, allowed_signers::Signer};
+use anyhow::{Context, Error, Result, bail};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
