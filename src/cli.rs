@@ -1,11 +1,11 @@
 use crate::{
     allowed_signers,
-    config::{default_user_source, Configuration},
+    config::{Configuration, default_user_source},
 };
 use anyhow::{Context, Result};
 use clap::{
-    builder::{OsStr, Resettable},
     Parser, Subcommand, ValueHint,
+    builder::{OsStr, Resettable},
 };
 use std::{
     env,

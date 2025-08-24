@@ -12,7 +12,7 @@ use chrono::{DateTime, Local};
 use tracing::trace;
 
 use super::{
-    signer::{get_entries, Signer},
+    signer::{Signer, get_entries},
     ssh::PublicKey,
 };
 
