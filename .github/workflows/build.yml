@@ -44,7 +44,7 @@ jobs:
         with:
           toolchain: stable
           targets: "${{ matrix.target }}"
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
       - name: Install GCC for aarch64
         run: |
@@ -96,8 +96,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0
-      - uses: taiki-e/install-action@0c5db7f7f897c03b771660e91d065338615679f4
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1
+      - uses: taiki-e/install-action@9f532f95f296500f5b271915a729663dcb585f98
         with:
           tool: cargo-deb
 
@@ -176,7 +176,7 @@ jobs:
       - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
 
       - name: Container Registry Login
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
