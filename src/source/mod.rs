@@ -6,7 +6,8 @@ mod gitlab;
 
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 use async_trait::async_trait;
-use std::{fmt::Debug, time::Duration};
+use std::{fmt::Debug, str::FromStr, time::Duration};
+use reqwest::{Client, header::HeaderValue, StatusCode};
 
 /// A `Result` alias where the `Err` case is a source [`Error`].
 pub(super) type Result<T> = std::result::Result<T, Error>;
@@ -32,7 +33,7 @@ pub enum Error {
     #[error("server error occurred")]
     ServerError(#[from] ServerError),
     #[error("client request error")]
-    ClientError(reqwest::StatusCode),
+    ClientError(StatusCode),
 }
 
 /// Conversion for generic reqwest errors not specific to any `Source`.
@@ -73,12 +74,12 @@ pub enum ServerError {
     #[error("invalid response body")]
     InvalidResponseBody,
     #[error("{0}")]
-    StatusCode(reqwest::StatusCode),
+    StatusCode(StatusCode),
 }
 
 /// The base reqwest Client to be used by sources.
-pub(super) fn base_client() -> reqwest::Client {
-    reqwest::Client::builder()
+pub(super) fn base_client() -> Client {
+    Client::builder()
         .user_agent(USER_AGENT)
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(10))
@@ -86,6 +87,18 @@ pub(super) fn base_client() -> reqwest::Client {
         .http2_prior_knowledge()
         .build()
         .unwrap()
+}
+
+/// Unwrap a reqwest header value, panicking if it contains an invalid value.
+/// TODO: Handle this by returning and error instead of panicking.
+fn unwrap_header_value<T>(value: &HeaderValue) -> T
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    let expect_msg = "response contains invalid header";
+    let s = value.to_str().expect(expect_msg);
+    s.parse().expect(expect_msg)
 }
 
 #[cfg(test)]
@@ -96,7 +109,7 @@ mod tests {
     use rstest::*;
 
     /// Returns a reqwest error caused by the given status code.
-    fn reqwest_status_code_error(status: reqwest::StatusCode) -> reqwest::Error {
+    fn reqwest_status_code_error(status: StatusCode) -> reqwest::Error {
         let server = MockServer::start();
         server.mock(|when, then| {
             when.any_request();
@@ -167,8 +180,8 @@ mod tests {
 
     prop_compose! {
         /// A 400 client error status code.
-        fn status_code_400()(status in 400..499u16) -> reqwest::StatusCode {
-            let code = reqwest::StatusCode::from_u16(status).unwrap();
+        fn status_code_400()(status in 400..499u16) -> StatusCode {
+            let code = StatusCode::from_u16(status).unwrap();
             assert!(code.is_client_error());
             code
         }
@@ -176,8 +189,8 @@ mod tests {
 
     prop_compose! {
         /// A 500 server error status code.
-        fn status_code_500()(status in 500..599u16) -> reqwest::StatusCode {
-            let code = reqwest::StatusCode::from_u16(status).unwrap();
+        fn status_code_500()(status in 500..599u16) -> StatusCode {
+            let code = StatusCode::from_u16(status).unwrap();
             assert!(code.is_server_error());
             code
         }
