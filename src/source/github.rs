@@ -248,7 +248,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::NOT_FOUND.into());
+            then.status(StatusCode::NOT_FOUND);
         });
 
         let error_result = api
@@ -270,7 +270,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::UNAUTHORIZED.into())
+            then.status(StatusCode::UNAUTHORIZED)
                 .json_body(json!({"message": "Bad credentials"}));
         });
 
@@ -292,7 +292,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::UNAUTHORIZED.into());
+            then.status(StatusCode::UNAUTHORIZED);
         });
 
         let error_result = api
@@ -314,7 +314,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::FORBIDDEN.into())
+            then.status(StatusCode::FORBIDDEN)
                 .json_body(json!({"message": "rate limit exceeded"}));
         });
 
@@ -336,7 +336,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::FORBIDDEN.into());
+            then.status(StatusCode::FORBIDDEN);
         });
 
         let error_result = api
