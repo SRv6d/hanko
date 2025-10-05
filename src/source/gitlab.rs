@@ -3,7 +3,7 @@ use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::main::{Error, Result, Source, base_client};
+use super::{Error, Result, Source, base_client};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
