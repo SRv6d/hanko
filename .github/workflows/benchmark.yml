@@ -12,21 +12,22 @@ permissions:
 
 jobs:
   benchmark:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84
-      - uses: taiki-e/install-action@6d49eff78fe8ad9f571fb25522747f2d9e84be6b
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1
+      - uses: taiki-e/install-action@9f532f95f296500f5b271915a729663dcb585f98
         with:
           tool: cargo-codspeed
 
       - name: Build the benchmark target(s)
         run: cargo codspeed build
       - name: Run the benchmarks
-        uses: CodSpeedHQ/action@ab07afd34cbbb7a1306e8d14b7cc44e029eee37a
+        uses: CodSpeedHQ/action@653fdc30e6c40ffd9739e40c8a0576f4f4523ca1
         with:
           run: cargo codspeed run
+          mode: instrumentation
           token: ${{ secrets.CODSPEED_TOKEN }}

@@ -3,8 +3,8 @@ use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::main::{base_client, Error, Result, Source};
-use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
+use super::main::{Error, Result, Source, base_client};
+use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
 pub struct Gitlab {
@@ -29,7 +29,6 @@ impl Gitlab {
 #[async_trait]
 impl Source for Gitlab {
     // [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
-    #[tracing::instrument(level = "trace")]
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url
@@ -225,7 +224,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
-            then.status(StatusCode::NOT_FOUND.into());
+            then.status(StatusCode::NOT_FOUND);
         });
 
         let error_result = api
@@ -246,7 +245,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
-            then.status(StatusCode::UNAUTHORIZED.into());
+            then.status(StatusCode::UNAUTHORIZED);
         });
 
         let error_result = api

@@ -1,5 +1,7 @@
-use codspeed_criterion_compat::{criterion_group, criterion_main, Criterion};
-use hanko::Configuration;
+//! Benchmark loading the configuration file.
+#![allow(clippy::missing_panics_doc)]
+use codspeed_criterion_compat::{Criterion, criterion_group, criterion_main};
+use hanko::config::Configuration;
 use indoc::indoc;
 use std::{io::Write, path::Path};
 
@@ -13,8 +15,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             { name = "rdavis", principals = ["rdavis@acme.corp"], sources = ["acme-corp"] },
             { name = "pbrock", principals = ["pbrock@acme.corp"], sources = ["acme-corp"] }
         ]
-        file = "~/allowed_signers"
-        
+
         [[sources]]
         name = "acme-corp"
         provider = "gitlab"
@@ -25,7 +26,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     let path: &Path = &file.into_temp_path();
 
     c.bench_function("load the example configuration", |b| {
-        b.iter(|| Configuration::load_and_validate(path, None).unwrap());
+        b.iter(|| Configuration::load(path).unwrap());
     });
 }
 

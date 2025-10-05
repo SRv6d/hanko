@@ -9,6 +9,7 @@ targets = [
     "x86_64-pc-windows-msvc",
 ]
 all-features = true
+exclude-dev = true
 
 [advisories]
 version = 2
@@ -22,8 +23,8 @@ allow = [
     "Apache-2.0",
     "BSD-3-Clause",
     "ISC",
-    "OpenSSL",
-    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "Zlib",
 ]
 confidence-threshold = 0.8
 

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use tokio::task::JoinSet;
-use tracing::debug;
+use tracing::{debug, error, warn};
 
 use super::{file::Entry, ssh::PublicKey};
-use crate::{source::Source, Error};
+use crate::{Error, source::Source};
 
 /// An allowed signer.
 #[derive(Debug)]
@@ -18,12 +18,44 @@ impl Signer {
     /// Get the signers public keys from all of it's sources.
     #[tracing::instrument(skip_all, fields(username=self.name), level = "debug")]
     async fn get_keys(&self) -> Result<Vec<PublicKey>, Error> {
-        debug!("Getting keys from users configured sources");
-        // TODO: Join futures
+        let mut set: JoinSet<_> = self
+            .sources
+            .iter()
+            .map(|source| {
+                let source = source.clone();
+                let username = self.name.clone();
+                async move {
+                    debug!(
+                        ?source,
+                        "Requesting keys from source for signer {}", &username
+                    );
+                    match source.get_keys_by_username(&username).await {
+                        Ok(keys) => {
+                            if keys.is_empty() {
+                                warn!(
+                                    ?source,
+                                    "User {} does not have any signing keys configured on source",
+                                    &username
+                                );
+                            }
+                            Ok(keys)
+                        }
+                        Err(Error::UserNotFound) => {
+                            warn!(?source, "User {} does not exist on source", &username);
+                            Ok(vec![])
+                        }
+                        Err(Error::ConnectionError) => {
+                            error!(?source, "Failed to connect to source");
+                            Err(Error::ConnectionError)
+                        }
+                        Err(err) => Err(err),
+                    }
+                }
+            })
+            .collect();
         let mut keys = Vec::new();
-        for source in &self.sources {
-            // TODO: Handle some error cases gracefully, e.g if the user has no keys, while returning others.
-            keys.extend(source.get_keys_by_username(&self.name).await?);
+        while let Some(output) = set.join_next().await {
+            keys.extend(output.unwrap()?);
         }
         Ok(keys)
     }
@@ -34,26 +66,23 @@ impl Signer {
 
         Ok(keys
             .into_iter()
-            .map(|key| Entry {
-                principals: self.principals.clone(),
-                valid_after: None,
-                valid_before: None,
-                key,
-            })
+            .map(|key| Entry::new(self.principals.clone(), None, None, key))
             .collect())
     }
 }
 
 /// Get entries for multiple given signers concurrently.
-pub(super) async fn get_entries<S>(signers: S) -> Vec<Entry>
+pub(super) async fn get_entries<S>(signers: S) -> Result<Vec<Entry>, Error>
 where
     S: IntoIterator<Item = Signer>,
 {
-    let mut set = JoinSet::new();
-    for signer in signers {
-        set.spawn(async move { signer.get_entries().await });
+    let mut set: JoinSet<_> = signers
+        .into_iter()
+        .map(|signer| async move { signer.get_entries().await })
+        .collect();
+    let mut entries = Vec::new();
+    while let Some(output) = set.join_next().await {
+        entries.extend(output.unwrap()?);
     }
-    let results = set.join_all().await;
-
-    results.into_iter().flat_map(|r| r.unwrap()).collect()
+    Ok(entries)
 }

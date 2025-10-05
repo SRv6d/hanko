@@ -13,10 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cargo-build:
+  build-release-archive:
     permissions:
-      id-token: write
-      attestations: write
       contents: write
     strategy:
       fail-fast: false
@@ -41,12 +39,13 @@ jobs:
       ARCHIVE_FILENAME: >-
         hanko-${{ github.ref_name }}-${{ matrix.target }}.${{ startsWith(matrix.os, 'windows') && 'zip' || 'tar.gz' }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - uses: dtolnay/rust-toolchain@7b1c307e0dcbda6122208f10795a713336a9b35a
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
           toolchain: stable
           targets: "${{ matrix.target }}"
-      - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1
+      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
       - name: Install GCC for aarch64
         run: |
           sudo apt install -y gcc-aarch64-linux-gnu
@@ -66,33 +65,91 @@ jobs:
           cargo -V
           rustc -V
 
-      - name: Build
-        run: cargo build --release --locked --target ${{ matrix.target }}
-
-      - name: Create Release Tar Archive
-        run: >-
-          tar -czvf "${ARCHIVE_FILENAME}"
-          -C target/${{ matrix.target }}/release
-          hanko
-        shell: bash
-        if: ${{ !startsWith(matrix.os, 'windows') }}
-      - name: Create Release Zip Archive
-        run: >-
-          7z a "${ARCHIVE_FILENAME}"
-          ./target/${{ matrix.target }}/release/hanko.exe
-        shell: bash
-        if: ${{ startsWith(matrix.os, 'windows') }}
-
-      - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
-        with:
-          subject-path: ${{ env.ARCHIVE_FILENAME }}
+      - name: Create Release Archive
+        run: just release-archive ${{ matrix.target }} ${{ env.ARCHIVE_FILENAME }}
 
       - name: Upload Release Archive
         run: >-
           gh release upload "${GITHUB_REF_NAME}"
           "${ARCHIVE_FILENAME}"
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  cargo-deb:
+    permissions:
+      contents: write
+    needs: build-release-archive
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            arch: amd64
+          - target: aarch64-unknown-linux-musl
+            arch: arm64
+    runs-on: ubuntu-latest
+    env:
+      TARGET_DIR: target/${{ matrix.target }}
+      DEB_FILENAME: hanko-${{ github.ref_name }}-${{ matrix.arch }}.deb
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1
+      - uses: taiki-e/install-action@9f532f95f296500f5b271915a729663dcb585f98
+        with:
+          tool: cargo-deb
+
+      - name: Create Target Release Directory
+        run: mkdir -p ${TARGET_DIR}/release
+      - name: Download Release Binary
+        run: >-
+          gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
+          --output - | tar -xz -C ${TARGET_DIR}/release ./hanko
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Create Debian Package
+        run: >-
+          cargo deb --no-build --no-strip --target ${{ matrix.target }}
+          --output ${TARGET_DIR}/debian/${DEB_FILENAME}
+
+      - name: Upload Debian Package
+        run: >-
+          gh release upload "${GITHUB_REF_NAME}"
+          "${TARGET_DIR}/debian/${DEB_FILENAME}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  attest-build-provenance:
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+    needs:
+      - build-release-archive
+      - cargo-deb
+    runs-on: ubuntu-latest
+    env:
+      DOWNLOAD_DIR: release-files
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - name: Download Release Files
+        run: >-
+          gh release download ${GITHUB_REF_NAME} --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Attest Build Provenance of Release Files
+        id: provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a
+        with:
+          subject-path: ${{ env.DOWNLOAD_DIR }}/*
+
+      - name: Upload Provenance of Release Files
+        run: >-
+          gh release upload ${GITHUB_REF_NAME}
+          ${{ steps.provenance.outputs.bundle-path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build-container-image:
@@ -108,18 +165,18 @@ jobs:
             platform: linux/amd64
           - target: aarch64-unknown-linux-musl
             platform: linux/arm64
-    needs: cargo-build
+    needs: build-release-archive
     runs-on: ubuntu-latest
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
 
-      - uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
 
       - name: Container Registry Login
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -127,20 +184,20 @@ jobs:
 
       - name: Extract Metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Download Release Binary
         run: >-
-          gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}*"
-          --output - | tar -xz
+          gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
+          --output - | tar -xz ./hanko
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build & Push Image
         id: push
-        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
         with:
           context: .
           push: true
@@ -149,7 +206,7 @@ jobs:
           platforms: ${{ matrix.platform }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}

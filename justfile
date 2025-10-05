@@ -1,4 +1,9 @@
 export CI := env("CI", "false")
+CRATE_NAME := "hanko"
+CHANGELOG_FILE := "CHANGELOG.md"
+REPO_URL := "https://github.com/SRv6d/hanko"
+COMPLETIONS_DIR := "assets/completions"
+MANPAGES_DIR := "assets/manpages"
 
 default: check-lockfile lint test
 
@@ -17,15 +22,61 @@ lint-justfile:
 cov_output := if CI == "true" { "--lcov --output-path lcov.info" } else { "--summary-only" }
 
 # Run tests
-test $COV=CI: (_install_llvm_cov COV)
-    {{ if COV == "true" { "cargo llvm-cov --all-features" + " " + cov_output } else { "cargo test --all-features" } }}
+test $COV=CI: (_install_llvm_cov COV) && doc-test
+    {{ if COV == "true" { "cargo llvm-cov --all-features" + " " + cov_output } else { "cargo test --lib --all-features" } }}
 
-# Bump our version
-bump-version $VERSION: (_validate_semver VERSION)
+# Run documentation and example tests
+doc-test:
+    cargo test --all-features --doc
+    cargo test --all-features --examples
+
+# Alias to run tests with coverage
+coverage: (test "true")
+
+# Check feature combinations
+check-features:
+    cargo hack check --each-feature --no-dev-deps
+
+# Generate up to date shell completions
+completions dir=COMPLETIONS_DIR:
+    cargo xtask completions {{ dir }}
+
+# Generate up to date manpages
+manpages dir=MANPAGES_DIR:
+    cargo xtask manpages {{ dir }}
+
+# Create a release build for the specified target
+release-build target:
+    cargo build --release --locked --target {{ target }}
+
+# Create the release archive for the specified target
+release-archive target filename: (release-build target)
     #!/usr/bin/env bash
     set -euxo pipefail
 
-    test -z "$(git status --porcelain)" || (echo "The working directory is not clean"; exit 1)
+    if [ "{{ os_family() }}" == "unix" ]; then
+        DIR=$(mktemp -d)
+    else
+        DIR="${TEMP}/{{ CRATE_NAME }}-{{ uuid() }}"
+        mkdir -p $DIR
+    fi
+
+    cp README.md LICENSE CHANGELOG.md {{ MANPAGES_DIR }}/* $DIR
+    mkdir $DIR/completions
+    cp {{ COMPLETIONS_DIR }}/* $DIR/completions
+    cp target/{{ target }}/release/{{ CRATE_NAME }} $DIR
+
+    if [ "{{ extension(filename) }}" == "gz" ]; then
+        tar -czvf {{ filename }} -C $DIR .
+    else
+        (cd $DIR && 7z a {{ filename }} *)
+        cp $DIR/{{ filename }} .
+    fi
+
+# Bump our version
+bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
+    #!/usr/bin/env bash
+    set -euxo pipefail
 
     sed -i 's/^version = .*/version = "'$VERSION'"/g' Cargo.toml
     cargo update -w --offline
@@ -33,9 +84,30 @@ bump-version $VERSION: (_validate_semver VERSION)
     git add Cargo.toml Cargo.lock
     git commit -m "Bump version to v{{ VERSION }}"
 
+# Create a GitHub release containing the latest changes
+release-latest-version version:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    PREVIOUS_RELEASE=$(gh release list --json name,isLatest --jq '.[] | select(.isLatest)|.name')
+    CURRENT_RELEASE="v{{ version }}"
+    CHANGES=$(sed -n "/^## \[{{ version }}]/,/^## \[[0-9].*\]/ {//!p}" {{ CHANGELOG_FILE }})
+    RELEASE_NOTES="
+    ## What's Changed
+
+    $CHANGES
+
+    **Full Changelog**: {{ REPO_URL }}/compare/$PREVIOUS_RELEASE...$CURRENT_RELEASE
+    "
+
+    gh release create $CURRENT_RELEASE --latest --title $CURRENT_RELEASE --notes-file - <<< "$RELEASE_NOTES"
+
 # Publish the crate
 publish: _validate_version_tag
     cargo publish --no-verify
+
+# Check that Git has a clean working directory
+_check_clean_working:
+    test -z "$(git status --porcelain)" || (echo "The working directory is not clean"; exit 1)
 
 # Validate that the crate version matches that of the git tag
 _validate_version_tag:
@@ -65,3 +137,19 @@ _install_llvm_cov $run:
     if [ $run == true ] && [ $CI = false ]; then
         cargo install cargo-llvm-cov --locked
     fi
+
+# Update the changelog with a new version
+_changelog_add_version version filename=CHANGELOG_FILE:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    PREV_VERSION=$(sed -n "/^\[unreleased\]:/ { n; s/^\[\([^]]*\)\].*/\1/p }" {{ filename }})
+
+    sed -i "/^## \[Unreleased\]$/ { N; s/\n/\n\n## [{{ version }}] - {{ datetime('%Y-%m-%d') }}\n/ }" {{ filename }}
+    sed -i "/^\[unreleased\]:/ s/v[0-9.]\+\b/v{{ version }}.../; /^\[unreleased\]:/ a\
+    [{{ version }}]: {{ REPO_URL }}/compare/v$PREV_VERSION...v{{ version }}" {{ filename }}
+
+    git add {{ filename }}
+    git commit -m "Update {{ filename }}"
+
+_bump_version_pr version:
+    gh pr create --title "Bump version to v{{ version }}" --body ""

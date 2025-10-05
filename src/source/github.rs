@@ -2,12 +2,12 @@ use std::{fmt::Debug, ops::Deref, str::FromStr};
 
 use async_trait::async_trait;
 use chrono::{Local, TimeZone};
-use reqwest::{header::HeaderValue, Client, Request, Response, StatusCode, Url};
+use reqwest::{Client, Request, Response, StatusCode, Url, header::HeaderValue};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::main::{base_client, Error, Result, Source};
-use crate::{allowed_signers::ssh::PublicKey, USER_AGENT};
+use super::main::{Error, Result, Source, base_client};
+use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
 pub struct Github {
@@ -32,7 +32,6 @@ impl Github {
 #[async_trait]
 impl Source for Github {
     // [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
-    #[tracing::instrument(level = "trace")]
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
         let url = self
             .base_url
@@ -147,7 +146,7 @@ mod tests {
     use httpmock::prelude::*;
     use reqwest::StatusCode;
     use rstest::*;
-    use serde_json::{json, Value as JsonValue};
+    use serde_json::{Value as JsonValue, json};
 
     const API_VERSION: &str = "2022-11-28";
     const API_ACCEPT_HEADER: &str = "application/vnd.github+json";
@@ -250,7 +249,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::NOT_FOUND.into());
+            then.status(StatusCode::NOT_FOUND);
         });
 
         let error_result = api
@@ -272,7 +271,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::UNAUTHORIZED.into())
+            then.status(StatusCode::UNAUTHORIZED)
                 .json_body(json!({"message": "Bad credentials"}));
         });
 
@@ -294,7 +293,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::UNAUTHORIZED.into());
+            then.status(StatusCode::UNAUTHORIZED);
         });
 
         let error_result = api
@@ -316,7 +315,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::FORBIDDEN.into())
+            then.status(StatusCode::FORBIDDEN)
                 .json_body(json!({"message": "rate limit exceeded"}));
         });
 
@@ -338,7 +337,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"));
-            then.status(StatusCode::FORBIDDEN.into());
+            then.status(StatusCode::FORBIDDEN);
         });
 
         let error_result = api

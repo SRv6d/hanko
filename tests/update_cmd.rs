@@ -2,6 +2,8 @@
 use assert_cmd::Command;
 use httpmock::prelude::*;
 use indoc::{formatdoc, indoc};
+#[cfg(not(feature = "detect-allowed-signers"))]
+use predicates::prelude::*;
 use rstest::*;
 use serde_json::json;
 use std::io::Write;
@@ -17,7 +19,7 @@ fn mock_github_server() -> MockServer {
             json!(
                 [
                     {
-                        "id": 773452,
+                        "id": 773_452,
                         "key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS",
                         "title": "key-1",
                         "created_at": "2023-05-23T09:35:15.638Z"
@@ -30,7 +32,7 @@ fn mock_github_server() -> MockServer {
             json!(
                 [
                     {
-                        "id": 773453,
+                        "id": 773_453,
                         "key": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=",
                         "title": "key-2",
                         "created_at": "2023-07-22T23:04:29.415Z"
@@ -61,7 +63,7 @@ fn mock_gitlab_server() -> MockServer {
             json!(
                 [
                     {
-                        "id": 1121029,
+                        "id": 1_121_029,
                         "title": "key-1",
                         "created_at": "2020-08-21T19:43:06.816Z",
                         "expires_at": null,
@@ -76,7 +78,7 @@ fn mock_gitlab_server() -> MockServer {
             json!(
                 [
                     {
-                        "id": 1121031,
+                        "id": 1_121_031,
                         "title": "key-3",
                         "created_at": "2023-12-04T19:32:23.794Z",
                         "expires_at": null,
@@ -148,4 +150,36 @@ fn update_writes_expected_allowed_signers(
     let content = std::fs::read_to_string(allowed_signers.path()).unwrap();
 
     assert_eq!(content, expected_content);
+}
+
+/// When running the update command with the `detect-allowed-signers` feature enabled and
+/// an allowed signers file configured within git, the file argument is not required.
+#[test]
+#[ignore = "TODO"]
+#[cfg(feature = "detect-allowed-signers")]
+fn file_arg_not_required_with_detect_feature_and_git_allowed_signers_config() {
+    todo!()
+}
+
+/// When running the update command with the `detect-allowed-signers` feature enabled but
+/// without an allowed signers file configured within git, the file argument is required.
+#[test]
+#[ignore = "TODO"]
+#[cfg(feature = "detect-allowed-signers")]
+fn file_arg_required_with_detect_feature_but_without_git_allowed_signers_config() {
+    todo!()
+}
+
+/// When running the update command without the `detect-allowed-signers` feature enabled,
+/// the file argument is required.
+#[test]
+#[cfg(not(feature = "detect-allowed-signers"))]
+fn file_arg_required_without_detect_feature() {
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.arg("update")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "error: The following required argument was not provided: file",
+        ));
 }

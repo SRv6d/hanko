@@ -1,4 +1,4 @@
-pub use file::{update, Entry, File};
+pub use file::{Entry, File, update};
 pub use signer::Signer;
 
 mod file;

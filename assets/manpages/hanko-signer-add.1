@@ -1,0 +1,40 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH hanko-signer-add 1  "add " 
+.SH NAME
+hanko\-signer\-add \- Add an allowed signer
+.SH SYNOPSIS
+\fBhanko signer add\fR [\fB\-s\fR|\fB\-\-source\fR] [\fB\-\-no\-update\fR] [\fB\-v\fR|\fB\-\-verbose\fR]... [\fB\-c\fR|\fB\-\-config\fR] [\fB\-\-file\fR] [\fB\-h\fR|\fB\-\-help\fR] <\fINAME\fR> [\fIPRINCIPALS\fR] 
+.SH DESCRIPTION
+Add an allowed signer
+.SH OPTIONS
+.TP
+\fB\-s\fR, \fB\-\-source\fR=\fISOURCE\fR [default: github]
+The source(s) of the signer to add
+.TP
+\fB\-\-no\-update\fR
+Don\*(Aqt update the allowed signers file with the added signer(s)
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Use verbose output
+.TP
+\fB\-c\fR, \fB\-\-config\fR=\fIPATH\fR [default: ~/.config/hanko/config.toml]
+The configuration file
+.RS
+May also be specified with the \fBHANKO_CONFIG\fR environment variable. 
+.RE
+.TP
+\fB\-\-file\fR=\fIPATH\fR
+The allowed signers file
+.RS
+May also be specified with the \fBHANKO_ALLOWED_SIGNERS\fR environment variable. 
+.RE
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fINAME\fR>
+The name of the signer to add
+.TP
+[\fIPRINCIPALS\fR]
+The principals of the signer to add

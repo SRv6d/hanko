@@ -12,7 +12,7 @@ use chrono::{DateTime, Local};
 use tracing::trace;
 
 use super::{
-    signer::{get_entries, Signer},
+    signer::{Signer, get_entries},
     ssh::PublicKey,
 };
 
@@ -65,6 +65,31 @@ pub struct Entry {
     pub key: PublicKey,
 }
 
+impl Entry {
+    #[must_use]
+    /// Create a new signer entry.
+    ///
+    /// # Panics
+    /// If the provided principals are empty.
+    pub fn new(
+        principals: Vec<String>,
+        valid_after: Option<DateTime<Local>>,
+        valid_before: Option<DateTime<Local>>,
+        key: PublicKey,
+    ) -> Self {
+        assert!(
+            !principals.is_empty(),
+            "signer entry requires at least one principal"
+        );
+        Entry {
+            principals,
+            valid_after,
+            valid_before,
+            key,
+        }
+    }
+}
+
 impl fmt::Display for Entry {
     /// Display the entry in the format expected by the allowed signers file.
     ///
@@ -89,10 +114,10 @@ impl fmt::Display for Entry {
 
         if let Some(valid_after) = self.valid_after {
             write!(f, " valid-after={}", valid_after.format(TIMESTAMP_FMT))?;
-        };
+        }
         if let Some(valid_before) = self.valid_before {
             write!(f, " valid-before={}", valid_before.format(TIMESTAMP_FMT))?;
-        };
+        }
 
         write!(f, " {}", self.key)
     }
@@ -103,7 +128,7 @@ pub async fn update<S>(path: &Path, signers: S) -> anyhow::Result<()>
 where
     S: IntoIterator<Item = Signer>,
 {
-    let entries = get_entries(signers).await;
+    let entries = get_entries(signers).await?;
 
     let file = File::from_entries(path.to_path_buf(), entries);
     file.write().context(format!(
@@ -187,6 +212,12 @@ mod tests {
             ),
             path,
         )
+    }
+
+    #[test]
+    #[should_panic(expected = "signer entry requires at least one principal")]
+    fn new_entry_without_principal_panics() {
+        let _ = Entry::new(vec![], None, None, entry_jsnow().key);
     }
 
     #[rstest]

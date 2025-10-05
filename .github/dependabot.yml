@@ -4,11 +4,15 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions-non-major:
+        update-types: [minor, patch]
   - package-ecosystem: cargo
     directory: /
     groups:
-      dev-dependencies:
+      development-non-major:
         dependency-type: development
+        update-types: [minor, patch]
     schedule:
       interval: monthly
   - package-ecosystem: devcontainers
