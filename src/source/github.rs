@@ -1,12 +1,12 @@
-use std::{fmt::Debug, ops::Deref, str::FromStr};
+use std::{fmt::Debug, ops::Deref};
 
 use async_trait::async_trait;
 use chrono::{Local, TimeZone};
-use reqwest::{Client, Request, Response, StatusCode, Url, header::HeaderValue};
+use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::{Error, Result, Source, base_client};
+use super::{Error, Result, Source, base_client, unwrap_header_value};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
@@ -90,17 +90,6 @@ async fn make_api_request(request: Request, client: &Client) -> Result<Response>
     Ok(response)
 }
 
-/// Unwrap a reqwest header value, panicking if it contains an invalid value.
-/// TODO: Handle this by returning and error instead of panicking.
-fn unwrap_header_value<T>(value: &HeaderValue) -> T
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    let expect_msg = "response contains invalid header";
-    let s = value.to_str().expect(expect_msg);
-    s.parse().expect(expect_msg)
-}
 
 /// Handle GitHub specific HTTP errors.
 /// Takes a reqwest result containing a response, converting it into the `Result` type used in this
