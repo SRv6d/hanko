@@ -223,7 +223,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
-            then.status(StatusCode::NOT_FOUND.into());
+            then.status(StatusCode::NOT_FOUND);
         });
 
         let error_result = api
@@ -244,7 +244,7 @@ mod tests {
         server.mock(|when, then| {
             when.method(GET)
                 .path(format!("/api/v4/users/{EXAMPLE_USERNAME}/keys"));
-            then.status(StatusCode::UNAUTHORIZED.into());
+            then.status(StatusCode::UNAUTHORIZED);
         });
 
         let error_result = api

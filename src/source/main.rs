@@ -93,7 +93,7 @@ mod tests {
         let server = MockServer::start();
         server.mock(|when, then| {
             when.any_request();
-            then.status(status.into());
+            then.status(status);
         });
         let error = reqwest::blocking::get(server.base_url())
             .unwrap()
