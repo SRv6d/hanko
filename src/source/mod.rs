@@ -6,8 +6,8 @@ mod gitlab;
 
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 use async_trait::async_trait;
+use reqwest::{Client, StatusCode, Url, header::HeaderValue};
 use std::{fmt::Debug, str::FromStr, time::Duration};
-use reqwest::{Client, header::HeaderValue, StatusCode};
 
 /// A `Result` alias where the `Err` case is a source [`Error`].
 pub(super) type Result<T> = std::result::Result<T, Error>;
@@ -99,6 +99,27 @@ where
     let expect_msg = "response contains invalid header";
     let s = value.to_str().expect(expect_msg);
     s.parse().expect(expect_msg)
+}
+
+/// Parse the next URL from the value of a Link header.
+// TODO: Log malformed headers
+pub(super) fn parse_link_header_next(header: &HeaderValue) -> Option<Url> {
+    let header = header.to_str().ok()?;
+
+    header.split(',').find_map(|segment| {
+        let mut parts = segment.trim().split(';');
+        let url_part = parts.next()?.trim();
+        let url = url_part.strip_prefix('<')?.strip_suffix('>')?;
+
+        let is_next = parts.any(|param| {
+            param
+                .trim()
+                .strip_prefix("rel=")
+                .is_some_and(|rel| rel.trim_matches('"') == "next")
+        });
+
+        if is_next { Url::parse(url).ok() } else { None }
+    })
 }
 
 #[cfg(test)]
@@ -232,5 +253,30 @@ mod tests {
     ) {
         let expected_conversion = Error::from(ServerError::InvalidResponseBody);
         assert_eq!(Error::from(reqwest_decode_error), expected_conversion);
+    }
+
+    #[rstest]
+    #[case(
+        r#"<https://api.github.com/repositories/1300192/issues?per_page=2&page=1&before=Y3Vyc29yOnYyOpLPAAABkOs68TjOkOKw1A%3D%3D>; rel="prev""#,
+        None,
+    )]
+    #[case(
+        r#"<https://api.github.com/repositories/1300192/issues?per_page=2&after=Y3Vyc29yOnYyOpLPAAABmbe5SzDOz8JUuQ%3D%3D&page=2>; rel="next""#,
+        Some("https://api.github.com/repositories/1300192/issues?per_page=2&after=Y3Vyc29yOnYyOpLPAAABmbe5SzDOz8JUuQ%3D%3D&page=2".parse().unwrap())
+    )]
+    #[case(
+        r#"<https://api.github.com/repositories/1300192/issues?page=2>; rel="prev", <https://api.github.com/repositories/1300192/issues?page=4>; rel="next", <https://api.github.com/repositories/1300192/issues?page=515>; rel="last", <https://api.github.com/repositories/1300192/issues?page=1>; rel="first""#,
+        Some("https://api.github.com/repositories/1300192/issues?page=4".parse().unwrap())
+    )]
+    #[case(
+        r#"<https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=1&per_page=3>; rel="prev", <https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3>; rel="next", <https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=1&per_page=3>; rel="first", <https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3>; rel="last""#,
+        Some("https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3".parse().unwrap())
+    )]
+    fn parse_valid_link_header_returns_correct_url(
+        #[case] header: HeaderValue,
+        #[case] expected: Option<Url>,
+    ) {
+        let parsed = parse_link_header_next(&header);
+        assert_eq!(parsed, expected);
     }
 }
