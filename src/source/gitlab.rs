@@ -3,7 +3,7 @@ use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::{Error, Result, Source, base_client};
+use super::{Error, Result, Source, base_client, parse_link_header_next};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
@@ -30,31 +30,48 @@ impl Gitlab {
 impl Source for Gitlab {
     // [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
-        let url = self
+        let mut next_url = Some(self
             .base_url
             .join(&format!(
                 "/api/{version}/users/{username}/keys",
                 version = Self::VERSION,
             ))
-            .unwrap();
-        let request = self
+            .unwrap());
+
+        let mut keys = Vec::new();
+        while let Some(current_url) = next_url.take() {
+            let request = self
             .client
-            .get(url)
+            .get(current_url.clone())
             .header("User-Agent", USER_AGENT)
             .header("Accept", Self::ACCEPT_HEADER)
             .version(reqwest::Version::HTTP_2)
             .build()
             .unwrap();
+            let response = make_api_request(request, &self.client).await?;
+            let next_page = response
+                .headers()
+                .get("link")
+                .and_then(parse_link_header_next);
+            
+            let all_keys: Vec<ApiSshKey> = response.json().await?;
+            // Get just the signing keys and turn those into public keys.
+            let signing_keys = all_keys
+                .into_iter()
+                .filter(|key| key.usage_type.is_signing()).map(PublicKey::from);
+            keys.extend(signing_keys);
 
-        let response = make_api_request(request, &self.client).await?;
-        // The API has no way to filter keys by usage type, so this contains all the user's keys.
-        let all_keys: Vec<ApiSshKey> = response.json().await?;
-        // Filter out the keys that are not used for signing.
-        let signing_keys = all_keys
-            .into_iter()
-            .filter(|key| key.usage_type.is_signing());
+            match next_page {
+                Some(candidate) if candidate != current_url => {
+                    next_url = Some(candidate);
+                }
+                _ => {
+                    next_url = None;
+                }
+            }
+        }
 
-        Ok(signing_keys.map(PublicKey::from).collect())
+        Ok(keys)
     }
 }
 

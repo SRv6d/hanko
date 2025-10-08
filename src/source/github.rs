@@ -6,7 +6,7 @@ use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::{Error, Result, Source, base_client, unwrap_header_value};
+use super::{Error, Result, Source, base_client, parse_link_header_next, unwrap_header_value};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
@@ -33,22 +33,42 @@ impl Github {
 impl Source for Github {
     // [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
-        let url = self
-            .base_url
-            .join(&format!("/users/{username}/ssh_signing_keys"))
-            .unwrap();
-        let request = self
-            .client
-            .get(url)
-            .header("User-Agent", USER_AGENT)
-            .header("Accept", Self::ACCEPT_HEADER)
-            .header("X-GitHub-Api-Version", Self::VERSION)
-            .version(reqwest::Version::HTTP_2)
-            .build()
-            .unwrap();
+        let mut next_url = Some(
+            self.base_url
+                .join(&format!("/users/{username}/ssh_signing_keys"))
+                .unwrap(),
+        );
 
-        let response = make_api_request(request, &self.client).await?;
-        Ok(response.json().await?)
+        let mut keys = Vec::new();
+        while let Some(current_url) = next_url.take() {
+            let request = self
+                .client
+                .get(current_url.clone())
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", Self::ACCEPT_HEADER)
+                .header("X-GitHub-Api-Version", Self::VERSION)
+                .version(reqwest::Version::HTTP_2)
+                .build()
+                .unwrap();
+            let response = make_api_request(request, &self.client).await?;
+            let next_page = response
+                .headers()
+                .get("link")
+                .and_then(parse_link_header_next);
+
+            keys.extend(response.json::<Vec<PublicKey>>().await?);
+
+            match next_page {
+                Some(candidate) if candidate != current_url => {
+                    next_url = Some(candidate);
+                }
+                _ => {
+                    next_url = None;
+                }
+            }
+        }
+
+        Ok(keys)
     }
 }
 
@@ -89,7 +109,6 @@ async fn make_api_request(request: Request, client: &Client) -> Result<Response>
     }
     Ok(response)
 }
-
 
 /// Handle GitHub specific HTTP errors.
 /// Takes a reqwest result containing a response, converting it into the `Result` type used in this
