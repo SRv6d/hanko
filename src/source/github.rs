@@ -218,6 +218,41 @@ mod tests {
         assert_eq!(keys, expected);
     }
 
+    #[rstest]
+    #[tokio::test]
+    async fn pagination_link_header_next_is_followed(api_w_mock_server: (Github, MockServer)) {
+        let (api, server) = api_w_mock_server;
+
+        let next_link = format!(
+            "<{}>; rel=\"next\"",
+            server.url(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys?page=2"))
+        );
+
+        let first_page = server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"))
+                .query_param_missing("page");
+            then.status(200)
+                .header("Content-Type", "application/json; charset=utf-8")
+                .header("Link", next_link.as_str())
+                .json_body(json!([]));
+        });
+
+        let second_page = server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"))
+                .query_param("page", "2");
+            then.status(200)
+                .header("Content-Type", "application/json; charset=utf-8")
+                .json_body(json!([]));
+        });
+
+        api.get_keys_by_username(EXAMPLE_USERNAME).await.unwrap();
+
+        first_page.assert();
+        second_page.assert();
+    }
+
     #[test]
     fn json_message_parsed_correctly() {
         let content = "I've Gotta Get a Message to You";
