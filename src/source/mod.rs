@@ -86,11 +86,11 @@ pub enum ServerError {
     StatusCode(StatusCode),
 }
 
-fn get_header_value(headers: &HeaderMap, name: &str) -> Result<Option<String>> {
+fn get_header_value<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a str>> {
     headers
         .get(name)
         .map(|value| {
-            value.to_str().map(ToOwned::to_owned).map_err(|e| {
+            value.to_str().map_err(|e| {
                 Error::ServerError(ServerError::InvalidResponseHeader {
                     name: name.to_string(),
                     msg: format!("value is not valid UTF-8: {e}"),
@@ -117,18 +117,6 @@ where
         .transpose()
 }
 
-/// The base reqwest Client to be used by sources.
-pub(super) fn base_client() -> Client {
-    Client::builder()
-        .user_agent(USER_AGENT)
-        .connect_timeout(Duration::from_secs(2))
-        .timeout(Duration::from_secs(10))
-        .use_rustls_tls()
-        .http2_prior_knowledge()
-        .build()
-        .unwrap()
-}
-
 /// Parse the next URL from the value of a Link header.
 // TODO: Log malformed headers
 pub(super) fn parse_link_header_next(header: &HeaderValue) -> Option<Url> {
@@ -148,6 +136,18 @@ pub(super) fn parse_link_header_next(header: &HeaderValue) -> Option<Url> {
 
         if is_next { Url::parse(url).ok() } else { None }
     })
+}
+
+/// The base reqwest Client to be used by sources.
+pub(super) fn base_client() -> Client {
+    Client::builder()
+        .user_agent(USER_AGENT)
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(10))
+        .use_rustls_tls()
+        .http2_prior_knowledge()
+        .build()
+        .unwrap()
 }
 
 #[cfg(test)]
