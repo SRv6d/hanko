@@ -2,11 +2,13 @@ use std::{fmt::Debug, ops::Deref};
 
 use async_trait::async_trait;
 use chrono::{Local, TimeZone};
-use reqwest::{Client, Request, Response, StatusCode, Url};
+use reqwest::{Client, Request, Response, StatusCode, Url, header::HeaderMap};
 use serde::Deserialize;
 use tracing::trace;
 
-use super::{Error, Result, Source, base_client, parse_link_header_next, unwrap_header_value};
+use super::{
+    Error, Result, ServerError, Source, base_client, parse_header_value, parse_link_header_next,
+};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
@@ -93,21 +95,36 @@ async fn make_api_request(request: Request, client: &Client) -> Result<Response>
     trace!(?response, "Received response from GitHub API.");
 
     let headers = response.headers();
-    if let (Some(ratelimit_remaining), Some(ratelimit_reset)) = (
-        headers.get("x-ratelimit-remaining"),
-        headers.get("x-ratelimit-reset"),
-    ) {
-        let ratelimit_remaining: usize = unwrap_header_value(ratelimit_remaining);
+
+    log_ratelimit(headers)?;
+
+    Ok(response)
+}
+
+fn log_ratelimit(headers: &HeaderMap) -> Result<()> {
+    let ratelimit_remaining = parse_header_value::<usize>(headers, "x-ratelimit-remaining")?;
+    let ratelimit_reset = parse_header_value::<i64>(headers, "x-ratelimit-reset")?;
+
+    if let (Some(ratelimit_remaining), Some(ratelimit_reset)) =
+        (ratelimit_remaining, ratelimit_reset)
+    {
         let ratelimit_reset = Local
-            .timestamp_opt(unwrap_header_value(ratelimit_reset), 0)
-            .unwrap();
+            .timestamp_opt(ratelimit_reset, 0)
+            .single()
+            .ok_or_else(|| {
+                Error::ServerError(ServerError::InvalidResponseHeader {
+                    name: "x-ratelimit-reset".into(),
+                    msg: format!("value {ratelimit_reset} does not map to a unique instant"),
+                })
+            })?;
+
         trace!(
             ?ratelimit_remaining,
             ?ratelimit_reset,
             "{ratelimit_remaining} requests remaining until ratelimit is hit. Counter resets at {ratelimit_reset}.",
         );
     }
-    Ok(response)
+    Ok(())
 }
 
 /// Handle GitHub specific HTTP errors.

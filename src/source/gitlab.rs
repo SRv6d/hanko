@@ -30,35 +30,37 @@ impl Gitlab {
 impl Source for Gitlab {
     // [API Documentation](https://docs.gitlab.com/16.10/ee/api/users.html#list-ssh-keys-for-user)
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
-        let mut next_url = Some(self
-            .base_url
-            .join(&format!(
-                "/api/{version}/users/{username}/keys",
-                version = Self::VERSION,
-            ))
-            .unwrap());
+        let mut next_url = Some(
+            self.base_url
+                .join(&format!(
+                    "/api/{version}/users/{username}/keys",
+                    version = Self::VERSION,
+                ))
+                .unwrap(),
+        );
 
         let mut keys = Vec::new();
         while let Some(current_url) = next_url.take() {
             let request = self
-            .client
-            .get(current_url.clone())
-            .header("User-Agent", USER_AGENT)
-            .header("Accept", Self::ACCEPT_HEADER)
-            .version(reqwest::Version::HTTP_2)
-            .build()
-            .unwrap();
+                .client
+                .get(current_url.clone())
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", Self::ACCEPT_HEADER)
+                .version(reqwest::Version::HTTP_2)
+                .build()
+                .unwrap();
             let response = make_api_request(request, &self.client).await?;
             let next_page = response
                 .headers()
                 .get("link")
                 .and_then(parse_link_header_next);
-            
+
             let all_keys: Vec<ApiSshKey> = response.json().await?;
             // Get just the signing keys and turn those into public keys.
             let signing_keys = all_keys
                 .into_iter()
-                .filter(|key| key.usage_type.is_signing()).map(PublicKey::from);
+                .filter(|key| key.usage_type.is_signing())
+                .map(PublicKey::from);
             keys.extend(signing_keys);
 
             match next_page {

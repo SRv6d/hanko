@@ -6,8 +6,15 @@ mod gitlab;
 
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 use async_trait::async_trait;
-use reqwest::{Client, StatusCode, Url, header::HeaderValue};
-use std::{fmt::Debug, str::FromStr, time::Duration};
+use reqwest::{
+    Client, StatusCode, Url,
+    header::{HeaderMap, HeaderValue},
+};
+use std::{
+    fmt::{Debug, Display},
+    str::FromStr,
+    time::Duration,
+};
 
 /// A `Result` alias where the `Err` case is a source [`Error`].
 pub(super) type Result<T> = std::result::Result<T, Error>;
@@ -71,10 +78,43 @@ impl From<reqwest::Error> for Error {
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum ServerError {
-    #[error("invalid response body")]
+    #[error("response contains an invalid `{name}` header: {msg}")]
+    InvalidResponseHeader { name: String, msg: String },
+    #[error("response contains an invalid body")]
     InvalidResponseBody,
     #[error("{0}")]
     StatusCode(StatusCode),
+}
+
+fn get_header_value(headers: &HeaderMap, name: &str) -> Result<Option<String>> {
+    headers
+        .get(name)
+        .map(|value| {
+            value.to_str().map(ToOwned::to_owned).map_err(|e| {
+                Error::ServerError(ServerError::InvalidResponseHeader {
+                    name: name.to_string(),
+                    msg: format!("value is not valid UTF-8: {e}"),
+                })
+            })
+        })
+        .transpose()
+}
+
+pub(super) fn parse_header_value<T>(headers: &HeaderMap, name: &str) -> Result<Option<T>>
+where
+    T: FromStr,
+    T::Err: Display,
+{
+    get_header_value(headers, name)?
+        .map(|value| {
+            value.parse().map_err(|err| {
+                Error::ServerError(ServerError::InvalidResponseHeader {
+                    name: name.to_string(),
+                    msg: format!("value is not valid: {err}"),
+                })
+            })
+        })
+        .transpose()
 }
 
 /// The base reqwest Client to be used by sources.
@@ -87,18 +127,6 @@ pub(super) fn base_client() -> Client {
         .http2_prior_knowledge()
         .build()
         .unwrap()
-}
-
-/// Unwrap a reqwest header value, panicking if it contains an invalid value.
-/// TODO: Handle this by returning and error instead of panicking.
-fn unwrap_header_value<T>(value: &HeaderValue) -> T
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    let expect_msg = "response contains invalid header";
-    let s = value.to_str().expect(expect_msg);
-    s.parse().expect(expect_msg)
 }
 
 /// Parse the next URL from the value of a Link header.
