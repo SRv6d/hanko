@@ -34,8 +34,8 @@ pub enum Error {
     UserNotFound,
     #[error("connection error occurred")]
     ConnectionError,
-    #[error("server error occurred")]
-    ServerError(#[from] ServerError),
+    #[error("invalid response, {0}")]
+    ResponseError(#[from] ResponseError),
     #[error("client request error")]
     ClientError(StatusCode),
 }
@@ -57,7 +57,7 @@ impl From<reqwest::Error> for Error {
                 .expect("missing error status code")
                 .is_server_error()
         {
-            ServerError::StatusCode(error.status().unwrap()).into()
+            ResponseError::UnexpectedStatusCode(error.status().unwrap()).into()
         } else if error.is_status()
             && error
                 .status()
@@ -66,7 +66,7 @@ impl From<reqwest::Error> for Error {
         {
             Error::ClientError(error.status().unwrap())
         } else if error.is_body() || error.is_decode() {
-            ServerError::InvalidResponseBody.into()
+            ResponseError::InvalidResponseBody.into()
         } else {
             panic!("Unexpected reqwest error: {error:?}");
         }
@@ -74,13 +74,13 @@ impl From<reqwest::Error> for Error {
 }
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
-pub enum ServerError {
-    #[error("response contains an invalid `{name}` header: {msg}")]
-    InvalidResponseHeader { name: String, msg: String },
-    #[error("response contains an invalid body")]
+pub enum ResponseError {
+    #[error("malformed `{name}` header: {msg}")]
+    MalformedResponseHeader { name: String, msg: String },
+    #[error("body is invalid")]
     InvalidResponseBody,
-    #[error("{0}")]
-    StatusCode(StatusCode),
+    #[error("unexpected status code {0}")]
+    UnexpectedStatusCode(StatusCode),
 }
 
 fn get_header_value<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a str>> {
@@ -88,7 +88,7 @@ fn get_header_value<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a
         .get(name)
         .map(|value| {
             value.to_str().map_err(|e| {
-                Error::ServerError(ServerError::InvalidResponseHeader {
+                Error::ResponseError(ResponseError::MalformedResponseHeader {
                     name: name.to_string(),
                     msg: format!("value is not valid UTF-8: {e}"),
                 })
@@ -105,7 +105,7 @@ where
     get_header_value(headers, name)?
         .map(|value| {
             value.parse().map_err(|err| {
-                Error::ServerError(ServerError::InvalidResponseHeader {
+                Error::ResponseError(ResponseError::MalformedResponseHeader {
                     name: name.to_string(),
                     msg: format!("value is not valid: {err}"),
                 })
@@ -116,14 +116,16 @@ where
 
 /// Looks for a link header and returns the next URL if present.
 pub(super) fn next_url_from_link_header(headers: &HeaderMap) -> Result<Option<Url>> {
-    let Some(link_value) = get_header_value(headers, "link")? else {
+    let Some(link_value) = get_header_value(headers, "Link")? else {
         return Ok(None);
     };
 
-    let invalid_header = || Error::ServerError(ServerError::InvalidResponseHeader {
-        name: "link".into(),
-        msg: "format is invalid".into(),
-    });
+    let invalid_header = || {
+        Error::ResponseError(ResponseError::MalformedResponseHeader {
+            name: "Link".into(),
+            msg: format!("incorrect format `{link_value}`"),
+        })
+    };
 
     for segment in link_value.split(',') {
         let mut parts = segment.trim().split(';');
@@ -152,9 +154,7 @@ pub(super) fn next_url_from_link_header(headers: &HeaderMap) -> Result<Option<Ur
             .and_then(|u| u.strip_suffix('>'))
             .ok_or_else(invalid_header)?;
 
-        return Url::parse(url)
-            .map(Some)
-            .map_err(|_| invalid_header());
+        return Url::parse(url).map(Some).map_err(|_| invalid_header());
     }
 
     Ok(None)
@@ -279,7 +279,7 @@ mod tests {
         #[test]
         fn source_error_from_reqwest_500_error_is_server_error(status_code in status_code_500()) {
             let error = reqwest_status_code_error(status_code);
-            let expected_conversion = Error::from(ServerError::StatusCode(status_code));
+            let expected_conversion = Error::from(ResponseError::UnexpectedStatusCode(status_code));
             assert_eq!(Error::from(error), expected_conversion);
         }
 
@@ -302,7 +302,7 @@ mod tests {
     fn source_error_from_reqwest_decode_error_is_server_error_invalid_response_body(
         reqwest_decode_error: reqwest::Error,
     ) {
-        let expected_conversion = Error::from(ServerError::InvalidResponseBody);
+        let expected_conversion = Error::from(ResponseError::InvalidResponseBody);
         assert_eq!(Error::from(reqwest_decode_error), expected_conversion);
     }
 
@@ -337,10 +337,13 @@ mod tests {
     #[case(r#"<https://api.example.com/items?page=2; rel="next""#)] // missing `>` url terminator
     #[case(r#"<https://api.example.com/items?page=2>; rel="""#)] // missing rel value
     #[case(r#"<not-a-valid-url>; rel="next""#)]
-    fn parse_invalid_link_header_returns_error(#[case] header: &str) {
-        let expected = Error::ServerError(ServerError::InvalidResponseHeader { name: "link".to_string(), msg: "format is invalid".to_string() });
+    fn parse_invalid_link_header_returns_error(#[case] value: &str) {
+        let expected = Error::ResponseError(ResponseError::MalformedResponseHeader {
+            name: "Link".to_string(),
+            msg: format!("incorrect format `{value}`"),
+        });
         let mut headers = HeaderMap::new();
-        headers.insert("link", HeaderValue::from_str(header).unwrap());
+        headers.insert("Link", HeaderValue::from_str(value).unwrap());
 
         let error = next_url_from_link_header(&headers).unwrap_err();
 

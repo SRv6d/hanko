@@ -7,7 +7,8 @@ use serde::Deserialize;
 use tracing::{trace, warn};
 
 use super::{
-    Error, Result, ServerError, Source, base_client, next_url_from_link_header, parse_header_value,
+    Error, ResponseError, Result, Source, base_client, next_url_from_link_header,
+    parse_header_value,
 };
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
@@ -54,7 +55,7 @@ impl Source for Github {
                 .unwrap();
             let response = make_api_request(request, &self.client).await?;
             let next_page = next_url_from_link_header(response.headers()).unwrap_or_else(|err| {
-                warn!("Keys may be incomplete, ignored invalid link header sent by GitHub API: {err}");
+                warn!("Pagination skipped due to {err}. Keys may be incomplete.");
                 None
             });
 
@@ -112,7 +113,7 @@ fn log_ratelimit(headers: &HeaderMap) -> Result<()> {
             .timestamp_opt(ratelimit_reset, 0)
             .single()
             .ok_or_else(|| {
-                Error::ServerError(ServerError::InvalidResponseHeader {
+                Error::ResponseError(ResponseError::MalformedResponseHeader {
                     name: "x-ratelimit-reset".into(),
                     msg: format!("value {ratelimit_reset} does not map to a unique instant"),
                 })

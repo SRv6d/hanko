@@ -51,7 +51,7 @@ impl Source for Gitlab {
                 .unwrap();
             let response = make_api_request(request, &self.client).await?;
             let next_page = next_url_from_link_header(response.headers()).unwrap_or_else(|err| {
-                warn!("Keys may be incomplete, ignored invalid link header sent by GitLab API: {err}");
+                warn!("Pagination skipped due to {err}. Keys may be incomplete.");
                 None
             });
 
