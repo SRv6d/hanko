@@ -4,10 +4,10 @@ use async_trait::async_trait;
 use chrono::{Local, TimeZone};
 use reqwest::{Client, Request, Response, StatusCode, Url, header::HeaderMap};
 use serde::Deserialize;
-use tracing::trace;
+use tracing::{trace, warn};
 
 use super::{
-    Error, Result, ServerError, Source, base_client, parse_header_value, parse_link_header_next,
+    Error, Result, ServerError, Source, base_client, next_url_from_link_header, parse_header_value,
 };
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
@@ -53,10 +53,10 @@ impl Source for Github {
                 .build()
                 .unwrap();
             let response = make_api_request(request, &self.client).await?;
-            let next_page = response
-                .headers()
-                .get("link")
-                .and_then(parse_link_header_next);
+            let next_page = next_url_from_link_header(response.headers()).unwrap_or_else(|err| {
+                warn!("Keys may be incomplete, ignored invalid link header sent by GitHub API: {err}");
+                None
+            });
 
             keys.extend(response.json::<Vec<PublicKey>>().await?);
 

@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
-use tracing::trace;
+use tracing::{trace, warn};
 
-use super::{Error, Result, Source, base_client, parse_link_header_next};
+use super::{Error, Result, Source, base_client, next_url_from_link_header};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
@@ -50,10 +50,10 @@ impl Source for Gitlab {
                 .build()
                 .unwrap();
             let response = make_api_request(request, &self.client).await?;
-            let next_page = response
-                .headers()
-                .get("link")
-                .and_then(parse_link_header_next);
+            let next_page = next_url_from_link_header(response.headers()).unwrap_or_else(|err| {
+                warn!("Keys may be incomplete, ignored invalid link header sent by GitLab API: {err}");
+                None
+            });
 
             let all_keys: Vec<ApiSshKey> = response.json().await?;
             // Get just the signing keys and turn those into public keys.

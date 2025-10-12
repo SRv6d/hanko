@@ -6,10 +6,7 @@ mod gitlab;
 
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 use async_trait::async_trait;
-use reqwest::{
-    Client, StatusCode, Url,
-    header::{HeaderMap, HeaderValue},
-};
+use reqwest::{Client, StatusCode, Url, header::HeaderMap};
 use std::{
     fmt::{Debug, Display},
     str::FromStr,
@@ -117,25 +114,50 @@ where
         .transpose()
 }
 
-/// Parse the next URL from the value of a Link header.
-// TODO: Log malformed headers
-pub(super) fn parse_link_header_next(header: &HeaderValue) -> Option<Url> {
-    let header = header.to_str().ok()?;
+/// Looks for a link header and returns the next URL if present.
+pub(super) fn next_url_from_link_header(headers: &HeaderMap) -> Result<Option<Url>> {
+    let Some(link_value) = get_header_value(headers, "link")? else {
+        return Ok(None);
+    };
 
-    header.split(',').find_map(|segment| {
+    let invalid_header = || Error::ServerError(ServerError::InvalidResponseHeader {
+        name: "link".into(),
+        msg: "format is invalid".into(),
+    });
+
+    for segment in link_value.split(',') {
         let mut parts = segment.trim().split(';');
-        let url_part = parts.next()?.trim();
-        let url = url_part.strip_prefix('<')?.strip_suffix('>')?;
+        let url_part = parts.next().unwrap_or("").trim();
 
-        let is_next = parts.any(|param| {
-            param
-                .trim()
-                .strip_prefix("rel=")
-                .is_some_and(|rel| rel.trim_matches('"') == "next")
-        });
+        let mut is_next = false;
+        for param in parts {
+            let param = param.trim();
+            if let Some(rel) = param.strip_prefix("rel=") {
+                let rel = rel.trim_matches('"');
+                if rel.is_empty() {
+                    return Err(invalid_header());
+                }
+                if rel == "next" {
+                    is_next = true;
+                }
+            }
+        }
 
-        if is_next { Url::parse(url).ok() } else { None }
-    })
+        if !is_next {
+            continue;
+        }
+
+        let url = url_part
+            .strip_prefix('<')
+            .and_then(|u| u.strip_suffix('>'))
+            .ok_or_else(invalid_header)?;
+
+        return Url::parse(url)
+            .map(Some)
+            .map_err(|_| invalid_header());
+    }
+
+    Ok(None)
 }
 
 /// The base reqwest Client to be used by sources.
@@ -155,6 +177,7 @@ mod tests {
     use super::*;
     use httpmock::prelude::*;
     use proptest::prelude::*;
+    use reqwest::header::{HeaderMap, HeaderValue};
     use rstest::*;
 
     /// Returns a reqwest error caused by the given status code.
@@ -304,7 +327,23 @@ mod tests {
         #[case] header: HeaderValue,
         #[case] expected: Option<Url>,
     ) {
-        let parsed = parse_link_header_next(&header);
+        let mut headers = HeaderMap::new();
+        headers.insert("link", header);
+        let parsed = next_url_from_link_header(&headers).unwrap();
         assert_eq!(parsed, expected);
+    }
+
+    #[rstest]
+    #[case(r#"<https://api.example.com/items?page=2; rel="next""#)] // missing `>` url terminator
+    #[case(r#"<https://api.example.com/items?page=2>; rel="""#)] // missing rel value
+    #[case(r#"<not-a-valid-url>; rel="next""#)]
+    fn parse_invalid_link_header_returns_error(#[case] header: &str) {
+        let expected = Error::ServerError(ServerError::InvalidResponseHeader { name: "link".to_string(), msg: "format is invalid".to_string() });
+        let mut headers = HeaderMap::new();
+        headers.insert("link", HeaderValue::from_str(header).unwrap());
+
+        let error = next_url_from_link_header(&headers).unwrap_err();
+
+        assert_eq!(error, expected);
     }
 }
