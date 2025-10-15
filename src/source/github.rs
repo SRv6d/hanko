@@ -1,12 +1,15 @@
-use std::{fmt::Debug, ops::Deref, str::FromStr};
+use std::{fmt::Debug, ops::Deref};
 
 use async_trait::async_trait;
 use chrono::{Local, TimeZone};
-use reqwest::{Client, Request, Response, StatusCode, Url, header::HeaderValue};
+use reqwest::{Client, Request, Response, StatusCode, Url, header::HeaderMap};
 use serde::Deserialize;
-use tracing::trace;
+use tracing::{trace, warn};
 
-use super::main::{Error, Result, Source, base_client};
+use super::{
+    Error, ResponseError, Result, Source, base_client, next_url_from_link_header,
+    parse_header_value,
+};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
 
 #[derive(Debug)]
@@ -33,22 +36,42 @@ impl Github {
 impl Source for Github {
     // [API documentation](https://docs.github.com/en/rest/users/ssh-signing-keys?apiVersion=2022-11-28#list-ssh-signing-keys-for-a-user)
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>> {
-        let url = self
-            .base_url
-            .join(&format!("/users/{username}/ssh_signing_keys"))
-            .unwrap();
-        let request = self
-            .client
-            .get(url)
-            .header("User-Agent", USER_AGENT)
-            .header("Accept", Self::ACCEPT_HEADER)
-            .header("X-GitHub-Api-Version", Self::VERSION)
-            .version(reqwest::Version::HTTP_2)
-            .build()
-            .unwrap();
+        let mut next_url = Some(
+            self.base_url
+                .join(&format!("/users/{username}/ssh_signing_keys"))
+                .unwrap(),
+        );
 
-        let response = make_api_request(request, &self.client).await?;
-        Ok(response.json().await?)
+        let mut keys = Vec::new();
+        while let Some(current_url) = next_url.take() {
+            let request = self
+                .client
+                .get(current_url.clone())
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", Self::ACCEPT_HEADER)
+                .header("X-GitHub-Api-Version", Self::VERSION)
+                .version(reqwest::Version::HTTP_2)
+                .build()
+                .unwrap();
+            let response = make_api_request(request, &self.client).await?;
+            let next_page = next_url_from_link_header(response.headers()).unwrap_or_else(|err| {
+                warn!("Pagination skipped due to {err}. Keys may be incomplete.");
+                None
+            });
+
+            keys.extend(response.json::<Vec<PublicKey>>().await?);
+
+            match next_page {
+                Some(candidate) if candidate != current_url => {
+                    next_url = Some(candidate);
+                }
+                _ => {
+                    next_url = None;
+                }
+            }
+        }
+
+        Ok(keys)
     }
 }
 
@@ -73,33 +96,36 @@ async fn make_api_request(request: Request, client: &Client) -> Result<Response>
     trace!(?response, "Received response from GitHub API.");
 
     let headers = response.headers();
-    if let (Some(ratelimit_remaining), Some(ratelimit_reset)) = (
-        headers.get("x-ratelimit-remaining"),
-        headers.get("x-ratelimit-reset"),
-    ) {
-        let ratelimit_remaining: usize = unwrap_header_value(ratelimit_remaining);
+
+    log_ratelimit(headers)?;
+
+    Ok(response)
+}
+
+fn log_ratelimit(headers: &HeaderMap) -> Result<()> {
+    let ratelimit_remaining = parse_header_value::<usize>(headers, "x-ratelimit-remaining")?;
+    let ratelimit_reset = parse_header_value::<i64>(headers, "x-ratelimit-reset")?;
+
+    if let (Some(ratelimit_remaining), Some(ratelimit_reset)) =
+        (ratelimit_remaining, ratelimit_reset)
+    {
         let ratelimit_reset = Local
-            .timestamp_opt(unwrap_header_value(ratelimit_reset), 0)
-            .unwrap();
+            .timestamp_opt(ratelimit_reset, 0)
+            .single()
+            .ok_or_else(|| {
+                Error::ResponseError(ResponseError::MalformedResponseHeader {
+                    name: "x-ratelimit-reset".into(),
+                    msg: format!("value {ratelimit_reset} does not map to a unique instant"),
+                })
+            })?;
+
         trace!(
             ?ratelimit_remaining,
             ?ratelimit_reset,
             "{ratelimit_remaining} requests remaining until ratelimit is hit. Counter resets at {ratelimit_reset}.",
         );
     }
-    Ok(response)
-}
-
-/// Unwrap a reqwest header value, panicking if it contains an invalid value.
-/// TODO: Handle this by returning and error instead of panicking.
-fn unwrap_header_value<T>(value: &HeaderValue) -> T
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    let expect_msg = "response contains invalid header";
-    let s = value.to_str().expect(expect_msg);
-    s.parse().expect(expect_msg)
+    Ok(())
 }
 
 /// Handle GitHub specific HTTP errors.
@@ -227,6 +253,41 @@ mod tests {
         let keys = api.get_keys_by_username(EXAMPLE_USERNAME).await.unwrap();
 
         assert_eq!(keys, expected);
+    }
+
+    #[rstest]
+    #[tokio::test]
+    async fn pagination_link_header_next_is_followed(api_w_mock_server: (Github, MockServer)) {
+        let (api, server) = api_w_mock_server;
+
+        let next_link = format!(
+            "<{}>; rel=\"next\"",
+            server.url(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys?page=2"))
+        );
+
+        let first_page = server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"))
+                .query_param_missing("page");
+            then.status(200)
+                .header("Content-Type", "application/json; charset=utf-8")
+                .header("Link", next_link.as_str())
+                .json_body(json!([]));
+        });
+
+        let second_page = server.mock(|when, then| {
+            when.method(GET)
+                .path(format!("/users/{EXAMPLE_USERNAME}/ssh_signing_keys"))
+                .query_param("page", "2");
+            then.status(200)
+                .header("Content-Type", "application/json; charset=utf-8")
+                .json_body(json!([]));
+        });
+
+        api.get_keys_by_username(EXAMPLE_USERNAME).await.unwrap();
+
+        first_page.assert();
+        second_page.assert();
     }
 
     #[test]
