@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::{trace, warn};
+use chrono::{DateTime, FixedOffset};
 
 use super::{Error, Result, Source, base_client, next_url_from_link_header};
 use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
@@ -133,6 +134,7 @@ pub struct ApiSshKey {
     pub id: usize,
     pub title: String,
     pub key: String,
+    pub expires_at: Option<DateTime<FixedOffset>>,
     pub usage_type: ApiSshKeyUsage,
 }
 
