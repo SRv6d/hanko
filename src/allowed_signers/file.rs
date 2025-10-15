@@ -2,6 +2,7 @@
 //!
 //! [File Format Documentation](https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS)
 use std::{
+    collections::BTreeSet,
     fmt, fs,
     io::{self, Write},
     path::{Path, PathBuf},
@@ -20,7 +21,7 @@ use super::{
 #[derive(Debug)]
 pub struct File {
     pub path: PathBuf,
-    pub entries: Vec<Entry>, // TODO: Use HashSet
+    pub entries: BTreeSet<Entry>,
 }
 
 impl File {
@@ -31,13 +32,8 @@ impl File {
         let file = fs::File::create(&self.path)?;
         let mut file_buf = io::BufWriter::new(file);
 
-        let sorted_entries = {
-            let mut entries = self.entries.iter().collect::<Vec<_>>();
-            entries.sort();
-            entries
-        };
         trace!("Writing to allowed signers file");
-        for entry in sorted_entries {
+        for entry in &self.entries {
             writeln!(file_buf, "{entry}")?;
         }
         writeln!(file_buf)?;
