@@ -87,10 +87,10 @@ fn get_header_value<'a>(headers: &'a HeaderMap, name: &str) -> Result<Option<&'a
     headers
         .get(name)
         .map(|value| {
-            value.to_str().map_err(|e| {
+            value.to_str().map_err(|_| {
                 Error::ResponseError(ResponseError::MalformedResponseHeader {
                     name: name.to_string(),
-                    msg: format!("value is not valid UTF-8: {e}"),
+                    msg: "value is not valid UTF-8".to_string(),
                 })
             })
         })
@@ -334,19 +334,26 @@ mod tests {
     }
 
     #[rstest]
-    #[case(r#"<https://api.example.com/items?page=2; rel="next""#)] // missing `>` url terminator
-    #[case(r#"<https://api.example.com/items?page=2>; rel="""#)] // missing rel value
-    #[case(r#"<not-a-valid-url>; rel="next""#)]
-    fn parse_invalid_link_header_returns_error(#[case] value: &str) {
-        let expected = Error::ResponseError(ResponseError::MalformedResponseHeader {
-            name: "Link".to_string(),
-            msg: format!("incorrect format `{value}`"),
-        });
+    #[case(
+        b"<https://api.example.com/items?page=2; rel=\"next\"",
+        "incorrect format"
+    )] // missing `>` url terminator
+    #[case(
+        b"<https://api.example.com/items?page=2>; rel=\"\"",
+        "incorrect format"
+    )] // missing rel value
+    #[case(b"<not-a-valid-url>; rel=\"next\"", "incorrect format")]
+    #[case(b"\xff", "value is not valid UTF-8")]
+    fn parse_invalid_link_header_returns_error(#[case] value: &[u8], #[case] expected_msg: &str) {
         let mut headers = HeaderMap::new();
-        headers.insert("Link", HeaderValue::from_str(value).unwrap());
+        headers.insert("Link", HeaderValue::from_bytes(value).unwrap());
 
         let error = next_url_from_link_header(&headers).unwrap_err();
 
-        assert_eq!(error, expected);
+        assert!(matches!(
+        error,
+        Error::ResponseError(
+            ResponseError::MalformedResponseHeader { ref name, ref msg }) if name == "Link" && msg.starts_with(expected_msg)
+        ));
     }
 }
