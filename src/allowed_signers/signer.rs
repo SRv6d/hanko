@@ -66,7 +66,7 @@ impl Signer {
 
         Ok(keys
             .into_iter()
-            .map(|key| Entry::new(self.principals.clone(), None, None, key))
+            .map(|key| Entry::new(self.principals.clone(), key))
             .collect())
     }
 }
