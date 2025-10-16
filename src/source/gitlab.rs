@@ -5,7 +5,7 @@ use tracing::{trace, warn};
 use chrono::{DateTime, FixedOffset};
 
 use super::{Error, Result, Source, base_client, next_url_from_link_header};
-use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
+use crate::{USER_AGENT, allowed_signers::file::PublicKey};
 
 #[derive(Debug)]
 pub struct Gitlab {

@@ -10,7 +10,7 @@ use super::{
     Error, ResponseError, Result, Source, base_client, next_url_from_link_header,
     parse_header_value,
 };
-use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
+use crate::{USER_AGENT, allowed_signers::file::PublicKey};
 
 #[derive(Debug)]
 pub struct Github {

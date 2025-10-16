@@ -5,16 +5,16 @@ use std::{
     collections::BTreeSet,
     fmt, fs,
     io::{self, Write},
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, str::FromStr,
 };
 
 use anyhow::Context;
 use chrono::{DateTime, Local};
 use tracing::trace;
+use serde::{Deserialize, Serialize};
 
 use super::{
     signer::{Signer, get_entries},
-    ssh::PublicKey,
 };
 
 /// The allowed signers file.
@@ -118,6 +118,27 @@ impl fmt::Display for Entry {
         write!(f, " {}", self.key)
     }
 }
+
+/// The SSH public key contained in an [`Entry`].
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PublicKey {
+    key: String,
+}
+
+impl FromStr for PublicKey {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(PublicKey { key: s.to_string() })
+    }
+}
+
+impl fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.key)
+    }
+}
+
 
 /// Update the allowed signers file.
 pub async fn update<S>(path: &Path, signers: S) -> anyhow::Result<()>

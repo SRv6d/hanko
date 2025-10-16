@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::task::JoinSet;
 use tracing::{debug, error, warn};
 
-use super::{file::Entry, ssh::PublicKey};
+use super::{file::{Entry, PublicKey}};
 use crate::{Error, source::Source};
 
 /// An allowed signer.
