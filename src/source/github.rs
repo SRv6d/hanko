@@ -59,7 +59,8 @@ impl Source for Github {
                 None
             });
 
-            keys.extend(response.json::<Vec<PublicKey>>().await?);
+            let api_keys: Vec<ApiSshKey> = response.json().await?;
+            keys.extend(api_keys.into_iter().map(PublicKey::from));
 
             match next_page {
                 Some(candidate) if candidate != current_url => {
@@ -86,6 +87,22 @@ impl Deref for Message {
 
     fn deref(&self) -> &Self::Target {
         &self.message
+    }
+}
+
+/// Intermediary representation of a [`PublicKey`] as returned by the GitHub API.
+#[derive(Debug, Deserialize)]
+struct ApiSshKey {
+    key: String,
+}
+
+impl From<ApiSshKey> for PublicKey {
+    fn from(api_key: ApiSshKey) -> Self {
+        PublicKey {
+            blob: api_key.key,
+            valid_after: None,
+            valid_before: None
+        }
     }
 }
 

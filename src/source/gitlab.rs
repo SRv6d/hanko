@@ -109,7 +109,7 @@ fn handle_gitlab_errors(request_result: reqwest::Result<Response>) -> Result<Res
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
-pub enum ApiSshKeyUsage {
+enum ApiSshKeyUsage {
     #[serde(rename = "auth")]
     Auth,
     #[serde(rename = "signing")]
@@ -128,14 +128,12 @@ impl ApiSshKeyUsage {
     }
 }
 
-/// The GitLab API representation of an SSH key.
+/// Intermediary representation of a [`PublicKey`] as returned by the GitLab API.
 #[derive(Debug, Deserialize)]
-pub struct ApiSshKey {
-    pub id: usize,
-    pub title: String,
-    pub key: String,
-    pub expires_at: Option<DateTime<FixedOffset>>,
-    pub usage_type: ApiSshKeyUsage,
+struct ApiSshKey {
+    key: String,
+    expires_at: Option<DateTime<FixedOffset>>,
+    usage_type: ApiSshKeyUsage,
 }
 
 impl From<ApiSshKey> for PublicKey {
