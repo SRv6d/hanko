@@ -87,7 +87,7 @@ impl fmt::Display for Entry {
     ///         .parse()
     ///         .unwrap(),
     /// };
-    /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
+    /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const TIMESTAMP_FMT: &str = "%Y%m%d%H%M%S";
@@ -95,10 +95,18 @@ impl fmt::Display for Entry {
         write!(f, "{}", self.principals.join(","))?;
 
         if let Some(valid_after) = self.key.valid_after {
-            write!(f, " valid-after={}", valid_after.format(TIMESTAMP_FMT))?;
+            write!(
+                f,
+                " valid-after={}Z",
+                valid_after.to_utc().format(TIMESTAMP_FMT)
+            )?;
         }
         if let Some(valid_before) = self.key.valid_before {
-            write!(f, " valid-before={}", valid_before.format(TIMESTAMP_FMT))?;
+            write!(
+                f,
+                " valid-before={}Z",
+                valid_before.to_utc().format(TIMESTAMP_FMT)
+            )?;
         }
 
         write!(f, " {}", self.key.blob)
@@ -217,11 +225,11 @@ mod tests {
     )]
     #[case(
         entry_imalcom(),
-        "ian.malcom@acme.corp valid-after=20240411220000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
+        "ian.malcom@acme.corp valid-after=20240411220000Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
     )]
     #[case(
         entry_cwoods(),
-        "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
+        "cwoods@universal.exports valid-before=20300101000000Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
     )]
     #[case(
         entry_ebert(),
