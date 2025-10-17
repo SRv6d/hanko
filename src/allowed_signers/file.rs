@@ -77,15 +77,15 @@ impl fmt::Display for Entry {
     ///
     /// # Examples
     /// ```
-    /// # use hanko::allowed_signers::Entry;
-    /// # use chrono::{TimeZone, Local};
+    /// # use hanko::allowed_signers::{Entry, PublicKey};
+    /// # use chrono::{TimeZone, Utc};
     /// let signer = Entry {
     ///     principals: vec!["cwoods@universal.exports".to_string()],
-    ///     valid_after: None,
-    ///     valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
-    ///     key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
-    ///         .parse()
-    ///         .unwrap(),
+    ///     key: PublicKey {
+    ///         blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".to_string(),
+    ///         valid_after: None,
+    ///         valid_before: Some(Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap().into())
+    ///     }
     /// };
     /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
     /// ```
