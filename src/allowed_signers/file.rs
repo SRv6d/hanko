@@ -10,12 +10,10 @@ use std::{
 
 use anyhow::Context;
 use chrono::{DateTime, FixedOffset};
-use tracing::trace;
 use serde::{Deserialize, Serialize};
+use tracing::trace;
 
-use super::{
-    signer::{Signer, get_entries},
-};
+use super::signer::{Signer, get_entries};
 
 /// The allowed signers file.
 #[derive(Debug)]
@@ -65,18 +63,12 @@ impl Entry {
     ///
     /// # Panics
     /// If the provided principals are empty.
-    pub fn new(
-        principals: Vec<String>,
-        key: PublicKey,
-    ) -> Self {
+    pub fn new(principals: Vec<String>, key: PublicKey) -> Self {
         assert!(
             !principals.is_empty(),
             "signer entry requires at least one principal"
         );
-        Entry {
-            principals,
-            key,
-        }
+        Entry { principals, key }
     }
 }
 
@@ -118,7 +110,7 @@ impl fmt::Display for Entry {
 pub struct PublicKey {
     pub blob: String,
     pub valid_after: Option<DateTime<FixedOffset>>,
-    pub valid_before: Option<DateTime<FixedOffset>>
+    pub valid_before: Option<DateTime<FixedOffset>>,
 }
 
 /// Update the allowed signers file.
@@ -138,7 +130,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{TimeZone as _, Local};
+    use chrono::{Local, TimeZone as _};
     use rstest::*;
     use std::fs;
 

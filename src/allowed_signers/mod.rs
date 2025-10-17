@@ -1,4 +1,4 @@
-pub use file::{Entry, File, update, PublicKey};
+pub use file::{Entry, File, PublicKey, update};
 pub use signer::Signer;
 
 pub(super) mod file;

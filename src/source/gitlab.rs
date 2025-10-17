@@ -1,8 +1,8 @@
 use async_trait::async_trait;
+use chrono::{DateTime, FixedOffset};
 use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::{trace, warn};
-use chrono::{DateTime, FixedOffset};
 
 use super::{Error, Result, Source, base_client, next_url_from_link_header};
 use crate::{USER_AGENT, allowed_signers::file::PublicKey};
@@ -141,7 +141,7 @@ impl From<ApiSshKey> for PublicKey {
         PublicKey {
             blob: api_key.key,
             valid_after: None,
-            valid_before: api_key.expires_at
+            valid_before: api_key.expires_at,
         }
     }
 }

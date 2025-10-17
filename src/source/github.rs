@@ -101,7 +101,7 @@ impl From<ApiSshKey> for PublicKey {
         PublicKey {
             blob: api_key.key,
             valid_after: None,
-            valid_before: None
+            valid_before: None,
         }
     }
 }
