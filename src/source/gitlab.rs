@@ -1,10 +1,11 @@
 use async_trait::async_trait;
+use chrono::{DateTime, FixedOffset};
 use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::{trace, warn};
 
 use super::{Error, Result, Source, base_client, next_url_from_link_header};
-use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
+use crate::{USER_AGENT, allowed_signers::file::PublicKey};
 
 #[derive(Debug)]
 pub struct Gitlab {
@@ -108,7 +109,7 @@ fn handle_gitlab_errors(request_result: reqwest::Result<Response>) -> Result<Res
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
-pub enum ApiSshKeyUsage {
+enum ApiSshKeyUsage {
     #[serde(rename = "auth")]
     Auth,
     #[serde(rename = "signing")]
@@ -127,18 +128,21 @@ impl ApiSshKeyUsage {
     }
 }
 
-/// The GitLab API representation of an SSH key.
+/// Intermediary representation of a [`PublicKey`] as returned by the GitLab API.
 #[derive(Debug, Deserialize)]
-pub struct ApiSshKey {
-    pub id: usize,
-    pub title: String,
-    pub key: String,
-    pub usage_type: ApiSshKeyUsage,
+struct ApiSshKey {
+    key: String,
+    expires_at: Option<DateTime<FixedOffset>>,
+    usage_type: ApiSshKeyUsage,
 }
 
 impl From<ApiSshKey> for PublicKey {
     fn from(api_key: ApiSshKey) -> Self {
-        api_key.key.parse().unwrap()
+        PublicKey {
+            blob: api_key.key,
+            valid_after: None,
+            valid_before: api_key.expires_at,
+        }
     }
 }
 
@@ -210,8 +214,16 @@ mod tests {
               }
         ]"#,
         vec![
-            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS John Doe (gitlab.com)".parse().unwrap(),
-            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDTdEeUFjUX76aMptdG63itqcINvu/tnV5l9RXy/1TS25Ui2r+C2pRjG0vr9lzfz8TGncQt1yKmaZDAAe6mYGFiQlrkh9RJ/MPssRw4uS4slvMTDWhNufO1M3QGkek81lGaZq55uazCcaM5xSOhLBdrWIMROeLgKZ9YkHNqJXTt9V+xNE5ZkB/65i2tCkGdXnQsGJbYFbkuUTvYBuMW9lwmryLTeWwFLWGBP1moZI9etk3snh2hCLTV8+gvmhCTE8sAGBMcJq+TGxnfFoCtnA9Bdy7t+ZMLh1kV7oneUA9YT7qNeUFy55D287DAltB02ntT7CtuG6SBAQ4CQMcCoAX3Os4aVfdILOEC8ghrAj3uTEQuE3nYta0SmqqXcVAxmXUQCawf8n5CJ7QN5aIhCH73MKr6k5puk9dnkAcAFLRM6stvQhnpIqrI3YEbjqs1FGHfbc4+nfEWorxRrd7ur1ckEhuvmAXRKrLzYp9gYWU6TxfRqSxsXh3he0G6i+kC6k= John Doe (gitlab.com)".parse().unwrap(),
+            PublicKey {
+                blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS John Doe (gitlab.com)".to_string(),
+                valid_after: None,
+                valid_before: None
+            },
+            PublicKey {
+                blob: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDTdEeUFjUX76aMptdG63itqcINvu/tnV5l9RXy/1TS25Ui2r+C2pRjG0vr9lzfz8TGncQt1yKmaZDAAe6mYGFiQlrkh9RJ/MPssRw4uS4slvMTDWhNufO1M3QGkek81lGaZq55uazCcaM5xSOhLBdrWIMROeLgKZ9YkHNqJXTt9V+xNE5ZkB/65i2tCkGdXnQsGJbYFbkuUTvYBuMW9lwmryLTeWwFLWGBP1moZI9etk3snh2hCLTV8+gvmhCTE8sAGBMcJq+TGxnfFoCtnA9Bdy7t+ZMLh1kV7oneUA9YT7qNeUFy55D287DAltB02ntT7CtuG6SBAQ4CQMcCoAX3Os4aVfdILOEC8ghrAj3uTEQuE3nYta0SmqqXcVAxmXUQCawf8n5CJ7QN5aIhCH73MKr6k5puk9dnkAcAFLRM6stvQhnpIqrI3YEbjqs1FGHfbc4+nfEWorxRrd7ur1ckEhuvmAXRKrLzYp9gYWU6TxfRqSxsXh3he0G6i+kC6k= John Doe (gitlab.com)".to_string(),
+                valid_after: None,
+                valid_before: None
+            },
         ]
     )]
     #[tokio::test]

@@ -4,7 +4,7 @@ pub use gitlab::Gitlab;
 mod github;
 mod gitlab;
 
-use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
+use crate::{USER_AGENT, allowed_signers::file::PublicKey};
 use async_trait::async_trait;
 use reqwest::{Client, StatusCode, Url, header::HeaderMap};
 use std::{

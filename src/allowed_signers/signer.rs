@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::task::JoinSet;
 use tracing::{debug, error, warn};
 
-use super::{file::Entry, ssh::PublicKey};
+use super::file::{Entry, PublicKey};
 use crate::{Error, source::Source};
 
 /// An allowed signer.
@@ -66,7 +66,7 @@ impl Signer {
 
         Ok(keys
             .into_iter()
-            .map(|key| Entry::new(self.principals.clone(), None, None, key))
+            .map(|key| Entry::new(self.principals.clone(), key))
             .collect())
     }
 }

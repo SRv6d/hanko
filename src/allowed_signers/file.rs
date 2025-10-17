@@ -9,13 +9,11 @@ use std::{
 };
 
 use anyhow::Context;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset};
+use serde::{Deserialize, Serialize};
 use tracing::trace;
 
-use super::{
-    signer::{Signer, get_entries},
-    ssh::PublicKey,
-};
+use super::signer::{Signer, get_entries};
 
 /// The allowed signers file.
 #[derive(Debug)]
@@ -56,8 +54,6 @@ impl File {
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Entry {
     pub principals: Vec<String>,
-    pub valid_after: Option<DateTime<Local>>,
-    pub valid_before: Option<DateTime<Local>>,
     pub key: PublicKey,
 }
 
@@ -67,22 +63,12 @@ impl Entry {
     ///
     /// # Panics
     /// If the provided principals are empty.
-    pub fn new(
-        principals: Vec<String>,
-        valid_after: Option<DateTime<Local>>,
-        valid_before: Option<DateTime<Local>>,
-        key: PublicKey,
-    ) -> Self {
+    pub fn new(principals: Vec<String>, key: PublicKey) -> Self {
         assert!(
             !principals.is_empty(),
             "signer entry requires at least one principal"
         );
-        Entry {
-            principals,
-            valid_after,
-            valid_before,
-            key,
-        }
+        Entry { principals, key }
     }
 }
 
@@ -91,32 +77,48 @@ impl fmt::Display for Entry {
     ///
     /// # Examples
     /// ```
-    /// # use hanko::allowed_signers::Entry;
-    /// # use chrono::{TimeZone, Local};
+    /// # use hanko::allowed_signers::{Entry, PublicKey};
+    /// # use chrono::{TimeZone, Utc};
     /// let signer = Entry {
     ///     principals: vec!["cwoods@universal.exports".to_string()],
-    ///     valid_after: None,
-    ///     valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
-    ///     key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
-    ///         .parse()
-    ///         .unwrap(),
+    ///     key: PublicKey {
+    ///         blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".to_string(),
+    ///         valid_after: None,
+    ///         valid_before: Some(Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap().into())
+    ///     }
     /// };
-    /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
+    /// assert_eq!(signer.to_string(), "cwoods@universal.exports valid-before=20300101000000Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         const TIMESTAMP_FMT: &str = "%Y%m%d%H%M%S";
 
         write!(f, "{}", self.principals.join(","))?;
 
-        if let Some(valid_after) = self.valid_after {
-            write!(f, " valid-after={}", valid_after.format(TIMESTAMP_FMT))?;
+        if let Some(valid_after) = self.key.valid_after {
+            write!(
+                f,
+                " valid-after={}Z",
+                valid_after.to_utc().format(TIMESTAMP_FMT)
+            )?;
         }
-        if let Some(valid_before) = self.valid_before {
-            write!(f, " valid-before={}", valid_before.format(TIMESTAMP_FMT))?;
+        if let Some(valid_before) = self.key.valid_before {
+            write!(
+                f,
+                " valid-before={}Z",
+                valid_before.to_utc().format(TIMESTAMP_FMT)
+            )?;
         }
 
-        write!(f, " {}", self.key)
+        write!(f, " {}", self.key.blob)
     }
+}
+
+/// The SSH public key contained in an [`Entry`].
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PublicKey {
+    pub blob: String,
+    pub valid_after: Option<DateTime<FixedOffset>>,
+    pub valid_before: Option<DateTime<FixedOffset>>,
 }
 
 /// Update the allowed signers file.
@@ -136,7 +138,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone as _;
+    use chrono::{Local, TimeZone as _};
     use rstest::*;
     use std::fs;
 
@@ -144,11 +146,11 @@ mod tests {
     fn entry_jsnow() -> Entry {
         Entry {
             principals: vec!["j.snow@wall.com".to_string()],
-            valid_after: None,
-            valid_before: None,
-            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS"
-                .parse()
-                .unwrap(),
+            key: PublicKey {
+                blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS".to_string(),
+                valid_after: None,
+                valid_before: None
+            }
         }
     }
 
@@ -156,11 +158,11 @@ mod tests {
     fn entry_imalcom() -> Entry {
         Entry {
             principals: vec!["ian.malcom@acme.corp".to_string()],
-            valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap()),
-            valid_before: None,
-            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
-                .parse()
-                .unwrap(),
+            key: PublicKey {
+                blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9".to_string(),
+                valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap().into()),
+                valid_before: None
+            }
         }
     }
 
@@ -168,11 +170,11 @@ mod tests {
     fn entry_cwoods() -> Entry {
         Entry {
             principals: vec!["cwoods@universal.exports".to_string()],
-            valid_after: None,
-            valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap()),
-            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
-                .parse()
-                .unwrap(),
+            key: PublicKey {
+                blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".to_string(),
+                valid_after: None,
+                valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap().into())
+            }
         }
     }
 
@@ -183,11 +185,11 @@ mod tests {
                 "ernie@muppets.com".to_string(),
                 "bert@muppets.com".to_string(),
             ],
-            valid_after: None,
-            valid_before: None,
-            key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDw32w3ciofX3/gFoyCtPWxSsWYmylwdKZ9Q/BmoBR/g"
-                .parse()
-                .unwrap(),
+            key: PublicKey {
+                blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDw32w3ciofX3/gFoyCtPWxSsWYmylwdKZ9Q/BmoBR/g".to_string(),
+                valid_after: None,
+                valid_before: None
+            }
         }
     }
 
@@ -213,7 +215,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "signer entry requires at least one principal")]
     fn new_entry_without_principal_panics() {
-        let _ = Entry::new(vec![], None, None, entry_jsnow().key);
+        let _ = Entry::new(vec![], entry_jsnow().key);
     }
 
     #[rstest]
@@ -223,11 +225,11 @@ mod tests {
     )]
     #[case(
         entry_imalcom(),
-        "ian.malcom@acme.corp valid-after=20240411220000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
+        "ian.malcom@acme.corp valid-after=20240411220000Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9"
     )]
     #[case(
         entry_cwoods(),
-        "cwoods@universal.exports valid-before=20300101000000 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
+        "cwoods@universal.exports valid-before=20300101000000Z ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw"
     )]
     #[case(
         entry_ebert(),

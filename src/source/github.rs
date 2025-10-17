@@ -10,7 +10,7 @@ use super::{
     Error, ResponseError, Result, Source, base_client, next_url_from_link_header,
     parse_header_value,
 };
-use crate::{USER_AGENT, allowed_signers::ssh::PublicKey};
+use crate::{USER_AGENT, allowed_signers::file::PublicKey};
 
 #[derive(Debug)]
 pub struct Github {
@@ -59,7 +59,8 @@ impl Source for Github {
                 None
             });
 
-            keys.extend(response.json::<Vec<PublicKey>>().await?);
+            let api_keys: Vec<ApiSshKey> = response.json().await?;
+            keys.extend(api_keys.into_iter().map(PublicKey::from));
 
             match next_page {
                 Some(candidate) if candidate != current_url => {
@@ -86,6 +87,22 @@ impl Deref for Message {
 
     fn deref(&self) -> &Self::Target {
         &self.message
+    }
+}
+
+/// Intermediary representation of a [`PublicKey`] as returned by the GitHub API.
+#[derive(Debug, Deserialize)]
+struct ApiSshKey {
+    key: String,
+}
+
+impl From<ApiSshKey> for PublicKey {
+    fn from(api_key: ApiSshKey) -> Self {
+        PublicKey {
+            blob: api_key.key,
+            valid_after: None,
+            valid_before: None,
+        }
     }
 }
 
@@ -230,9 +247,21 @@ mod tests {
               }
         ]),
         vec![
-            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS".parse().unwrap(),
-            "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=".parse().unwrap(),
-            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDTdEeUFjUX76aMptdG63itqcINvu/tnV5l9RXy/1TS25Ui2r+C2pRjG0vr9lzfz8TGncQt1yKmaZDAAe6mYGFiQlrkh9RJ/MPssRw4uS4slvMTDWhNufO1M3QGkek81lGaZq55uazCcaM5xSOhLBdrWIMROeLgKZ9YkHNqJXTt9V+xNE5ZkB/65i2tCkGdXnQsGJbYFbkuUTvYBuMW9lwmryLTeWwFLWGBP1moZI9etk3snh2hCLTV8+gvmhCTE8sAGBMcJq+TGxnfFoCtnA9Bdy7t+ZMLh1kV7oneUA9YT7qNeUFy55D287DAltB02ntT7CtuG6SBAQ4CQMcCoAX3Os4aVfdILOEC8ghrAj3uTEQuE3nYta0SmqqXcVAxmXUQCawf8n5CJ7QN5aIhCH73MKr6k5puk9dnkAcAFLRM6stvQhnpIqrI3YEbjqs1FGHfbc4+nfEWorxRrd7ur1ckEhuvmAXRKrLzYp9gYWU6TxfRqSxsXh3he0G6i+kC6k=".parse().unwrap(),
+            PublicKey {
+                blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS".to_string(),
+                valid_after: None,
+                valid_before: None
+            },
+            PublicKey {
+                blob: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCoObGvI0R2SfxLypsqi25QOgiI1lcsAhtL7AqUeVD+4mS0CQ2Nu/C8h+RHtX6tHpd+GhfGjtDXjW598Vr2j9+w=".to_string(),
+                valid_after: None,
+                valid_before: None
+            },
+            PublicKey {
+                blob: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDDTdEeUFjUX76aMptdG63itqcINvu/tnV5l9RXy/1TS25Ui2r+C2pRjG0vr9lzfz8TGncQt1yKmaZDAAe6mYGFiQlrkh9RJ/MPssRw4uS4slvMTDWhNufO1M3QGkek81lGaZq55uazCcaM5xSOhLBdrWIMROeLgKZ9YkHNqJXTt9V+xNE5ZkB/65i2tCkGdXnQsGJbYFbkuUTvYBuMW9lwmryLTeWwFLWGBP1moZI9etk3snh2hCLTV8+gvmhCTE8sAGBMcJq+TGxnfFoCtnA9Bdy7t+ZMLh1kV7oneUA9YT7qNeUFy55D287DAltB02ntT7CtuG6SBAQ4CQMcCoAX3Os4aVfdILOEC8ghrAj3uTEQuE3nYta0SmqqXcVAxmXUQCawf8n5CJ7QN5aIhCH73MKr6k5puk9dnkAcAFLRM6stvQhnpIqrI3YEbjqs1FGHfbc4+nfEWorxRrd7ur1ckEhuvmAXRKrLzYp9gYWU6TxfRqSxsXh3he0G6i+kC6k=".to_string(),
+                valid_after: None,
+                valid_before: None
+            }
         ]
     )]
     #[tokio::test]
