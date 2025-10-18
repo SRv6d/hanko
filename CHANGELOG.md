@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-10-19
+
 ### Added
 
 - Use of http2 without prior negotiation for included sources.
@@ -128,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - aarch64 builds.
 
-[unreleased]: https://github.com/SRv6d/hanko/compare/v0.5.4...HEAD
+[unreleased]: https://github.com/SRv6d/hanko/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/SRv6d/hanko/compare/v0.5.4...v1.0.0
 [0.5.4]: https://github.com/SRv6d/hanko/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/SRv6d/hanko/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/SRv6d/hanko/compare/v0.5.1...v0.5.2
