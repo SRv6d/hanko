@@ -2,7 +2,6 @@
 use assert_cmd::Command;
 use httpmock::prelude::*;
 use indoc::{formatdoc, indoc};
-#[cfg(not(feature = "detect-allowed-signers"))]
 use predicates::prelude::*;
 use rstest::*;
 use serde_json::json;
@@ -155,19 +154,62 @@ fn update_writes_expected_allowed_signers(
 /// When running the update command with the `detect-allowed-signers` feature enabled and
 /// an allowed signers file configured within git, the file argument is not required.
 #[test]
-#[ignore = "TODO"]
-#[cfg(feature = "detect-allowed-signers")]
+#[cfg(all(feature = "detect-allowed-signers", target_family = "unix"))]
 fn file_arg_not_required_with_detect_feature_and_git_allowed_signers_config() {
-    todo!()
+    let config = {
+        let toml = "signers = []";
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(toml.as_bytes()).unwrap();
+        file
+    };
+    let allowed_signers = NamedTempFile::new().unwrap();
+    let git_config = {
+        let mut file = NamedTempFile::new().unwrap();
+        writeln!(
+            file,
+            "[gpg \"ssh\"]\n\tallowedsignersfile = {}",
+            allowed_signers.path().display()
+        )
+        .unwrap();
+        file
+    };
+
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.arg("--config")
+        .arg(config.path())
+        .arg("update")
+        .env("GIT_CONFIG_GLOBAL", git_config.path())
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env_remove("HANKO_ALLOWED_SIGNERS")
+        .assert()
+        .success();
 }
 
 /// When running the update command with the `detect-allowed-signers` feature enabled but
 /// without an allowed signers file configured within git, the file argument is required.
 #[test]
-#[ignore = "TODO"]
-#[cfg(feature = "detect-allowed-signers")]
+#[cfg(all(feature = "detect-allowed-signers", target_family = "unix"))]
 fn file_arg_required_with_detect_feature_but_without_git_allowed_signers_config() {
-    todo!()
+    let config = {
+        let toml = "signers = []";
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(toml.as_bytes()).unwrap();
+        file
+    };
+    let git_config = NamedTempFile::new().unwrap();
+
+    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    cmd.arg("--config")
+        .arg(config.path())
+        .arg("update")
+        .env("GIT_CONFIG_GLOBAL", git_config.path())
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env_remove("HANKO_ALLOWED_SIGNERS")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "required argument was not provided: file",
+        ));
 }
 
 /// When running the update command without the `detect-allowed-signers` feature enabled,
