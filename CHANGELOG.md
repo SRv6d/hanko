@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Use of http2 without prior negotiation for included sources.
+- Support for pagination for included sources.
+- Expiration to GitLab keys that have it set.
+
+### Internal
+
+- Use trusted publishing in release workflow.
+- Bump rust edition to 2024.
+- Update all dependencies.
+
 ## [0.5.4] - 2025-05-07
 
 ### Added
