@@ -1,5 +1,5 @@
 //! Ensure correct behavior of the signer management subcommand.
-use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use indoc::indoc;
 use predicates::prelude::*;
 use rstest::*;
@@ -35,7 +35,8 @@ fn adding_signer_updates_configuration(
         file.write_all(config.as_bytes()).unwrap();
         file
     };
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    let mut cmd = cargo_bin_cmd!();
+
     cmd.arg("--config")
         .arg(config.path())
         .arg("--file")
@@ -70,7 +71,7 @@ fn adding_signer_creates_configuration_if_none_exists(
     let tmpdir = TempDir::new().unwrap();
     let path = tmpdir.path().join("config.toml");
     assert!(!path.exists());
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    let mut cmd = cargo_bin_cmd!();
     cmd.arg("--config")
         .arg(&path)
         .arg("--file")
@@ -91,7 +92,7 @@ fn adding_signer_creates_configuration_if_none_exists(
 /// Adding a signer requires specifying at least one principal.
 #[test]
 fn adding_signer_requires_principal() {
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    let mut cmd = cargo_bin_cmd!();
     cmd.arg("--file")
         .arg(NamedTempFile::new().unwrap().path())
         .arg("signer")

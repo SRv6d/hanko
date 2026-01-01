@@ -40,11 +40,9 @@ jobs:
         hanko-${{ github.ref_name }}-${{ matrix.target }}.${{ startsWith(matrix.os, 'windows') && 'zip' || 'tar.gz' }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
-      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+      - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
         with:
-          toolchain: stable
-          targets: "${{ matrix.target }}"
-      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+          target: "${{ matrix.target }}"
       - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
       - name: Install GCC for aarch64
         run: |
@@ -93,10 +91,7 @@ jobs:
       DEB_FILENAME: hanko-${{ github.ref_name }}-${{ matrix.arch }}.deb
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
-      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
+      - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
       - uses: taiki-e/install-action@3575e532701a5fc614b0c842e4119af4cc5fd16d
         with:
           tool: cargo-deb
