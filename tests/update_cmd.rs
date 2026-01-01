@@ -1,7 +1,8 @@
 //! Ensure correct behavior of the update subcommand.
-use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use httpmock::prelude::*;
 use indoc::{formatdoc, indoc};
+#[cfg(target_family = "unix")]
 use predicates::prelude::*;
 use rstest::*;
 use serde_json::json;
@@ -138,7 +139,7 @@ fn update_writes_expected_allowed_signers(
 
     "};
 
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    let mut cmd = cargo_bin_cmd!();
     cmd.arg("--config")
         .arg(config.path())
         .arg("--file")
@@ -174,7 +175,7 @@ fn file_arg_not_required_with_detect_feature_and_git_allowed_signers_config() {
         file
     };
 
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    let mut cmd = cargo_bin_cmd!();
     cmd.arg("--config")
         .arg(config.path())
         .arg("update")
@@ -198,7 +199,7 @@ fn file_arg_required_with_detect_feature_but_without_git_allowed_signers_config(
     };
     let git_config = NamedTempFile::new().unwrap();
 
-    let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+    let mut cmd = cargo_bin_cmd!();
     cmd.arg("--config")
         .arg(config.path())
         .arg("update")
