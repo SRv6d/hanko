@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   cargo-test:
@@ -45,6 +44,9 @@ jobs:
         run: just check-features
   cargo-llvm-cov:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       matrix:
         os: ["ubuntu-latest"]
