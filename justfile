@@ -28,7 +28,7 @@ test:
 # Get code coverage for unit and integration tests
 coverage: _install_llvm_cov
     mkdir -p  {{ parent_directory(LCOV_FILE) }}
-    cargo llvm-cov --all-features --locked --lcov --output-path {{ LCOV_FILE }}
+    cargo llvm-cov --all-features --locked {{ if CI == "true" { "--lcov --output-path " + LCOV_FILE } else { "--summary-only" } }}
 
 # Check feature combinations
 check-features:
