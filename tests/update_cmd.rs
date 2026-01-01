@@ -2,6 +2,7 @@
 use assert_cmd::cargo::cargo_bin_cmd;
 use httpmock::prelude::*;
 use indoc::{formatdoc, indoc};
+#[cfg(target_family = "unix")]
 use predicates::prelude::*;
 use rstest::*;
 use serde_json::json;
