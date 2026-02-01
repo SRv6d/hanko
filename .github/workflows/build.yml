@@ -39,7 +39,7 @@ jobs:
       ARCHIVE_FILENAME: >-
         hanko-${{ github.ref_name }}-${{ matrix.target }}.${{ startsWith(matrix.os, 'windows') && 'zip' || 'tar.gz' }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
         with:
           target: "${{ matrix.target }}"
@@ -90,9 +90,9 @@ jobs:
       TARGET_DIR: target/${{ matrix.target }}
       DEB_FILENAME: hanko-${{ github.ref_name }}-${{ matrix.arch }}.deb
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
-      - uses: taiki-e/install-action@a983ca795126a4be4e8a44879ac5c4c3ef66cae1
+      - uses: taiki-e/install-action@650c5ca14212efbbf3e580844b04bdccf68dac31
         with:
           tool: cargo-deb
 
@@ -128,7 +128,7 @@ jobs:
     env:
       DOWNLOAD_DIR: release-files
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Download Release Files
         run: >-
           gh release download ${GITHUB_REF_NAME} --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
@@ -137,7 +137,7 @@ jobs:
 
       - name: Attest Build Provenance of Release Files
         id: provenance
-        uses: actions/attest-build-provenance@00014ed6ed5efc5b1ab7f7f34a39eb55d41aa4f8
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
         with:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
@@ -166,12 +166,12 @@ jobs:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
 
       - name: Container Registry Login
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -201,7 +201,7 @@ jobs:
           platforms: ${{ matrix.platform }}
 
       - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@00014ed6ed5efc5b1ab7f7f34a39eb55d41aa4f8
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
           subject-digest: ${{ steps.push.outputs.digest }}
