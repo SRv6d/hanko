@@ -22,8 +22,8 @@ anyhow = "1.0.100"
 async-trait = "0.1.89"
 chrono = { version = "0.4.42", features = ["serde"] }
 clap = { version = "4.5.53", features = ["derive", "env", "string"] }
-toml_edit = { version = "0.23.7", features = ["serde"] }
-gix-config = { version = "0.48.0", optional = true }
+toml_edit = { version = "0.24.0", features = ["serde"] }
+gix-config = { version = "0.51.0", optional = true }
 reqwest = { version = "0.12.24", default-features = false, features = [
     "json",
     "rustls-tls-native-roots",
@@ -53,7 +53,7 @@ tempfile = "3.23.0"
 reqwest = { version = "0.12.24", default-features = false, features = ["blocking"] }
 
 [build-dependencies]
-vergen-gix = { version = "1.0.9", features = ["cargo", "rustc"] }
+vergen-gix = { version = "9.1.0", features = ["cargo", "rustc"] }
 
 [package.metadata.deb]
 assets = [
