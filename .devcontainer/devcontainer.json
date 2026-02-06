@@ -16,8 +16,14 @@
         "nefrob.vscode-just-syntax"
       ],
       "settings": {
-        "rust-analyzer.updates.askBeforeDownload": false
+        "rust-analyzer.server.useBundled": false,
+        "rust-analyzer.server.path": "rust-analyzer",
+        "rust-analyzer.updates.askBeforeDownload": false,
       }
     }
-  }
+  },
+  "remoteEnv": {
+    "PATH": "/home/vscode/.nix-profile/bin:/nix/var/nix/profiles/default/bin:${containerEnv:PATH}"
+  },
+  "postCreateCommand": "nix profile add .#rust-toolchain .#rust-analyzer"
 }
