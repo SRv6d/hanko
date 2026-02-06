@@ -13,7 +13,8 @@
         "rust-lang.rust-analyzer",
         "fill-labs.dependi",
         "tamasfe.even-better-toml",
-        "nefrob.vscode-just-syntax"
+        "nefrob.vscode-just-syntax",
+        "jnoortheen.nix-ide"
       ],
       "settings": {
         "rust-analyzer.server.useBundled": false,
