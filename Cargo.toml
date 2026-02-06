@@ -37,7 +37,7 @@ tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
 [dev-dependencies]
 # Pin criterion (and related tooling) explicitly to ensure stable benchmarks
-codspeed-criterion-compat = "=4.2.0"
+codspeed-criterion-compat = "=4.3.0"
 criterion = "=0.8.1"
 assert_cmd = "2.1.2"
 predicates = "3.1.3"
