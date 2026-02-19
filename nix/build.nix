@@ -1,31 +1,85 @@
-{ pkgs, craneLib }:
+{ pkgs, crane, rustToolchain }:
 
 let
+  craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+
   src = craneLib.cleanCargoSource ./..;
 
-  commonArgs = {
-    inherit src;
-    strictDeps = true;
+  nativeTarget = pkgs.stdenv.hostPlatform.rust.rustcTargetSpec;
 
-    nativeBuildInputs = with pkgs; [
-      pkg-config
-    ];
-
-    buildInputs = with pkgs; [
-      openssl
-    ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
-      pkgs.darwin.apple_sdk.frameworks.Security
-      pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-    ];
-
-    # vergen-gix in build.rs reads git metadata, which is unavailable in the
-    # Nix sandbox. Idempotent mode makes it emit stable placeholder values
-    # instead of failing.
-    VERGEN_IDEMPOTENT = "1";
+  # All Linux targets with their nixpkgs cross package sets.
+  linuxTargets = {
+    "x86_64-unknown-linux-gnu"   = pkgs.pkgsCross.gnu64;
+    "aarch64-unknown-linux-gnu"  = pkgs.pkgsCross.aarch64-multiplatform;
+    "x86_64-unknown-linux-musl"  = pkgs.pkgsCross.musl64;
+    "aarch64-unknown-linux-musl" = pkgs.pkgsCross.aarch64-multiplatform-musl;
   };
 
-  cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+  platformTargets =
+    if pkgs.stdenv.hostPlatform.isLinux then linuxTargets
+    else if pkgs.stdenv.hostPlatform.isDarwin then {
+      ${nativeTarget} = pkgs;
+      ${if pkgs.stdenv.hostPlatform.isAarch64
+        then "x86_64-apple-darwin"
+        else "aarch64-apple-darwin"} = pkgs;
+    }
+    else { };
+
+  # Toolchain extended with cross-compilation targets.
+  crossTargetNames =
+    builtins.filter (t: t != nativeTarget) (builtins.attrNames platformTargets);
+  rustToolchainCross = rustToolchain.override {
+    targets = crossTargetNames;
+  };
+  craneLibCross =
+    (crane.mkLib pkgs).overrideToolchain rustToolchainCross;
+
+  mkPackage = target: _targetPkgs:
+    let
+      isCross = target != nativeTarget;
+      targetPkgs = if isCross then _targetPkgs else pkgs;
+      craneLib' = if isCross then craneLibCross else craneLib;
+
+      cc = targetPkgs.stdenv.cc;
+      crossCc = "${cc}/bin/${cc.targetPrefix}cc";
+      targetUnderscored = builtins.replaceStrings [ "-" ] [ "_" ] target;
+      targetUpper = pkgs.lib.toUpper targetUnderscored;
+      isLinuxCross = isCross && pkgs.lib.hasInfix "linux" target;
+
+      commonArgs = {
+        inherit src;
+        strictDeps = true;
+
+        nativeBuildInputs = [ pkgs.pkg-config ];
+
+        buildInputs = [
+          targetPkgs.openssl
+        ] ++ pkgs.lib.optionals targetPkgs.stdenv.hostPlatform.isDarwin [
+          targetPkgs.darwin.apple_sdk.frameworks.Security
+          targetPkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+        ];
+
+        # vergen-gix in build.rs reads git metadata, which is unavailable in
+        # the Nix sandbox. Idempotent mode makes it emit stable placeholder
+        # values instead of failing.
+        VERGEN_IDEMPOTENT = "1";
+      } // pkgs.lib.optionalAttrs isCross {
+        CARGO_BUILD_TARGET = target;
+        HOST_CC = "${pkgs.stdenv.cc}/bin/cc";
+      } // pkgs.lib.optionalAttrs isLinuxCross {
+        "CARGO_TARGET_${targetUpper}_LINKER" = crossCc;
+        # cc crate expects CC_<target> with underscores (not uppercased).
+        "CC_${targetUnderscored}" = crossCc;
+      };
+
+      cargoArtifacts = craneLib'.buildDepsOnly commonArgs;
+    in
+    craneLib'.buildPackage (commonArgs // {
+      inherit cargoArtifacts;
+    });
+
+  packages = builtins.mapAttrs mkPackage platformTargets;
 in
-craneLib.buildPackage (commonArgs // {
-  inherit cargoArtifacts;
-})
+{
+  inherit packages nativeTarget;
+}

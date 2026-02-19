@@ -15,18 +15,15 @@
         rustToolchain =
           pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
-        craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
-
-        hanko = import ./nix/build.nix { inherit pkgs craneLib; };
+        build = import ./nix/build.nix { inherit pkgs crane rustToolchain; };
       in
       {
         packages = {
-          inherit hanko;
+          hanko   = build.packages.${build.nativeTarget};
+          default = build.packages.${build.nativeTarget};
           rust-toolchain = rustToolchain;
           rust-analyzer  = pkgs.rust-analyzer;
-
-          default = hanko;
-        };
+        } // build.packages;
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
