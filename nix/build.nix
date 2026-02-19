@@ -1,4 +1,4 @@
-{ pkgs, crane, rustToolchain }:
+{ pkgs, crane, rustToolchain, gitRev ? null }:
 
 let
   craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
@@ -59,10 +59,8 @@ let
           targetPkgs.darwin.apple_sdk.frameworks.SystemConfiguration
         ];
 
-        # vergen-gix in build.rs reads git metadata, which is unavailable in
-        # the Nix sandbox. Idempotent mode makes it emit stable placeholder
-        # values instead of failing.
-        VERGEN_IDEMPOTENT = "1";
+      } // pkgs.lib.optionalAttrs (gitRev != null) {
+        GIT_SHA = gitRev;
       } // pkgs.lib.optionalAttrs isCross {
         CARGO_BUILD_TARGET = target;
         HOST_CC = "${pkgs.stdenv.cc}/bin/cc";
