@@ -124,13 +124,18 @@ fn long_version() -> String {
         None => env!("CARGO_PKG_VERSION").to_string(),
     };
     let metadata = match option_env!("BUILD_ENV") {
-        Some(build_env) => format!("rustc {}, {} profile, {build_env}", env!("RUSTC_SEMVER"), env!("PROFILE")),
-        None => format!("rustc {}, {} profile", env!("RUSTC_SEMVER"), env!("PROFILE")),
+        Some(build_env) => format!(
+            "rustc {}, {} profile, {build_env}",
+            env!("RUSTC_SEMVER"),
+            env!("PROFILE")
+        ),
+        None => format!(
+            "rustc {}, {} profile",
+            env!("RUSTC_SEMVER"),
+            env!("PROFILE")
+        ),
     };
-    format!(
-        "{version}\n{metadata}\n{}",
-        env!("ENABLED_FEATURES"),
-    )
+    format!("{version}\n{metadata}\n{}", env!("ENABLED_FEATURES"),)
 }
 
 /// The main CLI entrypoint.

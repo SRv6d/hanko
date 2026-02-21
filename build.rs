@@ -5,10 +5,7 @@ fn main() {
         println!("cargo:rustc-env=GIT_SHA={sha}");
     }
     println!("cargo:rustc-env=RUSTC_SEMVER={}", rustc_semver());
-    println!(
-        "cargo:rustc-env=PROFILE={}",
-        env::var("PROFILE").unwrap()
-    );
+    println!("cargo:rustc-env=PROFILE={}", env::var("PROFILE").unwrap());
     if let Some(build_env) = build_env() {
         println!("cargo:rustc-env=BUILD_ENV={build_env}");
     }
