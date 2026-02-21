@@ -13,196 +13,111 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-release-archive:
+  build:
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
-          - target: aarch64-apple-darwin
-            os: macos-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-    runs-on: ${{ matrix.os }}
-    env:
-      ARCHIVE_FILENAME: >-
-        hanko-${{ github.ref_name }}-${{ matrix.target }}.${{ startsWith(matrix.os, 'windows') && 'zip' || 'tar.gz' }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
-        with:
-          target: "${{ matrix.target }}"
-      - uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff
-      - name: Install GCC for aarch64
-        run: |
-          sudo apt install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-        if: ${{ contains(matrix.target, 'aarch64') && contains(matrix.target, 'linux') }}
-      - name: Install musl tools
-        run: sudo apt install -y musl-tools
-        if: ${{ contains(matrix.target, 'musl') && contains(matrix.target, 'linux') }}
-      - name: Print versions
-        shell: bash
-        run: |
-          gcc --version || true
-          rustup -V
-          rustup toolchain list
-          rustup default
-          cargo -V
-          rustc -V
-
-      - name: Create Release Archive
-        run: just release-archive ${{ matrix.target }} ${{ env.ARCHIVE_FILENAME }}
-
-      - name: Upload Release Archive
-        run: >-
-          gh release upload "${GITHUB_REF_NAME}"
-          "${ARCHIVE_FILENAME}"
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  cargo-deb:
-    permissions:
-      contents: write
-    needs: build-release-archive
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-musl
-            arch: amd64
-          - target: aarch64-unknown-linux-musl
-            arch: arm64
-    runs-on: ubuntu-latest
-    env:
-      TARGET_DIR: target/${{ matrix.target }}
-      DEB_FILENAME: hanko-${{ github.ref_name }}-${{ matrix.arch }}.deb
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - uses: actions-rust-lang/setup-rust-toolchain@1780873c7b576612439a134613cc4cc74ce5538c # v1.15.2
-      - uses: taiki-e/install-action@650c5ca14212efbbf3e580844b04bdccf68dac31
-        with:
-          tool: cargo-deb
-
-      - name: Create Target Release Directory
-        run: mkdir -p ${TARGET_DIR}/release
-      - name: Download Release Binary
-        run: >-
-          gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
-          --output - | tar -xz -C ${TARGET_DIR}/release ./hanko
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Create Debian Package
-        run: >-
-          cargo deb --no-build --no-strip --target ${{ matrix.target }}
-          --output ${TARGET_DIR}/debian/${DEB_FILENAME}
-
-      - name: Upload Debian Package
-        run: >-
-          gh release upload "${GITHUB_REF_NAME}"
-          "${TARGET_DIR}/debian/${DEB_FILENAME}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  attest-build-provenance:
-    permissions:
-      id-token: write
-      attestations: write
-      contents: write
-    needs:
-      - build-release-archive
-      - cargo-deb
-    runs-on: ubuntu-latest
-    env:
-      DOWNLOAD_DIR: release-files
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Download Release Files
-        run: >-
-          gh release download ${GITHUB_REF_NAME} --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Attest Build Provenance of Release Files
-        id: provenance
-        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
-        with:
-          subject-path: ${{ env.DOWNLOAD_DIR }}/*
-
-      - name: Upload Provenance of Release Files
-        run: >-
-          gh release upload ${GITHUB_REF_NAME}
-          ${{ steps.provenance.outputs.bundle-path }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  build-container-image:
-    permissions:
-      id-token: write
-      attestations: write
       packages: write
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target: x86_64-unknown-linux-musl
-            platform: linux/amd64
-          - target: aarch64-unknown-linux-musl
-            platform: linux/arm64
-    needs: build-release-archive
-    runs-on: ubuntu-latest
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: DeterminateSystems/nix-installer-action@e50d5f73bfe71c2dd0aa4218de8f4afa59f8f81d # v16
 
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Build release artifacts
+        run: nix build .#release-artifacts --out-link release-artifacts
 
-      - name: Container Registry Login
+      - name: Upload release artifacts
+        run: gh release upload --clobber "${GITHUB_REF_NAME}" release-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Container Registry login
+        if: runner.os == 'Linux'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Metadata (tags, labels)
+      - name: Set up Docker Buildx
+        if: runner.os == 'Linux'
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Extract image metadata
+        if: runner.os == 'Linux'
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ github.ref_name }}
+            type=raw,value=latest
 
-      - name: Download Release Binary
+      - name: Build and push container images
+        if: runner.os == 'Linux'
+        id: containers
+        run: |
+          version_tag=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          nix build .#release-containers --out-link release-containers
+          arch_tags=()
+          for img in release-containers/*.tar.gz; do
+            arch=$(basename "$img" .tar.gz)
+            docker load < "$img"
+            tag="${version_tag}-${arch}"
+            docker tag "hanko:${version_tag##*:v}" "$tag"
+            docker push "$tag"
+            arch_tags+=("$tag")
+          done
+          tag_args=()
+          while IFS= read -r t; do
+            [[ -n "$t" ]] && tag_args+=(--tag "$t")
+          done <<< "${{ steps.meta.outputs.tags }}"
+          docker buildx imagetools create "${tag_args[@]}" "${arch_tags[@]}"
+          digest=$(docker buildx imagetools inspect \
+            --format '{{json .Manifest}}' \
+            "${version_tag}" | jq -r '.digest')
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "subject_name=${version_tag%%:*}" >> "$GITHUB_OUTPUT"
+
+      - name: Attest container image
+        if: runner.os == 'Linux'
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
+        with:
+          subject-name: ${{ steps.containers.outputs.subject_name }}
+          subject-digest: ${{ steps.containers.outputs.digest }}
+          push-to-registry: true
+
+  attest-build-provenance:
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DOWNLOAD_DIR: release-files
+    steps:
+      - name: Download release files
         run: >-
-          gh release download ${GITHUB_REF_NAME} --pattern "*${{ matrix.target }}.tar.gz"
-          --output - | tar -xz ./hanko
+          gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Build & Push Image
-        id: push
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: ${{ matrix.platform }}
-
-      - name: Attest Build Provenance
+      - name: Attest release files
+        id: provenance
         uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
+          subject-path: ${{ env.DOWNLOAD_DIR }}/*
+
+      - name: Upload provenance
+        run: gh release upload --clobber "${GITHUB_REF_NAME}" ${{ steps.provenance.outputs.bundle-path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

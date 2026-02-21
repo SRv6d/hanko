@@ -1,51 +1,55 @@
-use std::{env, error::Error};
+use std::{env, process::Command};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let cargo = vergen_gix::CargoBuilder::all_cargo()?;
-    let rustc = vergen_gix::RustcBuilder::all_rustc()?;
-    let git = vergen_gix::GixBuilder::all_git()?;
-    vergen_gix::Emitter::default()
-        .add_instructions(&cargo)?
-        .add_instructions(&rustc)?
-        .add_instructions(&git)?
-        .emit()?;
-
-    println!(
-        "cargo:rustc-env=LONG_VERSION_PROFILE={}",
-        env::var("PROFILE").unwrap()
-    );
-    println!("cargo:rustc-env=LONG_VERSION_ENV={}", env());
-    println!(
-        "cargo:rustc-env=LONG_VERSION_FEATURES={}",
-        enabled_features()
-    );
-
-    Ok(())
+fn main() {
+    if let Ok(sha) = env::var("GIT_SHA") {
+        println!("cargo:rustc-env=GIT_SHA={sha}");
+    }
+    println!("cargo:rustc-env=RUSTC_SEMVER={}", rustc_semver());
+    println!("cargo:rustc-env=PROFILE={}", env::var("PROFILE").unwrap());
+    if let Some(build_env) = build_env() {
+        println!("cargo:rustc-env=BUILD_ENV={build_env}");
+    }
+    println!("cargo:rustc-env=ENABLED_FEATURES={}", enabled_features());
 }
 
-/// Build environment information.
-fn env() -> String {
-    if env::var("GITHUB_ACTION").is_ok() {
-        // The following variables are expected to exist when building within a GitHub workflow.
-        // https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
-        return format!("GitHub CI {}", env::var("GITHUB_WORKFLOW_REF").unwrap());
-    }
+fn rustc_semver() -> String {
+    env::var("RUSTC")
+        .ok()
+        .and_then(|rustc| {
+            Command::new(rustc)
+                .arg("--version")
+                .output()
+                .ok()
+                .filter(|o| o.status.success())
+                .and_then(|o| String::from_utf8(o.stdout).ok())
+        })
+        .and_then(|version| version.split_whitespace().nth(1).map(String::from))
+        .unwrap_or_default()
+}
 
-    "unknown environment".to_string()
+fn build_env() -> Option<String> {
+    if let Ok(workflow_ref) = env::var("GITHUB_WORKFLOW_REF") {
+        return Some(format!("GitHub CI {workflow_ref}"));
+    }
+    if env::var("NIX_BUILD_TOP").is_ok() {
+        return Some("Nix".to_string());
+    }
+    None
 }
 
 fn enabled_features() -> String {
     let prefix = "CARGO_FEATURE_";
-    let features = env::vars()
+    env::vars()
         .filter(|(key, _)| key.starts_with(prefix))
         .map(|(key, _)| {
-            key.strip_prefix(prefix)
-                .unwrap()
-                .to_lowercase()
-                .replace('_', "-")
-        });
-    features
-        .map(|name| format!("+{name}"))
+            format!(
+                "+{}",
+                key.strip_prefix(prefix)
+                    .unwrap()
+                    .to_lowercase()
+                    .replace('_', "-")
+            )
+        })
         .collect::<Vec<_>>()
         .join(" ")
 }

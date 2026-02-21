@@ -118,21 +118,24 @@ fn git_allowed_signers() -> Resettable<OsStr> {
     Resettable::Reset
 }
 
-fn long_version() -> &'static str {
-    concat!(
-        concat!(env!("CARGO_PKG_VERSION"), " (", env!("VERGEN_GIT_SHA"), ")"),
-        "\n",
-        concat!(
-            "rustc ",
-            env!("VERGEN_RUSTC_SEMVER"),
-            ", ",
-            env!("LONG_VERSION_PROFILE"),
-            " profile, ",
-            env!("LONG_VERSION_ENV"),
+fn long_version() -> String {
+    let version = match option_env!("GIT_SHA") {
+        Some(sha) => format!("{} ({sha})", env!("CARGO_PKG_VERSION")),
+        None => env!("CARGO_PKG_VERSION").to_string(),
+    };
+    let metadata = match option_env!("BUILD_ENV") {
+        Some(build_env) => format!(
+            "rustc {}, {} profile, {build_env}",
+            env!("RUSTC_SEMVER"),
+            env!("PROFILE")
         ),
-        "\n",
-        env!("LONG_VERSION_FEATURES")
-    )
+        None => format!(
+            "rustc {}, {} profile",
+            env!("RUSTC_SEMVER"),
+            env!("PROFILE")
+        ),
+    };
+    format!("{version}\n{metadata}\n{}", env!("ENABLED_FEATURES"),)
 }
 
 /// The main CLI entrypoint.

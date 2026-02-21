@@ -46,30 +46,6 @@ manpages dir=MANPAGES_DIR:
 release-build target:
     cargo build --release --locked --target {{ target }}
 
-# Create the release archive for the specified target
-release-archive target filename: (release-build target)
-    #!/usr/bin/env bash
-    set -euxo pipefail
-
-    if [ "{{ os_family() }}" == "unix" ]; then
-        DIR=$(mktemp -d)
-    else
-        DIR="${TEMP}/{{ CRATE_NAME }}-{{ uuid() }}"
-        mkdir -p $DIR
-    fi
-
-    cp README.md LICENSE CHANGELOG.md {{ MANPAGES_DIR }}/* $DIR
-    mkdir $DIR/completions
-    cp {{ COMPLETIONS_DIR }}/* $DIR/completions
-    cp target/{{ target }}/release/{{ CRATE_NAME }} $DIR
-
-    if [ "{{ extension(filename) }}" == "gz" ]; then
-        tar -czvf {{ filename }} -C $DIR .
-    else
-        (cd $DIR && 7z a {{ filename }} *)
-        cp $DIR/{{ filename }} .
-    fi
-
 # Bump our version
 bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
     #!/usr/bin/env bash
