@@ -59,31 +59,33 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ github.ref_name }}
-      
+            type=raw,value=latest
+
       - name: Build and push container images
         if: runner.os == 'Linux'
         id: containers
         run: |
-          base_tag="${{ steps.meta.outputs.tags }}"
-          subject_name="${base_tag%%:*}"
+          version_tag=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
           nix build .#release-containers --out-link release-containers
           arch_tags=()
           for img in release-containers/*.tar.gz; do
             arch=$(basename "$img" .tar.gz)
             docker load < "$img"
-            tag="${base_tag}-${arch}"
-            docker tag "hanko:${GITHUB_REF_NAME#v}" "$tag"
+            tag="${version_tag}-${arch}"
+            docker tag "hanko:${version_tag##*:v}" "$tag"
             docker push "$tag"
             arch_tags+=("$tag")
           done
-          docker buildx imagetools create \
-            --tag "${base_tag}" \
-            "${arch_tags[@]}"
+          tag_args=()
+          while IFS= read -r t; do
+            [[ -n "$t" ]] && tag_args+=(--tag "$t")
+          done <<< "${{ steps.meta.outputs.tags }}"
+          docker buildx imagetools create "${tag_args[@]}" "${arch_tags[@]}"
           digest=$(docker buildx imagetools inspect \
             --format '{{json .Manifest}}' \
-            "${base_tag}" | jq -r '.digest')
+            "${version_tag}" | jq -r '.digest')
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
-          echo "subject_name=${subject_name}" >> "$GITHUB_OUTPUT"
+          echo "subject_name=${version_tag%%:*}" >> "$GITHUB_OUTPUT"
 
       - name: Attest container image
         if: runner.os == 'Linux'
