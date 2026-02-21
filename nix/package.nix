@@ -93,7 +93,28 @@ let
   archives = builtins.mapAttrs mkArchive archiveTargets;
   debs = builtins.mapAttrs mkDeb debTargets;
   containerImages = builtins.mapAttrs mkContainerImage debTargets;
+
+  releaseArtifacts =
+    let
+      allArtifacts = builtins.attrValues archives ++ builtins.attrValues debs;
+      copyArtifacts = pkgs.lib.concatMapStrings (a: "cp ${a} $out/${a.name}\n") allArtifacts;
+    in
+    pkgs.runCommand "${cargo.name}-release-artifacts" { } ''
+      mkdir $out
+      ${copyArtifacts}
+    '';
+
+  releaseContainers =
+    let
+      copyImages = pkgs.lib.concatMapStrings (target:
+        "cp ${containerImages.${target}} $out/${targetArch target}.tar.gz\n"
+      ) (builtins.attrNames containerImages);
+    in
+    pkgs.runCommand "${cargo.name}-release-containers" { } ''
+      mkdir $out
+      ${copyImages}
+    '';
 in
 {
-  inherit archives debs containerImages;
+  inherit archives debs containerImages releaseArtifacts releaseContainers;
 }

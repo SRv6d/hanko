@@ -27,10 +27,12 @@
       in
       {
         packages = {
-          hanko   = build.packages.${build.nativeTarget};
-          default = build.packages.${build.nativeTarget};
-          rust-toolchain = rustToolchain;
-          rust-analyzer  = pkgs.rust-analyzer;
+          hanko              = build.packages.${build.nativeTarget};
+          default            = build.packages.${build.nativeTarget};
+          rust-toolchain     = rustToolchain;
+          rust-analyzer      = pkgs.rust-analyzer;
+          release-artifacts  = packaging.releaseArtifacts;
+          release-containers = packaging.releaseContainers;
         } // build.packages
           // pkgs.lib.mapAttrs'
             (target: archive: pkgs.lib.nameValuePair "archive-${target}" archive)
