@@ -40,6 +40,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Container Registry login
+        if: runner.os == 'Linux'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ${{ env.REGISTRY }}
@@ -88,7 +89,7 @@ jobs:
     steps:
       - name: Download release files
         run: >-
-          gh release download ${GITHUB_REF_NAME} --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
+          gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
@@ -99,6 +100,6 @@ jobs:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
       - name: Upload provenance
-        run: gh release upload ${GITHUB_REF_NAME} ${{ steps.provenance.outputs.bundle-path }}
+        run: gh release upload "${GITHUB_REF_NAME}" ${{ steps.provenance.outputs.bundle-path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
