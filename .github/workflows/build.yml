@@ -35,7 +35,7 @@ jobs:
         run: nix build .#release-artifacts --out-link release-artifacts
 
       - name: Upload release artifacts
-        run: gh release upload "${GITHUB_REF_NAME}" release-artifacts/*
+        run: gh release upload --clobber "${GITHUB_REF_NAME}" release-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -100,6 +100,6 @@ jobs:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
       - name: Upload provenance
-        run: gh release upload "${GITHUB_REF_NAME}" ${{ steps.provenance.outputs.bundle-path }}
+        run: gh release upload --clobber "${GITHUB_REF_NAME}" ${{ steps.provenance.outputs.bundle-path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
