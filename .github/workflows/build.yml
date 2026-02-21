@@ -46,34 +46,46 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        if: runner.os == 'Linux'
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ github.ref_name }}
       
       - name: Build and push container images
         if: runner.os == 'Linux'
         id: containers
         run: |
+          base_tag="${{ steps.meta.outputs.tags }}"
+          subject_name="${base_tag%%:*}"
           nix build .#release-containers --out-link release-containers
           arch_tags=()
           for img in release-containers/*.tar.gz; do
             arch=$(basename "$img" .tar.gz)
             docker load < "$img"
-            tag="${REGISTRY}/${IMAGE_NAME}:${GITHUB_REF_NAME}-${arch}"
+            tag="${base_tag}-${arch}"
             docker tag "hanko:${GITHUB_REF_NAME#v}" "$tag"
             docker push "$tag"
             arch_tags+=("$tag")
           done
           docker buildx imagetools create \
-            --tag "${REGISTRY}/${IMAGE_NAME}:${GITHUB_REF_NAME}" \
+            --tag "${base_tag}" \
             "${arch_tags[@]}"
           digest=$(docker buildx imagetools inspect \
             --format '{{json .Manifest}}' \
-            "${REGISTRY}/${IMAGE_NAME}:${GITHUB_REF_NAME}" | jq -r '.digest')
+            "${base_tag}" | jq -r '.digest')
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "subject_name=${subject_name}" >> "$GITHUB_OUTPUT"
 
       - name: Attest container image
         if: runner.os == 'Linux'
         uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ steps.containers.outputs.subject_name }}
           subject-digest: ${{ steps.containers.outputs.digest }}
           push-to-registry: true
 
