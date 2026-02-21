@@ -15,7 +15,7 @@ use std::{
 use tracing::Level;
 
 #[derive(Debug, Parser)]
-#[command(version, long_version=long_version(), about, long_about = None)]
+#[command(long_version=long_version(), about, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     command: Commands,
