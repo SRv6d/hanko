@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use tracing::trace;
 
+use crate::parent_dir;
 use super::signer::{Signer, get_entries};
 
 /// The allowed signers file.
@@ -27,9 +28,7 @@ impl File {
     /// Write the file to disk.
     #[tracing::instrument(skip(self), fields(path = %self.path.display(), tmp = tracing::field::Empty), level = "trace")]
     pub fn write(&self) -> anyhow::Result<()> {
-        let dir = self.path
-            .parent()
-            .context("Allowed signers path has no parent directory")?;
+        let dir = parent_dir(&self.path)?;
         let mut file = NamedTempFile::new_in(dir)?;
         tracing::Span::current().record("tmp", tracing::field::display(file.path().display()));
 

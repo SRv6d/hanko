@@ -3,7 +3,7 @@
 //! Fallible functions in this module return an [`anyhow::Result`] since any errors that occur
 //! when interacting with configuration will be reported to the user without further processing.
 
-use crate::{Github, Gitlab, Source, allowed_signers::Signer};
+use crate::{Github, Gitlab, Source, allowed_signers::Signer, parent_dir};
 use anyhow::{Context, Error, Result, bail};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -67,10 +67,7 @@ impl TomlFile {
     /// Save back to TOML file.
     fn save(&self) -> Result<()> {
         info!("Saving TOML configuration file");
-        let dir = self
-            .path
-            .parent()
-            .context("Path does not contain parent directory")?;
+        let dir = parent_dir(&self.path)?;
         let mut file = NamedTempFile::new_in(dir)?;
         write!(file, "{}", self.document)?;
         file.persist(&self.path)?;
@@ -234,9 +231,7 @@ impl Configuration {
         Self::load(path).or_else(|err| match err.downcast_ref::<io::Error>() {
             Some(io_err) if io_err.kind() == io::ErrorKind::NotFound => {
                 info!("Configuration file does not exist yet and will be created");
-                let dir = path
-                    .parent()
-                    .context("Path does not contain parent directory")?;
+                let dir = parent_dir(path)?;
                 fs::create_dir_all(dir).context(format!(
                     "Failed to create configuration directory {}",
                     dir.display()
