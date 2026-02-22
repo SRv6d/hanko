@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The signers file is no longer written if an update does not produce any entries. 
+
 ### Fixed
 
 - `hanko signer add` no longer appends a duplicate to the configuration if an identical signer already exists.
