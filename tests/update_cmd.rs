@@ -184,7 +184,9 @@ fn update_warns_when_no_entries_and_file_exists(mock_github_server: MockServer) 
         .arg("update")
         .assert()
         .success()
-        .stdout(predicate::str::contains("No allowed signer entries collected"));
+        .stdout(predicate::str::contains(
+            "No allowed signer entries collected",
+        ));
 }
 
 /// When running the update command with the `detect-allowed-signers` feature enabled and
