@@ -106,3 +106,91 @@ fn adding_signer_requires_principal() {
     ));
     cmd.assert().stderr(predicate::str::contains("PRINCIPALS"));
 }
+
+/// Adding an identical signer warns and keeps the configuration unchanged.
+#[rstest]
+#[case(
+    indoc! {r#"
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+    "#},
+    vec!["octocat", "octocat@github.com"],
+)]
+fn adding_identical_signer_warns_without_changing_configuration(
+    #[case] config: &str,
+    #[case] args: Vec<&str>,
+) {
+    let config_file = {
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(config.as_bytes()).unwrap();
+        file
+    };
+    let mut cmd = cargo_bin_cmd!();
+    cmd.arg("--config")
+        .arg(config_file.path())
+        .arg("--file")
+        .arg(NamedTempFile::new().unwrap().path())
+        .arg("signer")
+        .arg("add")
+        .arg("--no-update");
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    cmd.assert()
+        .success()
+        .stderr(predicate::str::contains("already exists"));
+    let result = std::fs::read_to_string(config_file.path()).unwrap();
+
+    assert_eq!(result, config);
+}
+
+/// Adding a signer with an existing name but conflicting attributes returns an error and leaves the configuration unchanged.
+#[rstest]
+#[case(
+    indoc! {r#"
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+    "#},
+    vec!["octocat", "other@github.com"],
+)]
+#[case(
+    indoc! {r#"
+            [[signers]]
+            name = "octocat"
+            principals = ["octocat@github.com"]
+            sources = ["gitlab"]
+    "#},
+    vec!["--source", "github", "octocat", "octocat@github.com"],
+)]
+fn adding_signer_with_existing_name_and_conflicting_attributes_returns_error(
+    #[case] config: &str,
+    #[case] args: Vec<&str>,
+) {
+    let config_file = {
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(config.as_bytes()).unwrap();
+        file
+    };
+    let mut cmd = cargo_bin_cmd!();
+    cmd.arg("--config")
+        .arg(config_file.path())
+        .arg("--file")
+        .arg(NamedTempFile::new().unwrap().path())
+        .arg("signer")
+        .arg("add")
+        .arg("--no-update");
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("already exists"))
+        .stderr(predicate::str::contains("different"));
+    let result = std::fs::read_to_string(config_file.path()).unwrap();
+
+    assert_eq!(result, config);
+}

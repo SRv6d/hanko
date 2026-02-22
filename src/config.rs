@@ -1,7 +1,22 @@
 //! Types used to configure hanko.
 //!
-//! Fallible functions in this module return an [`anyhow::Result`] since any errors that occur
-//! when interacting with configuration will be reported to the user without further processing.
+//! Configuration is handled by two cooperating types: [`TomlFile`] and [`Configuration`].
+//!
+//! [`TomlFile`] holds the raw [`toml_edit::DocumentMut`] and is responsible for format-preserving
+//! load, mutation, and atomic save operations. [`toml_edit`] is used to ensure that user formatting,
+//! comments, and key ordering are not destroyed when hanko writes back to the config file.
+//!
+//! [`Configuration`] is the typed, validated domain object. It is derived from [`TomlFile`] and
+//! owns the parsed signers and sources. [`TomlFile`] is retained as a field on [`Configuration`]
+//! so that mutations made through the public API can be written back to disk through the
+//! original document, preserving formatting.
+//!
+//! Keeping the two types separate rather than collapsing them into one also means
+//! [`Configuration`] can be constructed from an in-memory document without a real file path,
+//! which keeps unit tests independent of the filesystem.
+//!
+//! Fallible functions return [`anyhow::Result`] since errors here are reported directly to the
+//! user without further programmatic handling.
 
 use crate::{Github, Gitlab, Source, allowed_signers::Signer, parent_dir};
 use anyhow::{Context, Error, Result, bail};
@@ -26,21 +41,13 @@ struct TomlFile {
 
 impl TomlFile {
     /// Add an allowed signer to the file.
-    fn add_signer(&mut self, name: &str, principals: Vec<&str>, source_names: Vec<&str>) {
-        use toml_edit::{Array, ArrayOfTables, Item, Table, Value};
+    fn add_signer(&mut self, signer: &SignerConfiguration) {
+        use toml_edit::{ArrayOfTables, Item, Value};
 
-        let mut table = Table::new();
-        table.insert("name", name.into());
-        table.insert(
-            "principals",
-            principals.into_iter().collect::<Array>().into(),
-        );
-        if source_names != default_user_source() {
-            table.insert(
-                "sources",
-                source_names.into_iter().collect::<Array>().into(),
-            );
-        }
+        let table = toml_edit::ser::to_document(signer)
+            .expect("SignerConfiguration is always serializable")
+            .as_table()
+            .clone();
 
         match self.document.get_mut("signers") {
             None => {
@@ -79,8 +86,12 @@ impl TomlFile {
 #[derive(Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Configuration {
+    /// The configured signers.
     signers: Vec<SignerConfiguration>,
+    /// The configured sources.
     sources: Vec<SourceConfiguration>,
+    /// The file representing the configuration on disk.
+    /// Invariant: Any mutation of the above fields must be reflected here as well.
     #[serde(skip)]
     file: TomlFile,
 }
@@ -140,31 +151,32 @@ impl Configuration {
     }
 
     /// Add an allowed signer to the configuration.
+    /// Returns `true` if the signer was added and `false` if an identical signer already exists.
     ///
     /// # Errors
     ///
-    /// Returns an error if any of the given sources don't exist.
+    /// Returns an error if any of the given sources don't exist, or if the signer already exists
+    /// with different attributes.
     pub fn add_signer(
         &mut self,
         name: String,
         principals: Vec<String>,
         source_names: Vec<String>,
-    ) -> Result<()> {
-        self.check_sources_exist(source_names.iter().map(String::as_str))?;
-
+    ) -> Result<bool> {
         let signer = SignerConfiguration {
             name,
             principals,
             source_names,
         };
-        self.file.add_signer(
-            &signer.name,
-            signer.principals.iter().map(AsRef::as_ref).collect(),
-            signer.source_names.iter().map(AsRef::as_ref).collect(),
-        );
+        self.check_sources_exist(signer.source_names.iter().map(String::as_str))?;
+        if self.check_signer_already_exists(&signer)? {
+            return Ok(false);
+        }
+
+        self.file.add_signer(&signer);
         self.signers.push(signer);
 
-        Ok(())
+        Ok(true)
     }
 
     /// Returns sources generated from their configuration.
@@ -290,6 +302,23 @@ impl Configuration {
         Ok(())
     }
 
+    /// Check if the given signer already exists.
+    ///
+    /// Returns `Ok(true)` for an identical signer, `Ok(false)` if no signer with the same name
+    /// exists and an error if one exists with different attributes.
+    fn check_signer_already_exists(&self, signer: &SignerConfiguration) -> Result<bool> {
+        if let Some(existing) = self.signers.iter().find(|s| s.name == signer.name) {
+            if existing == signer {
+                return Ok(true);
+            }
+            bail!(
+                "Signer {} already exists with different attributes, please update the configuration manually",
+                signer.name
+            );
+        }
+        Ok(false)
+    }
+
     /// Check that all signers have at least one principal configured.
     fn check_signers_have_one_or_more_principals(&self) -> Result<()> {
         for config in &self.signers {
@@ -314,12 +343,18 @@ pub fn default_user_source() -> Vec<String> {
     vec!["github".to_string()]
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+fn is_default_sources(sources: &[String]) -> bool {
+    // We don't need to be order insensitive here since adding any sources would be a
+    // breaking change and there currently is only one.
+    sources == default_user_source()
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(default, deny_unknown_fields)]
 pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
-    #[serde(rename = "sources")]
+    #[serde(rename = "sources", skip_serializing_if = "is_default_sources")]
     pub source_names: Vec<String>,
 }
 
@@ -581,13 +616,15 @@ mod tests {
     fn adding_signer_adds_to_signers(#[case] signer: SignerConfiguration) {
         let mut config = Configuration::default();
 
-        config
-            .add_signer(
-                signer.name.clone().clone(),
-                signer.principals.clone(),
-                signer.source_names.clone(),
-            )
-            .unwrap();
+        assert!(
+            config
+                .add_signer(
+                    signer.name.clone(),
+                    signer.principals.clone(),
+                    signer.source_names.clone(),
+                )
+                .unwrap()
+        );
 
         assert!(config.signers.contains(&signer));
     }
@@ -690,9 +727,11 @@ mod tests {
         })
         .unwrap();
 
-        config
-            .add_signer(signer.name, signer.principals, signer.source_names)
-            .unwrap();
+        assert!(
+            config
+                .add_signer(signer.name, signer.principals, signer.source_names)
+                .unwrap()
+        );
 
         assert_eq!(config.file.document.to_string(), expected);
     }
