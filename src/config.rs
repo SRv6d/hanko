@@ -1,7 +1,22 @@
 //! Types used to configure hanko.
 //!
-//! Fallible functions in this module return an [`anyhow::Result`] since any errors that occur
-//! when interacting with configuration will be reported to the user without further processing.
+//! Configuration is handled by two cooperating types: [`TomlFile`] and [`Configuration`].
+//!
+//! [`TomlFile`] holds the raw [`toml_edit::DocumentMut`] and is responsible for format-preserving
+//! load, mutation, and atomic save operations. [`toml_edit`] is used to ensure that user formatting,
+//! comments, and key ordering are not destroyed when hanko writes back to the config file.
+//!
+//! [`Configuration`] is the typed, validated domain object. It is derived from [`TomlFile`] and
+//!  owns the parsed signers and sources. [`TomlFile`] is retained as a field on [`Configuration`]
+//! so that mutations made through the public API can be written back to disk through the
+//! original document, preserving formatting.
+//!
+//! Keeping the two types separate rather than collapsing them into one also means
+//! [`Configuration`] can be constructed from an in-memory document without a real file path,
+//! which keeps unit tests independent of the filesystem.
+//!
+//! Fallible functions return [`anyhow::Result`] since errors here are reported directly to the
+//! user without further programmatic handling.
 
 use crate::{Github, Gitlab, Source, allowed_signers::Signer, parent_dir};
 use anyhow::{Context, Error, Result, bail};
