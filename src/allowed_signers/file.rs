@@ -12,7 +12,7 @@ use anyhow::Context;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
-use tracing::trace;
+use tracing::{trace, warn};
 
 use super::signer::{Signer, get_entries};
 use crate::parent_dir;
@@ -136,6 +136,14 @@ where
     S: IntoIterator<Item = Signer>,
 {
     let entries = get_entries(signers).await?;
+
+    if entries.is_empty() {
+        warn!(
+            path = %path.display(),
+            "No allowed signer entries collected, not writing allowed signers file"
+        );
+        return Ok(());
+    }
 
     let file = File::from_entries(path.to_path_buf(), entries);
     file.write().context(format!(
