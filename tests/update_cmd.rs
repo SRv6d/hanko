@@ -152,6 +152,41 @@ fn update_writes_expected_allowed_signers(
     assert_eq!(content, expected_content);
 }
 
+/// When no entries are collected and the allowed signers file already exists,
+/// a warning is emitted.
+#[rstest]
+#[cfg(target_family = "unix")]
+fn update_warns_when_no_entries_and_file_exists(mock_github_server: MockServer) {
+    let config = {
+        let toml = formatdoc! {r#"
+            signers = [
+                {{ name = "napplic", principals = ["not@applicable.com"], sources = ["mock-github"]}}
+            ]
+
+            [[sources]]
+            name = "mock-github"
+            provider = "github"
+            url = "{github_url}"
+        "#, github_url = mock_github_server.base_url()};
+        let mut file = NamedTempFile::new().unwrap();
+        file.write_all(toml.as_bytes()).unwrap();
+        file
+    };
+    let mut allowed_signers = NamedTempFile::new().unwrap();
+    allowed_signers.write_all(b"some existing content").unwrap();
+
+    cargo_bin_cmd!()
+        .arg("-v")
+        .arg("--config")
+        .arg(config.path())
+        .arg("--file")
+        .arg(allowed_signers.path())
+        .arg("update")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No allowed signer entries collected"));
+}
+
 /// When running the update command with the `detect-allowed-signers` feature enabled and
 /// an allowed signers file configured within git, the file argument is not required.
 #[test]

@@ -221,6 +221,16 @@ mod tests {
         )
     }
 
+    /// When no entries are collected, the allowed signers file is not written.
+    #[tokio::test]
+    async fn update_does_not_write_file_when_no_entries() {
+        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+
+        update(&path, Vec::<Signer>::new()).await.unwrap();
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), "");
+    }
+
     #[test]
     #[should_panic(expected = "signer entry requires at least one principal")]
     fn new_entry_without_principal_panics() {
