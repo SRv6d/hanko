@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `hanko signer add` no longer appends a duplicate to the configuration if an identical signer already exists.
+
 ## [1.0.0] - 2025-10-19
 
 ### Added
