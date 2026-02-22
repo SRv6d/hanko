@@ -41,21 +41,13 @@ struct TomlFile {
 
 impl TomlFile {
     /// Add an allowed signer to the file.
-    fn add_signer(&mut self, name: &str, principals: Vec<&str>, source_names: Vec<&str>) {
-        use toml_edit::{Array, ArrayOfTables, Item, Table, Value};
+    fn add_signer(&mut self, signer: &SignerConfiguration) {
+        use toml_edit::{ArrayOfTables, Item, Value};
 
-        let mut table = Table::new();
-        table.insert("name", name.into());
-        table.insert(
-            "principals",
-            principals.into_iter().collect::<Array>().into(),
-        );
-        if source_names != default_user_source() {
-            table.insert(
-                "sources",
-                source_names.into_iter().collect::<Array>().into(),
-            );
-        }
+        let table = toml_edit::ser::to_document(signer)
+            .expect("SignerConfiguration is always serializable")
+            .as_table()
+            .clone();
 
         match self.document.get_mut("signers") {
             None => {
@@ -172,11 +164,7 @@ impl Configuration {
             principals,
             source_names,
         };
-        self.file.add_signer(
-            &signer.name,
-            signer.principals.iter().map(AsRef::as_ref).collect(),
-            signer.source_names.iter().map(AsRef::as_ref).collect(),
-        );
+        self.file.add_signer(&signer);
         self.signers.push(signer);
 
         Ok(())
@@ -329,12 +317,18 @@ pub fn default_user_source() -> Vec<String> {
     vec!["github".to_string()]
 }
 
+fn is_default_sources(sources: &[String]) -> bool {
+    // We don't need to be order insensitive here since addding any sources would be a
+    // breaking change and there currently is only one.
+    sources == default_user_source()
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(default, deny_unknown_fields)]
 pub struct SignerConfiguration {
     pub name: String,
     pub principals: Vec<String>,
-    #[serde(rename = "sources")]
+    #[serde(rename = "sources", skip_serializing_if = "is_default_sources")]
     pub source_names: Vec<String>,
 }
 
