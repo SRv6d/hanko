@@ -1,9 +1,12 @@
+pub(super) mod file;
+
 use std::sync::Arc;
 
 use tokio::task::JoinSet;
 use tracing::{debug, error, warn};
 
-use super::file::{Entry, PublicKey};
+pub use file::{Entry, File, PublicKey, update};
+
 use crate::{Error, source::Source};
 
 /// An allowed signer.
@@ -61,7 +64,7 @@ impl Signer {
     }
 
     /// Get the allowed signers file entries corresponding to this signer.
-    pub(super) async fn get_entries(&self) -> Result<Vec<Entry>, Error> {
+    async fn get_entries(&self) -> Result<Vec<Entry>, Error> {
         let keys = self.get_keys().await?;
 
         Ok(keys
