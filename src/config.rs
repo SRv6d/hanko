@@ -9,10 +9,12 @@ use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{HashMap, HashSet},
-    fs, io,
+    fs,
+    io::{self, Write},
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tempfile::NamedTempFile;
 use tracing::{debug, info, trace};
 
 /// A mutable and format preserving representation of a TOML file.
@@ -65,7 +67,14 @@ impl TomlFile {
     /// Save back to TOML file.
     fn save(&self) -> Result<()> {
         info!("Saving TOML configuration file");
-        fs::write(&self.path, self.document.to_string()).map_err(Into::into)
+        let dir = self
+            .path
+            .parent()
+            .context("Path does not contain parent directory")?;
+        let mut file = NamedTempFile::new_in(dir)?;
+        write!(file, "{}", self.document)?;
+        file.persist(&self.path)?;
+        Ok(())
     }
 }
 

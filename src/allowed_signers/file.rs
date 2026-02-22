@@ -3,7 +3,7 @@
 //! [File Format Documentation](https://man.openbsd.org/ssh-keygen.1#ALLOWED_SIGNERS)
 use std::{
     collections::BTreeSet,
-    fmt, fs,
+    fmt,
     io::{self, Write},
     path::{Path, PathBuf},
 };
@@ -11,6 +11,7 @@ use std::{
 use anyhow::Context;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
+use tempfile::NamedTempFile;
 use tracing::trace;
 
 use super::signer::{Signer, get_entries};
@@ -24,17 +25,26 @@ pub struct File {
 
 impl File {
     /// Write the file to disk.
-    #[tracing::instrument(skip(self), fields(path = %self.path.display()), level = "trace")]
-    pub fn write(&self) -> io::Result<()> {
-        trace!("Opening allowed signers file for writing");
-        let file = fs::File::create(&self.path)?;
-        let mut file_buf = io::BufWriter::new(file);
+    #[tracing::instrument(skip(self), fields(path = %self.path.display(), tmp = tracing::field::Empty), level = "trace")]
+    pub fn write(&self) -> anyhow::Result<()> {
+        let dir = self.path
+            .parent()
+            .context("Allowed signers path has no parent directory")?;
+        let mut file = NamedTempFile::new_in(dir)?;
+        tracing::Span::current().record("tmp", tracing::field::display(file.path().display()));
 
-        trace!("Writing to allowed signers file");
-        for entry in &self.entries {
-            writeln!(file_buf, "{entry}")?;
-        }
-        writeln!(file_buf)?;
+        {
+            let mut buf = io::BufWriter::new(file.as_file_mut());
+            trace!("Writing entries");
+            for entry in &self.entries {
+                writeln!(buf, "{entry}")?;
+            }
+            writeln!(buf)?;
+            buf.flush()?;
+        };
+
+        trace!("Persisting");
+        file.persist(&self.path)?;
         Ok(())
     }
 
