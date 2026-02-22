@@ -201,6 +201,7 @@ async fn update_allowed_signers(file: &Path, config: &Configuration) -> Result<(
         .await
         .context("Failed to update the allowed signers file")?;
 
+    // TODO: Don't print if file wasn't updated
     let duration = start.elapsed();
     println!(
         "Updated allowed signers file {} in {:?}",
