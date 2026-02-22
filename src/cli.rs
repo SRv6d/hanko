@@ -165,14 +165,18 @@ pub fn entrypoint() -> Result<()> {
                     "Failed to load configuration from {}",
                     &args.config.display()
                 ))?;
-                config
+                let added = config
                     .add_signer(name, principals, source)
                     .context("Failed to add allowed signer")?;
-                config.save().context(format!(
-                    "Failed to save configuration to {}",
-                    &args.config.display()
-                ))?;
-                println!("Updated configuration file {}", &args.config.display());
+                if added {
+                    config.save().context(format!(
+                        "Failed to save configuration to {}",
+                        &args.config.display()
+                    ))?;
+                    println!("Updated configuration file {}", &args.config.display());
+                } else {
+                    eprintln!("Signer already exists in configuration");
+                }
                 if no_update {
                     return Ok(());
                 }

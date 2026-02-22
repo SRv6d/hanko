@@ -151,27 +151,32 @@ impl Configuration {
     }
 
     /// Add an allowed signer to the configuration.
+    /// Returns `true` if the signer was added and `false` if an identical signer already exists.
     ///
     /// # Errors
     ///
-    /// Returns an error if any of the given sources don't exist.
+    /// Returns an error if any of the given sources don't exist, or if the signer already exists
+    /// with different attributes.
     pub fn add_signer(
         &mut self,
         name: String,
         principals: Vec<String>,
         source_names: Vec<String>,
-    ) -> Result<()> {
-        self.check_sources_exist(source_names.iter().map(String::as_str))?;
-
+    ) -> Result<bool> {
         let signer = SignerConfiguration {
             name,
             principals,
             source_names,
         };
+        self.check_sources_exist(signer.source_names.iter().map(String::as_str))?;
+        if self.check_signer_already_exists(&signer)? {
+            return Ok(false);
+        }
+
         self.file.add_signer(&signer);
         self.signers.push(signer);
 
-        Ok(())
+        Ok(true)
     }
 
     /// Returns sources generated from their configuration.
@@ -297,6 +302,23 @@ impl Configuration {
         Ok(())
     }
 
+    /// Check if the given signer already exists.
+    ///
+    /// Returns `Ok(true)` for an identical signer, `Ok(false)` if no signer with the same name
+    /// exists and an error if one exists with different attributes.
+    fn check_signer_already_exists(&self, signer: &SignerConfiguration) -> Result<bool> {
+        if let Some(existing) = self.signers.iter().find(|s| s.name == signer.name) {
+            if existing == signer {
+                return Ok(true);
+            }
+            bail!(
+                "Signer {} already exists with different attributes, please update the configuration manually",
+                signer.name
+            );
+        }
+        Ok(false)
+    }
+
     /// Check that all signers have at least one principal configured.
     fn check_signers_have_one_or_more_principals(&self) -> Result<()> {
         for config in &self.signers {
@@ -327,7 +349,7 @@ fn is_default_sources(sources: &[String]) -> bool {
     sources == default_user_source()
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(default, deny_unknown_fields)]
 pub struct SignerConfiguration {
     pub name: String,
@@ -594,13 +616,15 @@ mod tests {
     fn adding_signer_adds_to_signers(#[case] signer: SignerConfiguration) {
         let mut config = Configuration::default();
 
-        config
-            .add_signer(
-                signer.name.clone().clone(),
-                signer.principals.clone(),
-                signer.source_names.clone(),
-            )
-            .unwrap();
+        assert!(
+            config
+                .add_signer(
+                    signer.name.clone(),
+                    signer.principals.clone(),
+                    signer.source_names.clone(),
+                )
+                .unwrap()
+        );
 
         assert!(config.signers.contains(&signer));
     }
@@ -703,9 +727,11 @@ mod tests {
         })
         .unwrap();
 
-        config
-            .add_signer(signer.name, signer.principals, signer.source_names)
-            .unwrap();
+        assert!(
+            config
+                .add_signer(signer.name, signer.principals, signer.source_names)
+                .unwrap()
+        );
 
         assert_eq!(config.file.document.to_string(), expected);
     }
