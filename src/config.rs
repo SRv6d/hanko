@@ -344,7 +344,7 @@ pub fn default_user_source() -> Vec<String> {
 }
 
 fn is_default_sources(sources: &[String]) -> bool {
-    // We don't need to be order insensitive here since addding any sources would be a
+    // We don't need to be order insensitive here since adding any sources would be a
     // breaking change and there currently is only one.
     sources == default_user_source()
 }
