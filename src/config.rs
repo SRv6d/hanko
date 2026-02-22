@@ -7,7 +7,7 @@
 //! comments, and key ordering are not destroyed when hanko writes back to the config file.
 //!
 //! [`Configuration`] is the typed, validated domain object. It is derived from [`TomlFile`] and
-//!  owns the parsed signers and sources. [`TomlFile`] is retained as a field on [`Configuration`]
+//! owns the parsed signers and sources. [`TomlFile`] is retained as a field on [`Configuration`]
 //! so that mutations made through the public API can be written back to disk through the
 //! original document, preserving formatting.
 //!
@@ -86,8 +86,12 @@ impl TomlFile {
 #[derive(Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Configuration {
+    /// The configured signers.
     signers: Vec<SignerConfiguration>,
+    /// The configured sources.
     sources: Vec<SourceConfiguration>,
+    /// The file representing the configuration on disk.
+    /// Invariant: Any mutation of the above fields must be reflected here as well.
     #[serde(skip)]
     file: TomlFile,
 }
