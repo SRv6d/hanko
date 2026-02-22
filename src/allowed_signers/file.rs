@@ -20,8 +20,8 @@ use crate::parent_dir;
 /// The allowed signers file.
 #[derive(Debug)]
 pub struct File {
-    pub path: PathBuf,
-    pub entries: BTreeSet<Entry>,
+    path: PathBuf,
+    entries: BTreeSet<Entry>,
 }
 
 impl File {
