@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use tracing::trace;
 
-use crate::parent_dir;
 use super::signer::{Signer, get_entries};
+use crate::parent_dir;
 
 /// The allowed signers file.
 #[derive(Debug)]
