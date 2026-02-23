@@ -121,7 +121,7 @@ impl Default for Configuration {
 /// A `HashMap` containing sources by name.
 /// Since signers need to contain references to sources and can move between threads,
 /// an Arc is used for sources.
-type NamedSources = HashMap<String, Arc<Box<dyn Source>>>;
+type NamedSources = HashMap<String, Arc<dyn Source>>;
 
 impl Configuration {
     /// Returns configuration for the default GitHub and GitLab sources.
@@ -184,7 +184,7 @@ impl Configuration {
     pub fn sources(&self) -> NamedSources {
         self.sources
             .iter()
-            .map(|c| (c.name.clone(), Arc::new(c.build_source())))
+            .map(|c| (c.name.clone(), Arc::from(c.build_source())))
             .collect()
     }
 
