@@ -1,8 +1,8 @@
-pub use github::Github;
-pub use gitlab::Gitlab;
-
 mod github;
 mod gitlab;
+
+pub use github::Github;
+pub use gitlab::Gitlab;
 
 use crate::{USER_AGENT, allowed_signers::file::PublicKey};
 use async_trait::async_trait;

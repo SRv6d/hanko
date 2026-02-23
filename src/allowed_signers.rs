@@ -1,9 +1,13 @@
-use std::sync::Arc;
+pub(super) mod file;
 
+use std::{path::Path, sync::Arc};
+
+use anyhow::Context;
 use tokio::task::JoinSet;
 use tracing::{debug, error, warn};
 
-use super::file::{Entry, PublicKey};
+pub use file::{Entry, File, PublicKey};
+
 use crate::{Error, source::Source};
 
 /// An allowed signer.
@@ -61,7 +65,7 @@ impl Signer {
     }
 
     /// Get the allowed signers file entries corresponding to this signer.
-    pub(super) async fn get_entries(&self) -> Result<Vec<Entry>, Error> {
+    async fn get_entries(&self) -> Result<Vec<Entry>, Error> {
         let keys = self.get_keys().await?;
 
         Ok(keys
@@ -72,7 +76,7 @@ impl Signer {
 }
 
 /// Get entries for multiple given signers concurrently.
-pub(super) async fn get_entries<S>(signers: S) -> Result<Vec<Entry>, Error>
+async fn get_entries<S>(signers: S) -> Result<Vec<Entry>, Error>
 where
     S: IntoIterator<Item = Signer>,
 {
@@ -85,4 +89,42 @@ where
         entries.extend(output.unwrap()?);
     }
     Ok(entries)
+}
+
+/// Update the allowed signers file.
+pub async fn update<S>(path: &Path, signers: S) -> anyhow::Result<()>
+where
+    S: IntoIterator<Item = Signer>,
+{
+    let entries = get_entries(signers).await?;
+
+    if entries.is_empty() {
+        warn!(
+            path = %path.display(),
+            "No allowed signer entries collected, not writing allowed signers file"
+        );
+        return Ok(());
+    }
+
+    let file = File::from_entries(path.to_path_buf(), entries);
+    file.write().context(format!(
+        "Failed to write allowed signers file to {}",
+        path.display()
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    /// When no entries are collected, the allowed signers file is not written.
+    #[tokio::test]
+    async fn update_does_not_write_file_when_no_entries() {
+        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+
+        update(&path, Vec::<Signer>::new()).await.unwrap();
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), "");
+    }
 }
