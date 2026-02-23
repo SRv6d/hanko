@@ -197,17 +197,24 @@ async fn update_allowed_signers(file: &Path, config: &Configuration) -> Result<(
     let sources = config.sources();
     let signers = config.signers(&sources);
 
-    allowed_signers::update(file, signers)
+    let outcome = allowed_signers::update(file, signers)
         .await
         .context("Failed to update the allowed signers file")?;
 
-    // TODO: Don't print if file wasn't updated
-    let duration = start.elapsed();
-    println!(
-        "Updated allowed signers file {} in {:?}",
-        file.display(),
-        duration
-    );
+    match outcome {
+        allowed_signers::Outcome::Written => {
+            let duration = start.elapsed();
+            println!(
+                "Updated allowed signers file {} in {:?}",
+                file.display(),
+                duration
+            );
+        }
+        allowed_signers::Outcome::SkippedNoEntries => eprintln!(
+            "No allowed signer entries collected, not writing allowed signers file {}",
+            file.display()
+        ),
+    }
     Ok(())
 }
 

@@ -6,6 +6,33 @@ use anyhow::Context;
 use tokio::task::JoinSet;
 use tracing::{debug, error, warn};
 
+/// The outcome of an [`update`].
+pub enum Outcome {
+    /// The allowed signers file was written.
+    Written,
+    /// No signer entries were collected, the file was not written.
+    SkippedNoEntries,
+}
+
+/// Update the allowed signers file.
+pub async fn update<S>(path: &Path, signers: S) -> anyhow::Result<Outcome>
+where
+    S: IntoIterator<Item = Signer>,
+{
+    let entries = get_entries(signers).await?;
+
+    if entries.is_empty() {
+        return Ok(Outcome::SkippedNoEntries);
+    }
+
+    let file = File::from_entries(path.to_path_buf(), entries);
+    file.write().context(format!(
+        "Failed to write allowed signers file to {}",
+        path.display()
+    ))?;
+    Ok(Outcome::Written)
+}
+
 pub use file::{Entry, File, PublicKey};
 
 use crate::{Error, source::Source};
@@ -91,40 +118,22 @@ where
     Ok(entries)
 }
 
-/// Update the allowed signers file.
-pub async fn update<S>(path: &Path, signers: S) -> anyhow::Result<()>
-where
-    S: IntoIterator<Item = Signer>,
-{
-    let entries = get_entries(signers).await?;
-
-    if entries.is_empty() {
-        warn!(
-            path = %path.display(),
-            "No allowed signer entries collected, not writing allowed signers file"
-        );
-        return Ok(());
-    }
-
-    let file = File::from_entries(path.to_path_buf(), entries);
-    file.write().context(format!(
-        "Failed to write allowed signers file to {}",
-        path.display()
-    ))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use std::{fs, io::Write};
 
-    /// When no entries are collected, the allowed signers file is not written.
+    /// When no entries are collected, the allowed signers file is not written to.
     #[tokio::test]
-    async fn update_does_not_write_file_when_no_entries() {
-        let path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+    async fn update_does_not_write_to_file_when_no_entries() {
+        let content = "not@applicable.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS";
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(content.as_bytes()).unwrap();
+        let path = file.into_temp_path();
 
-        update(&path, Vec::<Signer>::new()).await.unwrap();
+        let outcome = update(&path, Vec::<Signer>::new()).await.unwrap();
 
-        assert_eq!(fs::read_to_string(&path).unwrap(), "");
+        assert!(matches!(outcome, Outcome::SkippedNoEntries));
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
     }
 }
