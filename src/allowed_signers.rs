@@ -42,7 +42,7 @@ use crate::{Error, source::Source};
 pub struct Signer {
     pub name: String,
     pub principals: Vec<String>,
-    pub sources: Vec<Arc<Box<dyn Source>>>,
+    pub sources: Vec<Arc<dyn Source>>,
 }
 
 impl Signer {
