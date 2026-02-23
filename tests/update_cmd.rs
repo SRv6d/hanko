@@ -176,7 +176,6 @@ fn update_warns_when_no_entries_and_file_exists(mock_github_server: MockServer) 
     allowed_signers.write_all(b"cwoods@universal.exports ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGtQUDZWhs8k/cZcykMkaoX7ZE7DXld8TP79HyddMVTS John Doe (gitlab.com)").unwrap();
 
     cargo_bin_cmd!()
-        .arg("-v")
         .arg("--config")
         .arg(config.path())
         .arg("--file")
@@ -184,7 +183,7 @@ fn update_warns_when_no_entries_and_file_exists(mock_github_server: MockServer) 
         .arg("update")
         .assert()
         .success()
-        .stdout(predicate::str::contains(
+        .stderr(predicate::str::contains(
             "No allowed signer entries collected",
         ));
 }
