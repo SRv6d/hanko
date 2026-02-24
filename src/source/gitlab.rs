@@ -5,7 +5,7 @@ use serde::Deserialize;
 use tracing::{trace, warn};
 
 use super::{Error, Result, Source, base_client, next_url_from_link_header};
-use crate::{USER_AGENT, allowed_signers::file::PublicKey};
+use crate::allowed_signers::file::PublicKey;
 
 #[derive(Debug)]
 pub struct Gitlab {
@@ -45,7 +45,6 @@ impl Source for Gitlab {
             let request = self
                 .client
                 .get(current_url.clone())
-                .header("User-Agent", USER_AGENT)
                 .header("Accept", Self::ACCEPT_HEADER)
                 .build()
                 .unwrap();
@@ -148,6 +147,7 @@ impl From<ApiSshKey> for PublicKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::USER_AGENT;
     use httpmock::prelude::*;
     use reqwest::StatusCode;
     use rstest::*;

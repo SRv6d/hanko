@@ -10,7 +10,7 @@ use super::{
     Error, ResponseError, Result, Source, base_client, next_url_from_link_header,
     parse_header_value,
 };
-use crate::{USER_AGENT, allowed_signers::file::PublicKey};
+use crate::allowed_signers::file::PublicKey;
 
 #[derive(Debug)]
 pub struct Github {
@@ -47,7 +47,6 @@ impl Source for Github {
             let request = self
                 .client
                 .get(current_url.clone())
-                .header("User-Agent", USER_AGENT)
                 .header("Accept", Self::ACCEPT_HEADER)
                 .header("X-GitHub-Api-Version", Self::VERSION)
                 .build()
@@ -185,6 +184,7 @@ async fn handle_github_errors(request_result: reqwest::Result<Response>) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::USER_AGENT;
     use httpmock::prelude::*;
     use reqwest::StatusCode;
     use rstest::*;
