@@ -7,10 +7,10 @@ use serde::Deserialize;
 use tracing::{trace, warn};
 
 use super::{
-    Error, ResponseError, Result, Source, base_client, next_url_from_link_header,
+    Error, Protocol, ResponseError, Result, Source, base_client, next_url_from_link_header,
     parse_header_value,
 };
-use crate::{USER_AGENT, allowed_signers::file::PublicKey};
+use crate::allowed_signers::file::PublicKey;
 
 #[derive(Debug)]
 pub struct Github {
@@ -24,10 +24,10 @@ impl Github {
     const ACCEPT_HEADER: &'static str = "application/vnd.github+json";
 
     #[must_use]
-    pub fn new(base_url: Url) -> Self {
+    pub fn new(base_url: Url, protocol: Protocol) -> Self {
         Self {
             base_url,
-            client: base_client(),
+            client: base_client(protocol),
         }
     }
 }
@@ -47,10 +47,8 @@ impl Source for Github {
             let request = self
                 .client
                 .get(current_url.clone())
-                .header("User-Agent", USER_AGENT)
                 .header("Accept", Self::ACCEPT_HEADER)
                 .header("X-GitHub-Api-Version", Self::VERSION)
-                .version(reqwest::Version::HTTP_2)
                 .build()
                 .unwrap();
             let response = make_api_request(request, &self.client).await?;
@@ -186,6 +184,7 @@ async fn handle_github_errors(request_result: reqwest::Result<Response>) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::USER_AGENT;
     use httpmock::prelude::*;
     use reqwest::StatusCode;
     use rstest::*;
@@ -200,7 +199,7 @@ mod tests {
     #[fixture]
     fn api_w_mock_server() -> (Github, MockServer) {
         let server = MockServer::start();
-        let api = Github::new(server.base_url().parse().unwrap());
+        let api = Github::new(server.base_url().parse().unwrap(), Protocol::Auto);
         (api, server)
     }
 

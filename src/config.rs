@@ -18,7 +18,7 @@
 //! Fallible functions return [`anyhow::Result`] since errors here are reported directly to the
 //! user without further programmatic handling.
 
-use crate::{Github, Gitlab, Source, allowed_signers::Signer, parent_dir};
+use crate::{Github, Gitlab, Protocol, Source, allowed_signers::Signer, parent_dir};
 use anyhow::{Context, Error, Result, bail};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -121,11 +121,13 @@ impl Configuration {
                 name: "github".to_string(),
                 provider: SourceType::Github,
                 url: "https://api.github.com".parse().unwrap(),
+                protocol: Protocol::Http2,
             },
             SourceConfiguration {
                 name: "gitlab".to_string(),
                 provider: SourceType::Gitlab,
                 url: "https://gitlab.com".parse().unwrap(),
+                protocol: Protocol::Http2,
             },
         ]
     }
@@ -383,6 +385,9 @@ struct SourceConfiguration {
     provider: SourceType,
     #[serde(serialize_with = "serialize_url", deserialize_with = "deserialize_url")]
     url: Url,
+    /// The HTTP protocol version to use when connecting to this source.
+    #[serde(default)]
+    protocol: Protocol,
 }
 
 fn deserialize_url<'de, D>(deserializer: D) -> Result<Url, D::Error>
@@ -406,8 +411,8 @@ impl SourceConfiguration {
     fn build_source(&self) -> Box<dyn Source> {
         let url = self.url.clone();
         match self.provider {
-            SourceType::Github => Box::new(Github::new(url)),
-            SourceType::Gitlab => Box::new(Gitlab::new(url)),
+            SourceType::Github => Box::new(Github::new(url, self.protocol)),
+            SourceType::Gitlab => Box::new(Gitlab::new(url, self.protocol)),
         }
     }
 }

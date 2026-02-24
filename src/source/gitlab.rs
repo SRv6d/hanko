@@ -4,8 +4,8 @@ use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::{trace, warn};
 
-use super::{Error, Result, Source, base_client, next_url_from_link_header};
-use crate::{USER_AGENT, allowed_signers::file::PublicKey};
+use super::{Error, Protocol, Result, Source, base_client, next_url_from_link_header};
+use crate::allowed_signers::file::PublicKey;
 
 #[derive(Debug)]
 pub struct Gitlab {
@@ -19,10 +19,10 @@ impl Gitlab {
     const ACCEPT_HEADER: &'static str = "application/json";
 
     #[must_use]
-    pub fn new(base_url: Url) -> Self {
+    pub fn new(base_url: Url, protocol: Protocol) -> Self {
         Self {
             base_url,
-            client: base_client(),
+            client: base_client(protocol),
         }
     }
 }
@@ -45,9 +45,7 @@ impl Source for Gitlab {
             let request = self
                 .client
                 .get(current_url.clone())
-                .header("User-Agent", USER_AGENT)
                 .header("Accept", Self::ACCEPT_HEADER)
-                .version(reqwest::Version::HTTP_2)
                 .build()
                 .unwrap();
             let response = make_api_request(request, &self.client).await?;
@@ -149,6 +147,7 @@ impl From<ApiSshKey> for PublicKey {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::USER_AGENT;
     use httpmock::prelude::*;
     use reqwest::StatusCode;
     use rstest::*;
@@ -162,7 +161,7 @@ mod tests {
     #[fixture]
     fn api_w_mock_server() -> (Gitlab, MockServer) {
         let server = MockServer::start();
-        let api = Gitlab::new(server.base_url().parse().unwrap());
+        let api = Gitlab::new(server.base_url().parse().unwrap(), Protocol::Auto);
         (api, server)
     }
 

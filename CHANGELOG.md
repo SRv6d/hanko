@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `protocol` signer configuration option to opt-in to using HTTP/2 from the first request.
+
 ### Changed
 
 - The signers file is no longer written if an update does not produce any entries. 
