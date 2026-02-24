@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `hanko signer add` no longer appends a duplicate to the configuration if an identical signer already exists.
+- Redefining a built-in source in configuration now returns an explicit error instead of silently being ignored.
 
 ## [1.0.0] - 2025-10-19
 
