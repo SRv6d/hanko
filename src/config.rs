@@ -83,7 +83,7 @@ impl TomlFile {
 }
 
 /// The main configuration.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Configuration {
     /// The configured signers.
@@ -105,16 +105,6 @@ impl TryFrom<TomlFile> for Configuration {
         let mut s = Self::deserialize(deserializer)?;
         s.file = file;
         Ok(s)
-    }
-}
-
-impl Default for Configuration {
-    fn default() -> Self {
-        Self {
-            signers: Vec::default(),
-            sources: Self::default_sources(),
-            file: TomlFile::default(),
-        }
     }
 }
 
@@ -140,14 +130,24 @@ impl Configuration {
         ]
     }
 
-    /// Extend the configuration by the default sources.
-    fn add_default_sources(&mut self) {
-        let default_sources = Self::default_sources();
-        debug!(
-            ?default_sources,
-            "Extending configuration with default sources"
-        );
-        self.sources.extend(default_sources);
+    /// Returns all, the default and user provided source configurations.
+    fn all_source_configurations(&self) -> Vec<SourceConfiguration> {
+        Self::default_sources()
+            .into_iter()
+            .chain(self.sources.iter().cloned())
+            .collect()
+    }
+
+    /// Returns the initialized sources generated from configuration.
+    #[must_use]
+    pub fn sources(&self) -> NamedSources {
+        self.all_source_configurations()
+            .into_iter()
+            .map(|c| {
+                let source = Arc::from(c.build_source());
+                (c.name, source)
+            })
+            .collect()
     }
 
     /// Add an allowed signer to the configuration.
@@ -179,14 +179,6 @@ impl Configuration {
         Ok(true)
     }
 
-    /// Returns sources generated from their configuration.
-    #[must_use]
-    pub fn sources(&self) -> NamedSources {
-        self.sources
-            .iter()
-            .map(|c| (c.name.clone(), Arc::from(c.build_source())))
-            .collect()
-    }
 
     /// Returns signers generated from their configuration.
     ///
@@ -227,8 +219,7 @@ impl Configuration {
     pub fn load(path: &Path) -> Result<Self> {
         let file = TomlFile::load(path.to_path_buf())?;
 
-        let mut c = Self::try_from(file)?;
-        c.add_default_sources();
+        let c = Self::try_from(file)?;
         c.validate_semantics()?;
 
         Ok(c)
@@ -273,6 +264,7 @@ impl Configuration {
     fn validate_semantics(&self) -> Result<()> {
         trace!(?self, "Validating configuration semantics");
 
+        self.check_no_sources_conflict_w_default()?;
         self.check_sources_exist(
             self.signers
                 .iter()
@@ -288,12 +280,12 @@ impl Configuration {
         &self,
         source_names: impl IntoIterator<Item = &'a str>,
     ) -> Result<()> {
-        let used_sources: HashSet<&str> = source_names.into_iter().collect();
-        let existing_sources: HashSet<&str> =
-            self.sources.iter().map(|c| c.name.as_str()).collect();
-        let mut missing_sources: Vec<String> = used_sources
-            .difference(&existing_sources)
-            .map(ToString::to_string)
+        let a = self.all_source_configurations();
+    
+        let existing_sources: HashSet<&str> = a.iter().map(|c| c.name.as_str()).collect();
+        let mut missing_sources: Vec<&str> = source_names
+            .into_iter()
+            .filter(|name| !existing_sources.contains(name))
             .collect();
         if !missing_sources.is_empty() {
             missing_sources.sort();
@@ -317,6 +309,22 @@ impl Configuration {
             );
         }
         Ok(false)
+    }
+
+    /// Check that no user configured sources conflict with the default sources.
+    fn check_no_sources_conflict_w_default(&self) -> Result<()> {
+        let d = Self::default_sources();
+        let reserved: HashSet<&str> = d.iter().map(|s| s.name.as_str()).collect();
+
+        for source in &self.sources {
+            if reserved.contains(source.name.as_str()) {
+                bail!(
+                    "\"{}\" is a built-in source name and cannot be redefined in configuration",
+                    source.name
+                );
+            }
+        }
+        Ok(())
     }
 
     /// Check that all signers have at least one principal configured.
@@ -369,7 +377,7 @@ impl Default for SignerConfiguration {
 }
 
 /// The representation of a [`Source`] in configuration.
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 struct SourceConfiguration {
     name: String,
@@ -439,7 +447,7 @@ mod tests {
 
         let config = Configuration::load(tmp_config_toml.path()).unwrap();
         for default_source in Configuration::default_sources() {
-            assert!(config.sources.contains(&default_source));
+            assert!(config.sources().contains_key(&default_source.name));
         }
     }
 
@@ -457,6 +465,36 @@ mod tests {
             err.downcast_ref::<io::Error>().unwrap().kind(),
             io::ErrorKind::NotFound
         );
+    }
+
+    /// Loading a configuration that redefines a built-in source name returns an appropriate error.
+    #[rstest]
+    #[case(
+        indoc!{r#"
+            [[sources]]
+            name = "github"
+            provider = "github"
+            url = "https://github.example.com"
+        "#},
+        "\"github\" is a built-in source name and cannot be redefined in configuration"
+    )]
+    #[case(
+        indoc!{r#"
+            [[sources]]
+            name = "gitlab"
+            provider = "gitlab"
+            url = "https://gitlab.example.com"
+        "#},
+        "\"gitlab\" is a built-in source name and cannot be redefined in configuration"
+    )]
+    fn loading_configuration_with_reserved_source_name_returns_error(
+        mut tmp_config_toml: NamedTempFile,
+        #[case] config: &str,
+        #[case] expected_msg: &str,
+    ) {
+        writeln!(tmp_config_toml, "{config}").unwrap();
+        let err = Configuration::load(tmp_config_toml.path()).unwrap_err();
+        assert_eq!(err.to_string(), expected_msg);
     }
 
     /// Loading configuration missing sources returns an appropriate error.
