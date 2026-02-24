@@ -1,7 +1,7 @@
 <h1 align="center"><code>hanko</code></h1>
 <div align="center">
-  <a href="https://github.com/srv6d/hanko/actions">
-    <img src="https://github.com/srv6d/hanko/workflows/CI/badge.svg" alt="CI status" />
+  <a href="https://github.com/SRv6d/hanko/actions/workflows/test.yml">
+    <img src="https://github.com/SRv6d/hanko/actions/workflows/test.yml/badge.svg?branch=main" alt="Test status" />
   </a>
   <a href="https://codecov.io/github/SRv6d/hanko">
     <img src="https://codecov.io/github/SRv6d/hanko/graph/badge.svg?token=PIRC5DZL9C" />
