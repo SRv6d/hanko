@@ -23,6 +23,17 @@ pub trait Source: Debug + Send + Sync {
     async fn get_keys_by_username(&self, username: &str) -> Result<Vec<PublicKey>>;
 }
 
+/// The HTTP protocol version to use when connecting to a source.
+#[derive(Debug, Clone, Copy, PartialEq, Default, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Protocol {
+    /// Negotiate the protocol automatically via ALPN.
+    #[default]
+    Auto,
+    /// Use HTTP/2 with prior knowledge, skipping protocol negotiation.
+    Http2,
+}
+
 /// An error that can occur when interacting with a source.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum Error {
@@ -161,15 +172,17 @@ pub(super) fn next_url_from_link_header(headers: &HeaderMap) -> Result<Option<Ur
 }
 
 /// The base reqwest Client to be used by sources.
-pub(super) fn base_client() -> Client {
-    Client::builder()
+pub(super) fn base_client(protocol: Protocol) -> Client {
+    let builder = Client::builder()
         .user_agent(USER_AGENT)
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(10))
-        .use_rustls_tls()
-        .http2_prior_knowledge()
-        .build()
-        .unwrap()
+        .use_rustls_tls();
+    let builder = match protocol {
+        Protocol::Http2 => builder.http2_prior_knowledge(),
+        Protocol::Auto => builder,
+    };
+    builder.build().unwrap()
 }
 
 #[cfg(test)]

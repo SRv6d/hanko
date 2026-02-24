@@ -219,6 +219,7 @@ The `github` and `gitlab` sources are built in and usable out of the box. To use
 - `name`: The name of the source.
 - `provider`: The type of the source. Either `github` or `gitlab`.
 - `url`: The URL of the source's API endpoint.
+- `protocol` (optional, default `"auto"`): The HTTP protocol version to use. `"auto"` negotiates the protocol automatically. `"http2"` uses HTTP/2 from the first request without performing negotiation.
 
 #### Example
 

@@ -4,7 +4,7 @@ use reqwest::{Client, Request, Response, StatusCode, Url};
 use serde::Deserialize;
 use tracing::{trace, warn};
 
-use super::{Error, Result, Source, base_client, next_url_from_link_header};
+use super::{Error, Protocol, Result, Source, base_client, next_url_from_link_header};
 use crate::allowed_signers::file::PublicKey;
 
 #[derive(Debug)]
@@ -19,10 +19,10 @@ impl Gitlab {
     const ACCEPT_HEADER: &'static str = "application/json";
 
     #[must_use]
-    pub fn new(base_url: Url) -> Self {
+    pub fn new(base_url: Url, protocol: Protocol) -> Self {
         Self {
             base_url,
-            client: base_client(),
+            client: base_client(protocol),
         }
     }
 }
@@ -161,7 +161,7 @@ mod tests {
     #[fixture]
     fn api_w_mock_server() -> (Gitlab, MockServer) {
         let server = MockServer::start();
-        let api = Gitlab::new(server.base_url().parse().unwrap());
+        let api = Gitlab::new(server.base_url().parse().unwrap(), Protocol::Auto);
         (api, server)
     }
 

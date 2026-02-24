@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tracing::{trace, warn};
 
 use super::{
-    Error, ResponseError, Result, Source, base_client, next_url_from_link_header,
+    Error, Protocol, ResponseError, Result, Source, base_client, next_url_from_link_header,
     parse_header_value,
 };
 use crate::allowed_signers::file::PublicKey;
@@ -24,10 +24,10 @@ impl Github {
     const ACCEPT_HEADER: &'static str = "application/vnd.github+json";
 
     #[must_use]
-    pub fn new(base_url: Url) -> Self {
+    pub fn new(base_url: Url, protocol: Protocol) -> Self {
         Self {
             base_url,
-            client: base_client(),
+            client: base_client(protocol),
         }
     }
 }
@@ -199,7 +199,7 @@ mod tests {
     #[fixture]
     fn api_w_mock_server() -> (Github, MockServer) {
         let server = MockServer::start();
-        let api = Github::new(server.base_url().parse().unwrap());
+        let api = Github::new(server.base_url().parse().unwrap(), Protocol::Auto);
         (api, server)
     }
 
