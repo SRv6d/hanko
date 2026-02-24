@@ -30,7 +30,7 @@ use std::{
     sync::Arc,
 };
 use tempfile::NamedTempFile;
-use tracing::{debug, info, trace};
+use tracing::{info, trace};
 
 /// A mutable and format preserving representation of a TOML file.
 #[derive(Debug, Default)]
@@ -179,7 +179,6 @@ impl Configuration {
         Ok(true)
     }
 
-
     /// Returns signers generated from their configuration.
     ///
     /// # Panics
@@ -281,14 +280,14 @@ impl Configuration {
         source_names: impl IntoIterator<Item = &'a str>,
     ) -> Result<()> {
         let a = self.all_source_configurations();
-    
+
         let existing_sources: HashSet<&str> = a.iter().map(|c| c.name.as_str()).collect();
         let mut missing_sources: Vec<&str> = source_names
             .into_iter()
             .filter(|name| !existing_sources.contains(name))
             .collect();
         if !missing_sources.is_empty() {
-            missing_sources.sort();
+            missing_sources.sort_unstable();
             bail!("Missing sources: {}", missing_sources.join(", "))
         }
         Ok(())
