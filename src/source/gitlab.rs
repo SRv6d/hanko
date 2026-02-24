@@ -47,7 +47,6 @@ impl Source for Gitlab {
                 .get(current_url.clone())
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", Self::ACCEPT_HEADER)
-                .version(reqwest::Version::HTTP_2)
                 .build()
                 .unwrap();
             let response = make_api_request(request, &self.client).await?;
