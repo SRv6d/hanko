@@ -210,7 +210,9 @@ sources = ["github"]
 
 ## Sources
 
-Sources provide the public keys of allowed signers. Currently any source that is API compatible to either GitHub or GitLab is supported. If you are missing a source, don't hesitate to open an issue or give it a try yourself, as they are fairly trivial to implement. To use a source other than [github.com](https://github.com) or [gitlab.com](https://gitlab.com/explore), e.g. a self-hosted GitLab instance, use the configuration options described below.
+Sources provide the public keys of allowed signers. Currently any source that is API compatible to either GitHub or GitLab is supported. If you are missing a source, don't hesitate to open an issue or give it a try yourself, as they are fairly trivial to implement.
+
+The `github` and `gitlab` sources are built in and usable out of the box. To use a custom source, e.g. a self-hosted GitLab instance, add it to your configuration as described below.
 
 #### Options
 
