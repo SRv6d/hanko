@@ -24,6 +24,9 @@ pub trait Source: Debug + Send + Sync {
 }
 
 /// The HTTP protocol version to use when connecting to a source.
+///
+/// Note that this does not restrict using never versions negotiated by the server,
+/// e.g. [`Protocol::Http2`] will use HTTP/2 from the first request, but might upgrade to HTTP/3.
 #[derive(Debug, Clone, Copy, PartialEq, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Protocol {
