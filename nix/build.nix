@@ -8,8 +8,6 @@ let
   nativeTarget = pkgs.stdenv.hostPlatform.rust.rustcTargetSpec;
 
   linuxTargets = {
-    "x86_64-unknown-linux-gnu"   = pkgs.pkgsCross.gnu64;
-    "aarch64-unknown-linux-gnu"  = pkgs.pkgsCross.aarch64-multiplatform;
     "x86_64-unknown-linux-musl"  = pkgs.pkgsCross.musl64;
     "aarch64-unknown-linux-musl" = pkgs.pkgsCross.aarch64-multiplatform-musl;
   };
