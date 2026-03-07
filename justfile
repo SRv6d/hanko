@@ -47,7 +47,7 @@ release-build target:
     cargo build --release --locked --target {{ target }}
 
 # Bump our version
-bump-version $VERSION: _check_clean_working (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
+bump-version $VERSION: _check_clean_working _check_gh_cli (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
     #!/usr/bin/env bash
     set -euxo pipefail
 
@@ -81,6 +81,14 @@ publish: _validate_version_tag
 # Check that Git has a clean working directory
 _check_clean_working:
     test -z "$(git status --porcelain)" || (echo "The working directory is not clean"; exit 1)
+
+# Check that the GitHub CLI is installed and authenticated
+_check_gh_cli:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    command -v gh > /dev/null || (echo "GitHub CLI is not installed"; exit 1)
+    gh auth status > /dev/null || (echo "GitHub CLI is not authenticated. Run: gh auth login"; exit 1)
 
 # Validate that the crate version matches that of the git tag
 _validate_version_tag:
