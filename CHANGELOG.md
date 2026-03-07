@@ -7,18 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-07
+
 ### Added
 
 - `protocol` signer configuration option to opt-in to using HTTP/2 from the first request.
+- Atomic writes for the allowed signers file and configuration.
 
 ### Changed
 
 - The signers file is no longer written if an update does not produce any entries. 
 
+### Removed
+
+- Windows builds.
+
 ### Fixed
 
 - `hanko signer add` no longer appends a duplicate to the configuration if an identical signer already exists.
 - Redefining a built-in source in configuration now returns an explicit error instead of silently being ignored.
+
+### Internal
+
+- Update all dependencies.
 
 ## [1.0.0] - 2025-10-19
 
@@ -143,7 +154,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - aarch64 builds.
 
-[unreleased]: https://github.com/SRv6d/hanko/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/SRv6d/hanko/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/SRv6d/hanko/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/SRv6d/hanko/compare/v0.5.4...v1.0.0
 [0.5.4]: https://github.com/SRv6d/hanko/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/SRv6d/hanko/compare/v0.5.2...v0.5.3
