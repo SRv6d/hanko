@@ -54,9 +54,6 @@ let
 
         buildInputs = [
           targetPkgs.openssl
-        ] ++ pkgs.lib.optionals targetPkgs.stdenv.hostPlatform.isDarwin [
-          targetPkgs.darwin.apple_sdk.frameworks.Security
-          targetPkgs.darwin.apple_sdk.frameworks.SystemConfiguration
         ];
 
       } // pkgs.lib.optionalAttrs (gitRev != null) {
