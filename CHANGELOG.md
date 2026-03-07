@@ -10,15 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `protocol` signer configuration option to opt-in to using HTTP/2 from the first request.
+- Atomic writes for the allowed signers file and configuration.
 
 ### Changed
 
 - The signers file is no longer written if an update does not produce any entries. 
 
+### Removed
+
+- Windows builds.
+
 ### Fixed
 
 - `hanko signer add` no longer appends a duplicate to the configuration if an identical signer already exists.
 - Redefining a built-in source in configuration now returns an explicit error instead of silently being ignored.
+
+### Internal
+
+- Update all dependencies.
 
 ## [1.0.0] - 2025-10-19
 
