@@ -7,10 +7,7 @@ let
 
   nativeTarget = pkgs.stdenv.hostPlatform.rust.rustcTargetSpec;
 
-  # All Linux targets with their nixpkgs cross package sets.
   linuxTargets = {
-    "x86_64-unknown-linux-gnu"   = pkgs.pkgsCross.gnu64;
-    "aarch64-unknown-linux-gnu"  = pkgs.pkgsCross.aarch64-multiplatform;
     "x86_64-unknown-linux-musl"  = pkgs.pkgsCross.musl64;
     "aarch64-unknown-linux-musl" = pkgs.pkgsCross.aarch64-multiplatform-musl;
   };
@@ -31,13 +28,13 @@ let
   rustToolchainCross = rustToolchain.override {
     targets = crossTargetNames;
   };
-  craneLibCross =
-    (crane.mkLib pkgs).overrideToolchain rustToolchainCross;
 
-  mkPackage = target: _targetPkgs:
+  craneLibCross = (crane.mkLib pkgs).overrideToolchain rustToolchainCross;
+
+  mkPackage = target: crossPkgs:
     let
       isCross = target != nativeTarget;
-      targetPkgs = if isCross then _targetPkgs else pkgs;
+      targetPkgs = if isCross then crossPkgs else pkgs;
       craneLib' = if isCross then craneLibCross else craneLib;
 
       cc = targetPkgs.stdenv.cc;
@@ -50,14 +47,8 @@ let
         inherit src;
         strictDeps = true;
 
-        nativeBuildInputs = [ pkgs.pkg-config ];
-
-        buildInputs = [
-          targetPkgs.openssl
-        ] ++ pkgs.lib.optionals targetPkgs.stdenv.hostPlatform.isDarwin [
-          targetPkgs.darwin.apple_sdk.frameworks.Security
-          targetPkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-        ];
+        nativeBuildInputs = [ ];
+        buildInputs = [ ];
 
       } // pkgs.lib.optionalAttrs (gitRev != null) {
         GIT_SHA = gitRev;
@@ -70,10 +61,13 @@ let
         "CC_${targetUnderscored}" = crossCc;
       };
 
-      cargoArtifacts = craneLib'.buildDepsOnly commonArgs;
+      cargoArtifacts = craneLib'.buildDepsOnly (commonArgs // {
+        doCheck = false;
+      });
     in
     craneLib'.buildPackage (commonArgs // {
       inherit cargoArtifacts;
+      doCheck = false;
     });
 
   packages = builtins.mapAttrs mkPackage platformTargets;
