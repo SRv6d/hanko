@@ -47,8 +47,8 @@ let
         inherit src;
         strictDeps = true;
 
-        nativeBuildInputs = [ pkgs.pkg-config ];
-        buildInputs = [ targetPkgs.openssl ];
+        nativeBuildInputs = [ ];
+        buildInputs = [ ];
 
       } // pkgs.lib.optionalAttrs (gitRev != null) {
         GIT_SHA = gitRev;
