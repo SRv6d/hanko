@@ -29,6 +29,8 @@ jobs:
       IMAGE_NAME: ${{ github.repository }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
       - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
 
@@ -66,7 +68,8 @@ jobs:
         if: runner.os == 'Linux'
         id: containers
         run: |
-          version_tag=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          mapfile -t meta_tags < <(printf '%s\n' "$META_TAGS")
+          version_tag="${meta_tags[0]}"
           nix build .#release-containers --out-link release-containers
           arch_tags=()
           for img in release-containers/*.tar.gz; do
@@ -78,15 +81,17 @@ jobs:
             arch_tags+=("$tag")
           done
           tag_args=()
-          while IFS= read -r t; do
+          for t in "${meta_tags[@]}"; do
             [[ -n "$t" ]] && tag_args+=(--tag "$t")
-          done <<< "${{ steps.meta.outputs.tags }}"
+          done
           docker buildx imagetools create "${tag_args[@]}" "${arch_tags[@]}"
           digest=$(docker buildx imagetools inspect \
             --format '{{json .Manifest}}' \
             "${version_tag}" | jq -r '.digest')
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
           echo "subject_name=${version_tag%%:*}" >> "$GITHUB_OUTPUT"
+        env:
+          META_TAGS: ${{ steps.meta.outputs.tags }}
 
       - name: Attest container image
         if: runner.os == 'Linux'
@@ -107,6 +112,8 @@ jobs:
       DOWNLOAD_DIR: release-files
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
       - name: Download release files
         run: >-
           gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
@@ -120,6 +127,7 @@ jobs:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
       - name: Upload provenance
-        run: gh release upload --clobber "${GITHUB_REF_NAME}" ${{ steps.provenance.outputs.bundle-path }}
+        run: gh release upload --clobber "${GITHUB_REF_NAME}" "${BUNDLE_PATH}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUNDLE_PATH: ${{ steps.provenance.outputs.bundle-path }}
