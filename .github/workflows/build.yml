@@ -106,6 +106,7 @@ jobs:
     env:
       DOWNLOAD_DIR: release-files
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Download release files
         run: >-
           gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
