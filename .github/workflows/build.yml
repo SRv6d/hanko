@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
-      - uses: DeterminateSystems/magic-nix-cache-action@c2f46a0afa5f95fd4c184a533afd280c68cf63ff # v0.1.6
+      - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
 
       - name: Build release artifacts
         run: nix build .#release-artifacts --out-link release-artifacts
