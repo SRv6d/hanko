@@ -35,7 +35,10 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
 
       - name: Build release artifacts
-        run: nix build .#release-artifacts --out-link release-artifacts
+        run: nix build .#release-artifacts --out-link release-artifacts --no-update-lock-file
+
+      - name: Verify reproducibility of release artifacts
+        run: nix build .#release-artifacts --rebuild --no-update-lock-file
 
       - name: Upload release artifacts
         run: gh release upload --clobber "${GITHUB_REF_NAME}" release-artifacts/*
@@ -64,13 +67,16 @@ jobs:
             type=raw,value=${{ github.ref_name }}
             type=raw,value=latest
 
-      - name: Build and push container images
+      - name: Build container images
+        if: runner.os == 'Linux'
+        run: nix build .#release-containers --out-link release-containers --no-update-lock-file
+
+      - name: Push container images
         if: runner.os == 'Linux'
         id: containers
         run: |
           mapfile -t meta_tags < <(printf '%s\n' "$META_TAGS")
           version_tag="${meta_tags[0]}"
-          nix build .#release-containers --out-link release-containers
           arch_tags=()
           for img in release-containers/*.tar.gz; do
             arch=$(basename "$img" .tar.gz)
@@ -116,7 +122,9 @@ jobs:
           persist-credentials: false
       - name: Download release files
         run: >-
-          gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
+          gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR}
+          --pattern "hanko-*"
+          --pattern "SHA256SUMS"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 

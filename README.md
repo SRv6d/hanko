@@ -156,7 +156,8 @@ docker run -it ghcr.io/srv6d/hanko
 
 ## Using pre-built binaries
 
-Binaries for most platforms are built and attested in CI and are available for every [release].
+Attested binaries are built in CI from pinned Nix inputs for reproducibility.
+They are available for every [release].
 
 ### Verifying Binaries and Release Assets
 

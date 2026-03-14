@@ -3,6 +3,7 @@
 let
   src = ../.;
   cargo = (builtins.fromTOML (builtins.readFile ../Cargo.toml)).package;
+  sourceDateEpoch = "1";
 
   archiveTargets = pkgs.lib.filterAttrs
     (target: _: pkgs.lib.hasInfix "musl" target || pkgs.lib.hasInfix "darwin" target)
@@ -19,6 +20,8 @@ let
 
   mkArchive = target: package:
     pkgs.runCommand "${cargo.name}-${cargo.version}-${target}.tar.gz" { } ''
+      export SOURCE_DATE_EPOCH=${sourceDateEpoch}
+
       mkdir -p staging/completions
 
       cp ${package}/bin/${cargo.name} staging/
@@ -26,7 +29,19 @@ let
       cp ${src}/assets/manpages/* staging/
       cp ${src}/assets/completions/* staging/completions/
 
-      tar -czvf $out -C staging .
+      ${pkgs.gnutar}/bin/tar \
+        --sort=name \
+        --mtime="@$SOURCE_DATE_EPOCH" \
+        --clamp-mtime \
+        --owner=0 \
+        --group=0 \
+        --numeric-owner \
+        --format=posix \
+        --pax-option=delete=atime,delete=ctime \
+        --use-compress-program="${pkgs.gzip}/bin/gzip -n" \
+        -C staging \
+        -cf $out \
+        .
     '';
 
   mkDeb = target: package:
@@ -37,6 +52,8 @@ let
     pkgs.runCommand "${cargo.name}-${cargo.version}-${arch}.deb" {
       nativeBuildInputs = [ pkgs.dpkg ];
     } ''
+      export SOURCE_DATE_EPOCH=${sourceDateEpoch}
+
       root=$TMPDIR/deb
       mkdir -p $root/DEBIAN
       mkdir -p $root/usr/bin
@@ -66,7 +83,9 @@ let
       cp ${src}/assets/completions/hanko.elv  $root/usr/share/elvish/lib/
       cp ${src}/assets/manpages/*             $root/usr/share/man/man1/
 
-      dpkg-deb --build $root $out
+      find $root -exec touch --no-dereference --date="@$SOURCE_DATE_EPOCH" {} +
+
+      dpkg-deb --build --root-owner-group $root $out
     '';
 
   mkContainerImage = target: package:
@@ -97,11 +116,23 @@ let
   releaseArtifacts =
     let
       allArtifacts = builtins.attrValues archives ++ builtins.attrValues debs;
+      # Sort by filename for SHA256SUMS; attrValues groups by type
+      # rather than interleaving by name as users would expect.
+      artifactsByName = builtins.sort (a: b: a.name < b.name) allArtifacts;
       copyArtifacts = pkgs.lib.concatMapStrings (a: "cp ${a} $out/${a.name}\n") allArtifacts;
+      writeChecksums = pkgs.lib.concatMapStrings (a:
+        "${pkgs.coreutils}/bin/sha256sum ${pkgs.lib.escapeShellArg a.name} >> SHA256SUMS\n"
+      ) artifactsByName;
     in
     pkgs.runCommand "${cargo.name}-release-artifacts" { } ''
       mkdir $out
       ${copyArtifacts}
+
+      (
+        cd $out
+        : > SHA256SUMS
+        ${writeChecksums}
+      )
     '';
 
   releaseContainers =

@@ -15,7 +15,7 @@
         rustToolchain =
           pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
-        gitRev = self.shortRev or self.dirtyShortRev or null;
+        gitRev = self.shortRev or null;
 
         build = import ./nix/build.nix { inherit pkgs crane rustToolchain gitRev; };
 
@@ -27,8 +27,8 @@
       in
       {
         packages = {
-          hanko              = build.packages.${build.nativeTarget};
-          default            = build.packages.${build.nativeTarget};
+          hanko              = build.packages.${build.defaultTarget};
+          default            = build.packages.${build.defaultTarget};
           rust-toolchain     = rustToolchain;
           rust-analyzer      = pkgs.rust-analyzer;
           release-artifacts  = packaging.releaseArtifacts;

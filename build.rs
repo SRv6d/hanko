@@ -39,7 +39,7 @@ fn build_env() -> Option<String> {
 
 fn enabled_features() -> String {
     let prefix = "CARGO_FEATURE_";
-    env::vars()
+    let mut features = env::vars()
         .filter(|(key, _)| key.starts_with(prefix))
         .map(|(key, _)| {
             format!(
@@ -50,6 +50,7 @@ fn enabled_features() -> String {
                     .replace('_', "-")
             )
         })
-        .collect::<Vec<_>>()
-        .join(" ")
+        .collect::<Vec<_>>();
+    features.sort_unstable();
+    features.join(" ")
 }

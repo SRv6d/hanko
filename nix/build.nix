@@ -6,6 +6,12 @@ let
   src = craneLib.cleanCargoSource ./..;
 
   nativeTarget = pkgs.stdenv.hostPlatform.rust.rustcTargetSpec;
+  defaultTarget =
+    if pkgs.stdenv.hostPlatform.isLinux then
+      if pkgs.stdenv.hostPlatform.isAarch64 then "aarch64-unknown-linux-musl"
+      else if pkgs.stdenv.hostPlatform.isx86_64 then "x86_64-unknown-linux-musl"
+      else throw "unsupported Linux host platform: ${pkgs.stdenv.hostPlatform.system}"
+    else nativeTarget;
 
   linuxTargets = {
     "x86_64-unknown-linux-musl"  = pkgs.pkgsCross.musl64;
@@ -73,5 +79,5 @@ let
   packages = builtins.mapAttrs mkPackage platformTargets;
 in
 {
-  inherit packages nativeTarget;
+  inherit packages nativeTarget defaultTarget;
 }

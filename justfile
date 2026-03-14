@@ -46,6 +46,11 @@ manpages dir=MANPAGES_DIR:
 release-build target:
     cargo build --release --locked --target {{ target }}
 
+# Verify that release artifacts are reproducible
+verify-reproducibility:
+    nix build .#release-artifacts --no-update-lock-file
+    nix build .#release-artifacts --rebuild --no-update-lock-file
+
 # Bump our version
 bump-version $VERSION: _check_clean_working _check_gh_cli (_validate_semver VERSION) && (_changelog_add_version VERSION) (_bump_version_pr VERSION)
     #!/usr/bin/env bash
