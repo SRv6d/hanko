@@ -41,6 +41,12 @@ In addition to basic formatting and linting, a high code coverage should be main
 just test
 ```
 
+Changes to release packaging should preserve reproducibility for the Nix release artifact set. The [`just`] `verify-reproducibility` recipe rebuilds release artifacts and compares the outputs to the initial build.
+
+```sh
+just verify-reproducibility
+```
+
 ## Performance
 
 To ensure that hanko does not regress in performance, benchmarks are run on every PR. To execute them locally, run `cargo bench`.
