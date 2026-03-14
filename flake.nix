@@ -15,7 +15,7 @@
         rustToolchain =
           pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
-        gitRev = self.shortRev or self.dirtyShortRev or null;
+        gitRev = self.shortRev or null;
 
         build = import ./nix/build.nix { inherit pkgs crane rustToolchain gitRev; };
 
