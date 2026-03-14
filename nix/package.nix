@@ -116,11 +116,13 @@ let
   releaseArtifacts =
     let
       allArtifacts = builtins.attrValues archives ++ builtins.attrValues debs;
-      sortedArtifacts = builtins.sort (a: b: a.name < b.name) allArtifacts;
+      # Sort by filename for SHA256SUMS; attrValues groups by type
+      # rather than interleaving by name as users would expect.
+      artifactsByName = builtins.sort (a: b: a.name < b.name) allArtifacts;
       copyArtifacts = pkgs.lib.concatMapStrings (a: "cp ${a} $out/${a.name}\n") allArtifacts;
       writeChecksums = pkgs.lib.concatMapStrings (a:
         "${pkgs.coreutils}/bin/sha256sum ${pkgs.lib.escapeShellArg a.name} >> SHA256SUMS\n"
-      ) sortedArtifacts;
+      ) artifactsByName;
     in
     pkgs.runCommand "${cargo.name}-release-artifacts" { } ''
       mkdir $out
