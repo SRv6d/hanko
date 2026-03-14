@@ -27,8 +27,8 @@
       in
       {
         packages = {
-          hanko              = build.packages.${build.nativeTarget};
-          default            = build.packages.${build.nativeTarget};
+          hanko              = build.packages.${build.defaultTarget};
+          default            = build.packages.${build.defaultTarget};
           rust-toolchain     = rustToolchain;
           rust-analyzer      = pkgs.rust-analyzer;
           release-artifacts  = packaging.releaseArtifacts;
