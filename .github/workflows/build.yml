@@ -122,7 +122,9 @@ jobs:
           persist-credentials: false
       - name: Download release files
         run: >-
-          gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR} --pattern "hanko-*"
+          gh release download "${GITHUB_REF_NAME}" --dir ${DOWNLOAD_DIR}
+          --pattern "hanko-*"
+          --pattern "SHA256SUMS"
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
