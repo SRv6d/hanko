@@ -116,6 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOWNLOAD_DIR: release-files
+      PROVENANCE_PATH: release-files/hanko-${{ github.ref_name }}.sigstore.json
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
@@ -134,8 +135,12 @@ jobs:
         with:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
+      - name: Prepare provenance bundle
+        run: cp "${BUNDLE_PATH}" "${PROVENANCE_PATH}"
+        env:
+          BUNDLE_PATH: ${{ steps.provenance.outputs.bundle-path }}
+
       - name: Upload provenance
-        run: gh release upload --clobber "${GITHUB_REF_NAME}" "${BUNDLE_PATH}"
+        run: gh release upload --clobber "${GITHUB_REF_NAME}" "${PROVENANCE_PATH}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BUNDLE_PATH: ${{ steps.provenance.outputs.bundle-path }}
