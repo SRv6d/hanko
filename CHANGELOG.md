@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SHA256SUMS` to release artifacts for manual checksum verification.
 - Reproducible release builds.
 
+### Internal
+
+- Update all dependencies.
+
 ## [1.1.0] - 2026-03-07
 
 ### Added
