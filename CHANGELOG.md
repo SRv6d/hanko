@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-03-21
+
+### Internal
+
+- Update all dependencies.
+
 ## [1.1.1] - 2026-03-15
 
 ### Added
@@ -165,7 +171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - aarch64 builds.
 
-[unreleased]: https://github.com/SRv6d/hanko/compare/v1.1.1...HEAD
+[unreleased]: https://github.com/SRv6d/hanko/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/SRv6d/hanko/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/SRv6d/hanko/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/SRv6d/hanko/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/SRv6d/hanko/compare/v0.5.4...v1.0.0
