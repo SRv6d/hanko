@@ -25,7 +25,12 @@ updates:
       default-days: 5
     open-pull-requests-limit: 8
     groups:
-      cargo-non-major:
+      cargo-development-non-major:
+        dependency-type: development
+        patterns: ["*"]
+        update-types: [minor, patch]
+      cargo-production-non-major:
+        dependency-type: production
         patterns: ["*"]
         update-types: [minor, patch]
 
