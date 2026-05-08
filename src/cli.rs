@@ -135,7 +135,7 @@ fn long_version() -> String {
             env!("PROFILE")
         ),
     };
-    format!("{version}\n{metadata}\n{}", env!("ENABLED_FEATURES"),)
+    format!("{version}\n{metadata}\n{}", env!("ENABLED_FEATURES"))
 }
 
 /// The main CLI entrypoint.
