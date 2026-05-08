@@ -28,7 +28,7 @@ jobs:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
@@ -47,7 +47,7 @@ jobs:
 
       - name: Container Registry login
         if: runner.os == 'Linux'
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -55,12 +55,12 @@ jobs:
 
       - name: Set up Docker Buildx
         if: runner.os == 'Linux'
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Extract image metadata
         if: runner.os == 'Linux'
         id: meta
-        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -101,7 +101,7 @@ jobs:
 
       - name: Attest container image
         if: runner.os == 'Linux'
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-name: ${{ steps.containers.outputs.subject_name }}
           subject-digest: ${{ steps.containers.outputs.digest }}
@@ -118,7 +118,7 @@ jobs:
       DOWNLOAD_DIR: release-files
       PROVENANCE_PATH: release-files/hanko-${{ github.ref_name }}.sigstore.json
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - name: Download release files
@@ -131,7 +131,7 @@ jobs:
 
       - name: Attest release files
         id: provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: ${{ env.DOWNLOAD_DIR }}/*
 
