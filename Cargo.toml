@@ -40,13 +40,13 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 # Pin criterion (and related tooling) explicitly to ensure stable benchmarks
 codspeed-criterion-compat = "=4.6.0"
 criterion = "=0.8.2"
-assert_cmd = "2.2.1"
+assert_cmd = "2.2.2"
 predicates = "3.1.4"
 httpmock = "0.8.3"
 indoc = "2.0.7"
 proptest = "1.11.0"
 rstest = "0.26.1"
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 reqwest = { version = "0.13.3", features = ["blocking"] }
 
 [features]
