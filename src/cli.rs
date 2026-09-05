@@ -151,7 +151,7 @@ pub fn entrypoint() -> Result<()> {
         Commands::Update => {
             config = Configuration::load(&args.config).context(format!(
                 "Failed to load configuration from {}",
-                &args.config.display()
+                args.config.display()
             ))?;
         }
         Commands::Signer(action) => match action {
@@ -163,7 +163,7 @@ pub fn entrypoint() -> Result<()> {
             } => {
                 config = Configuration::load_or_default(&args.config).context(format!(
                     "Failed to load configuration from {}",
-                    &args.config.display()
+                    args.config.display()
                 ))?;
 
                 let added = config
@@ -176,9 +176,9 @@ pub fn entrypoint() -> Result<()> {
 
                 config.save().context(format!(
                     "Failed to save configuration to {}",
-                    &args.config.display()
+                    args.config.display()
                 ))?;
-                println!("Updated configuration file {}", &args.config.display());
+                println!("Updated configuration file {}", args.config.display());
 
                 if no_update {
                     return Ok(());
