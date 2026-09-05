@@ -131,7 +131,7 @@ pub struct PublicKey {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{Local, TimeZone as _};
+    use chrono::{TimeZone as _, Utc};
     use rstest::*;
     use std::fs;
 
@@ -153,7 +153,7 @@ mod tests {
             principals: vec!["ian.malcom@acme.corp".to_string()],
             key: PublicKey {
                 blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILWtK6WxXw7NVhbn6fTQ0dECF8y98fahSIsqKMh+sSo9".to_string(),
-                valid_after: Some(Local.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap().into()),
+                valid_after: Some(Utc.with_ymd_and_hms(2024, 4, 11, 22, 00, 00).unwrap().into()),
                 valid_before: None
             }
         }
@@ -166,7 +166,7 @@ mod tests {
             key: PublicKey {
                 blob: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJHDGMF+tZQL3dcr1arPst+YP8v33Is0kAJVvyTKrxMw".to_string(),
                 valid_after: None,
-                valid_before: Some(Local.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap().into())
+                valid_before: Some(Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap().into())
             }
         }
     }
