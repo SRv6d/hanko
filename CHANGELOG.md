@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- Update Rust dependencies.
+- Update the Rust toolchain from 1.92.0 to 1.98.0.
+- Update GitHub Actions and dependency automation, replace Cargo Deny advisory checks with dependency review, and verify all Nix flake outputs in CI.
+
 ## [1.1.2] - 2026-03-21
 
 ### Internal
