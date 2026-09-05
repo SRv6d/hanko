@@ -112,7 +112,7 @@ fn git_allowed_signers() -> Resettable<OsStr> {
             ..Default::default()
         })
     {
-        return Resettable::Value(OsStr::from(interpolated.into_owned().into_os_string()));
+        return Resettable::Value(interpolated.into_os_string().into());
     }
 
     Resettable::Reset
