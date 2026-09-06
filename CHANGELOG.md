@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-09-05
+
+### Internal
+
+- Update Rust dependencies.
+- Update the Rust toolchain from 1.92.0 to 1.98.0.
+- Update GitHub Actions and dependency automation, replace Cargo Deny advisory checks with dependency review, and verify all Nix flake outputs in CI.
+
 ## [1.1.2] - 2026-03-21
 
 ### Internal
@@ -171,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - aarch64 builds.
 
-[unreleased]: https://github.com/SRv6d/hanko/compare/v1.1.2...HEAD
+[unreleased]: https://github.com/SRv6d/hanko/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/SRv6d/hanko/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/SRv6d/hanko/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/SRv6d/hanko/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/SRv6d/hanko/compare/v1.0.0...v1.1.0
