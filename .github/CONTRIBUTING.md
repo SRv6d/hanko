@@ -77,8 +77,10 @@ To release a new version of `hanko`, perform the following steps.
   just bump-version $NEW_VERSION
   ```
 
-- Once the branch is merged, a GitHub release for the new version containing the recent changes can be created automatically.
+- Once the branch is merged, create a draft release and start the release workflow.
 
   ```sh
   just release-latest-version $NEW_VERSION
   ```
+
+- The workflow builds and attests every release asset, publishes the crate, then publishes the draft release as the latest release.
