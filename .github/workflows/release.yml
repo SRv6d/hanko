@@ -156,6 +156,7 @@ jobs:
 
   cargo-publish:
     permissions:
+      # Exchange GitHub's OIDC token for a short-lived crates.io publishing token.
       id-token: write
     needs: attest-build-provenance
     runs-on: ubuntu-latest
@@ -176,6 +177,7 @@ jobs:
 
   publish-release:
     permissions:
+      # Change the draft release to a published release after every deliverable succeeds.
       contents: write
     needs: cargo-publish
     runs-on: ubuntu-latest
