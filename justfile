@@ -77,7 +77,8 @@ release-latest-version version:
     **Full Changelog**: {{ REPO_URL }}/compare/$PREVIOUS_RELEASE...$CURRENT_RELEASE
     "
 
-    gh release create $CURRENT_RELEASE --latest --title $CURRENT_RELEASE --notes-file - <<< "$RELEASE_NOTES"
+    gh release create $CURRENT_RELEASE --draft --title $CURRENT_RELEASE --notes-file - <<< "$RELEASE_NOTES"
+    gh workflow run release.yml --ref main -f tag="$CURRENT_RELEASE"
 
 # Publish the crate
 publish: _validate_version_tag
