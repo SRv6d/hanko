@@ -52,6 +52,9 @@ updates:
   - package-ecosystem: nix
     directory: /
     patterns: ["rust-overlay"]
+    # The default cooldown can select an overlay that predates the Rust release.
+    cooldown:
+      exclude: ["rust-overlay"]
     multi-ecosystem-group: rust-toolchain
 
   - package-ecosystem: devcontainers
