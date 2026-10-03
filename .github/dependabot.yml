@@ -6,7 +6,7 @@
 version: 2
 
 multi-ecosystem-groups:
-  rust-toolchain:
+  rust-environment:
     # rust-overlay publishes new stable manifests later on release day.
     schedule:
       interval: monthly
@@ -47,7 +47,7 @@ updates:
   - package-ecosystem: rust-toolchain
     directory: /
     patterns: ["*"]
-    multi-ecosystem-group: rust-toolchain
+    multi-ecosystem-group: rust-environment
 
   - package-ecosystem: nix
     directory: /
@@ -55,7 +55,7 @@ updates:
     # The default cooldown can select an overlay that predates the Rust release.
     cooldown:
       exclude: ["rust-overlay"]
-    multi-ecosystem-group: rust-toolchain
+    multi-ecosystem-group: rust-environment
 
   - package-ecosystem: devcontainers
     directory: /
