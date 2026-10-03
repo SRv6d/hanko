@@ -4,6 +4,14 @@
 # - keep major updates visible by leaving them ungrouped
 # - avoid adopting brand-new releases immediately
 version: 2
+
+multi-ecosystem-groups:
+  rust-toolchain:
+    # rust-overlay publishes new stable manifests later on release day.
+    schedule:
+      interval: monthly
+      time: "23:30"
+      timezone: Etc/UTC
 updates:
   - package-ecosystem: github-actions
     directory: /
@@ -34,10 +42,17 @@ updates:
         patterns: ["*"]
         update-types: [minor, patch]
 
+  # rust-overlay must know about a Rust release before Nix can evaluate it.
+  # Keep both pins in one PR instead of repairing flake.lock by hand.
   - package-ecosystem: rust-toolchain
     directory: /
-    schedule:
-      interval: monthly
+    patterns: ["*"]
+    multi-ecosystem-group: rust-toolchain
+
+  - package-ecosystem: nix
+    directory: /
+    patterns: ["rust-overlay"]
+    multi-ecosystem-group: rust-toolchain
 
   - package-ecosystem: devcontainers
     directory: /
