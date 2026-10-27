@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - Group Rust toolchain and Nix rust-overlay updates into one Dependabot pull request.
+- Make release recipes portable across GNU/Linux and macOS.
 
 ## [1.1.3] - 2026-09-05
 
