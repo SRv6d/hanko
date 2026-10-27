@@ -38,9 +38,6 @@
             (target: archive: pkgs.lib.nameValuePair "archive-${target}" archive)
             packaging.archives
           // pkgs.lib.mapAttrs'
-            (target: deb: pkgs.lib.nameValuePair "deb-${target}" deb)
-            packaging.debs
-          // pkgs.lib.mapAttrs'
             (target: img: pkgs.lib.nameValuePair "container-${target}" img)
             packaging.containerImages;
 
