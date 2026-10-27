@@ -9,7 +9,7 @@ let
     (target: _: pkgs.lib.hasInfix "musl" target || pkgs.lib.hasInfix "darwin" target)
     packages;
 
-  debTargets = pkgs.lib.filterAttrs
+  containerTargets = pkgs.lib.filterAttrs
     (target: _: pkgs.lib.hasInfix "musl" target)
     packages;
 
@@ -44,50 +44,6 @@ let
         .
     '';
 
-  mkDeb = target: package:
-    let
-      arch = targetArch target;
-      maintainer = builtins.head cargo.authors;
-    in
-    pkgs.runCommand "${cargo.name}-${cargo.version}-${arch}.deb" {
-      nativeBuildInputs = [ pkgs.dpkg ];
-    } ''
-      export SOURCE_DATE_EPOCH=${sourceDateEpoch}
-
-      root=$TMPDIR/deb
-      mkdir -p $root/DEBIAN
-      mkdir -p $root/usr/bin
-      mkdir -p $root/usr/share/doc/${cargo.name}
-      mkdir -p $root/usr/share/bash-completion/completions
-      mkdir -p $root/usr/share/zsh/vendor-completions
-      mkdir -p $root/usr/share/fish/vendor_completions.d
-      mkdir -p $root/usr/share/elvish/lib
-      mkdir -p $root/usr/share/man/man1
-
-      cat > $root/DEBIAN/control <<EOF
-      Package: ${cargo.name}
-      Version: ${cargo.version}
-      Architecture: ${arch}
-      Maintainer: ${maintainer}
-      Description: ${cargo.description}
-      Homepage: ${cargo.homepage}
-      Priority: optional
-      Section: utils
-      EOF
-
-      cp ${package}/bin/${cargo.name}       $root/usr/bin/${cargo.name}
-      cp ${src}/README.md                   $root/usr/share/doc/${cargo.name}/
-      cp ${src}/assets/completions/hanko.bash $root/usr/share/bash-completion/completions/${cargo.name}
-      cp ${src}/assets/completions/_hanko     $root/usr/share/zsh/vendor-completions/
-      cp ${src}/assets/completions/hanko.fish $root/usr/share/fish/vendor_completions.d/
-      cp ${src}/assets/completions/hanko.elv  $root/usr/share/elvish/lib/
-      cp ${src}/assets/manpages/*             $root/usr/share/man/man1/
-
-      find $root -exec touch --no-dereference --date="@$SOURCE_DATE_EPOCH" {} +
-
-      dpkg-deb --build --root-owner-group $root $out
-    '';
-
   mkContainerImage = target: package:
     let
       arch = targetArch target;
@@ -110,19 +66,17 @@ let
     };
 
   archives = builtins.mapAttrs mkArchive archiveTargets;
-  debs = builtins.mapAttrs mkDeb debTargets;
-  containerImages = builtins.mapAttrs mkContainerImage debTargets;
+  containerImages = builtins.mapAttrs mkContainerImage containerTargets;
 
   releaseArtifacts =
     let
-      allArtifacts = builtins.attrValues archives ++ builtins.attrValues debs;
-      # Sort by filename for SHA256SUMS; attrValues groups by type
-      # rather than interleaving by name as users would expect.
-      artifactsByName = builtins.sort (a: b: a.name < b.name) allArtifacts;
-      copyArtifacts = pkgs.lib.concatMapStrings (a: "cp ${a} $out/${a.name}\n") allArtifacts;
+      artifacts = builtins.sort
+        (a: b: a.name < b.name)
+        (builtins.attrValues archives);
+      copyArtifacts = pkgs.lib.concatMapStrings (a: "cp ${a} $out/${a.name}\n") artifacts;
       writeChecksums = pkgs.lib.concatMapStrings (a:
         "${pkgs.coreutils}/bin/sha256sum ${pkgs.lib.escapeShellArg a.name} >> SHA256SUMS\n"
-      ) artifactsByName;
+      ) artifacts;
     in
     pkgs.runCommand "${cargo.name}-release-artifacts" { } ''
       mkdir $out
@@ -147,5 +101,5 @@ let
     '';
 in
 {
-  inherit archives debs containerImages releaseArtifacts releaseContainers;
+  inherit archives containerImages releaseArtifacts releaseContainers;
 }
