@@ -1,7 +1,7 @@
 export CI := env("CI", "false")
 CRATE_NAME := "hanko"
 CHANGELOG_FILE := "CHANGELOG.md"
-REPO_URL := "https://github.com/SRv6d/hanko"
+REPO_URL := "https://github.com/marvinvogt/hanko"
 COMPLETIONS_DIR := "assets/completions"
 MANPAGES_DIR := "assets/manpages"
 LCOV_FILE := "target/coverage/lcov.info"
