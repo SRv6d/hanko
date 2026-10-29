@@ -1,12 +1,12 @@
 <h1 align="center"><code>hanko</code></h1>
 <div align="center">
-  <a href="https://github.com/SRv6d/hanko/actions/workflows/test.yml">
-    <img src="https://github.com/SRv6d/hanko/actions/workflows/test.yml/badge.svg?branch=main" alt="Test status" />
+  <a href="https://github.com/marvinvogt/hanko/actions/workflows/test.yml">
+    <img src="https://github.com/marvinvogt/hanko/actions/workflows/test.yml/badge.svg?branch=main" alt="Test status" />
   </a>
-  <a href="https://codecov.io/github/SRv6d/hanko">
-    <img src="https://codecov.io/github/SRv6d/hanko/graph/badge.svg?token=PIRC5DZL9C" />
+  <a href="https://codecov.io/github/marvinvogt/hanko">
+    <img src="https://codecov.io/github/marvinvogt/hanko/graph/badge.svg?token=PIRC5DZL9C" />
   </a>
-  <a href="https://codspeed.io/SRv6d/hanko">
+  <a href="https://codspeed.io/marvinvogt/hanko">
     <img src="https://img.shields.io/endpoint?url=https://codspeed.io/badge.json" alt="CodSpeed Badge" />
   </a>
   <a href="https://crates.io/crates/hanko">
@@ -14,8 +14,8 @@
   </a>
 </div>
 <div align="center">
-  <a href="https://scorecard.dev/viewer/?uri=github.com/SRv6d/hanko">
-    <img src="https://api.scorecard.dev/projects/github.com/SRv6d/hanko/badge" />
+  <a href="https://scorecard.dev/viewer/?uri=github.com/marvinvogt/hanko">
+    <img src="https://api.scorecard.dev/projects/github.com/marvinvogt/hanko/badge" />
   </a>
   <a href="https://www.bestpractices.dev/projects/9526">
     <img src="https://www.bestpractices.dev/projects/9526/badge" />
@@ -121,7 +121,7 @@ cargo binstall hanko
 ## Using Homebrew
 
 ```
-brew install srv6d/tap/hanko
+brew install marvinvogt/tap/hanko
 ```
 
 ## Using Nix
@@ -138,10 +138,10 @@ flox install hanko
 
 ## Using Docker
 
-From scratch docker images are [built](https://github.com/SRv6d/hanko/blob/main/Dockerfile) and attested in CI for every [release] and are available through the GitHub container registry for this repository.
+From scratch docker images are [built](https://github.com/marvinvogt/hanko/blob/main/Dockerfile) and attested in CI for every [release] and are available through the GitHub container registry for this repository.
 
 ```sh
-docker run -it ghcr.io/srv6d/hanko
+docker run -it ghcr.io/marvinvogt/hanko
 ```
 
 ## Using pre-built binaries
@@ -156,7 +156,7 @@ All release assets are built in CI and utilize Build Provenance Attestation, pro
 You can verify a release asset using the [`gh` CLI](https://cli.github.com).
 
 ```sh
-$ gh at verify -R srv6d/hanko hanko-v0.5.1-aarch64-apple-darwin.tar.gz
+$ gh at verify -R marvinvogt/hanko hanko-v0.5.1-aarch64-apple-darwin.tar.gz
 Loaded digest sha256:32b37a255ce6ff7a961ccd18d3e1e1207814a2f4410042919a48552ddaf254f9 for file://hanko-v0.5.1-aarch64-apple-darwin.tar.gz
 Loaded 1 attestation from GitHub API
 ✓ Verification succeeded!
@@ -166,7 +166,7 @@ REPO         PREDICATE_TYPE                  WORKFLOW
 SRv6d/hanko  https://slsa.dev/provenance/v1  .github/workflows/build.yml@refs/tags/v0.5.1
 ```
 
-Alternatively, using the sigstore [`cosign` CLI](https://github.com/sigstore/cosign), after downloading the appropriate [attestation](https://github.com/srv6d/hanko/attestations).
+Alternatively, using the sigstore [`cosign` CLI](https://github.com/sigstore/cosign), after downloading the appropriate [attestation](https://github.com/marvinvogt/hanko/attestations).
 
 ```sh
 $ cosign verify-blob-attestation --bundle SRv6d-hanko-attestation-3372432.sigstore.json \
@@ -258,4 +258,4 @@ To get started, please read the [contribution guidelines](.github/CONTRIBUTING.m
 The source code of this project is licensed under the MIT License. For more information, see [LICENSE](LICENSE).
 
 [gix-config]: https://crates.io/crates/gix-config
-[release]: https://github.com/SRv6d/hanko/releases
+[release]: https://github.com/marvinvogt/hanko/releases
