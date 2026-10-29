@@ -12,8 +12,8 @@ categories = [
 edition = "2024"
 authors = ["Marvin Vogt <m@rvinvogt.com>"]
 license = "MIT"
-homepage = "https://github.com/srv6d/hanko"
-repository = "https://github.com/srv6d/hanko"
+homepage = "https://github.com/marvinvogt/hanko"
+repository = "https://github.com/marvinvogt/hanko"
 readme = "README.md"
 exclude = [".devcontainer", ".github", "doc/benchmark/**", "tests/**"]
 
